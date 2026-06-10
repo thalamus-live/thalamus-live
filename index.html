@@ -1978,8 +1978,10 @@ function showUpcoming(g){
   const timeStr=gameDate.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
   const dateStr=gameDate.toLocaleDateString('es-PE',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
 
-  setText('home-abbr',hA); setText('away-abbr',aA);
+  setText('home-abbr',hA);setText('away-abbr',aA);
   setText('home-full',home.team.displayName||'');
+  oddsHomeFullName = home.team.displayName || '';
+  oddsAwayFullName = away.team.displayName || '';
   setText('away-full',away.team.displayName||'');
   setText('home-rec',(home.record?.[0]?.summary||'—')+' · Casa');
   setText('away-rec',(away.record?.[0]?.summary||'—')+' · Visita');
@@ -2020,7 +2022,9 @@ function parseGame(d){
   const status=comp.status,state=status.type.state,period=status.period||0;
 
   setText('home-abbr',hA);setText('away-abbr',aA);
-  setText('home-full',home.team.displayName||'');setText('away-full',away.team.displayName||'');
+  oddsHomeFullName = home.team.displayName || '';
+  oddsAwayFullName = away.team.displayName || '';
+  setText('away-full',away.team.displayName||'');
   setText('home-rec',(home.record?.[0]?.summary||'—')+' · Casa');
   setText('away-rec',(away.record?.[0]?.summary||'—')+' · Visita');
   if(home.team.logo){document.getElementById('home-logo').src=home.team.logo;document.getElementById('home-logo').style.display='';}
@@ -4778,16 +4782,103 @@ function sbCalcTriangle(){
 // ═══════════════════════════════════════════════════════
 // A — THE ODDS API INTEGRATION
 // ═══════════════════════════════════════════════════════
-const ODDS_API_KEY = 'b73aa8ac1b74b35c9a14c7f27bf2df8f';
 const ODDS_SPORTS = {
-  nba:       'basketball_nba',
-  wnba:      'basketball_wnba',
-  euroleague:'basketball_euroleague',
-  ncaamb:    'basketball_ncaab',
-  ncaawb:    'basketball_ncaawb',
-  acb:       'basketball_spain_acb',
-  nbl:       'basketball_australia',
+  nba:        'basketball_nba',
+  wnba:       'basketball_wnba',
+  euroleague: 'basketball_euroleague',
+  ncaamb:     'basketball_ncaab',
+  ncaawb:     'basketball_ncaawb',
+  acb:        'basketball_spain_acb',
+  nbl:        'basketball_australia',
 };
+
+let oddsHomeFullName = '';
+let oddsAwayFullName = '';
+
+const ABV_TO_ODDS_NAME = {
+  ATL:'Atlanta Hawks', BOS:'Boston Celtics', BKN:'Brooklyn Nets',
+  CHA:'Charlotte Hornets', CHI:'Chicago Bulls', CLE:'Cleveland Cavaliers',
+  DAL:'Dallas Mavericks', DEN:'Denver Nuggets', DET:'Detroit Pistons',
+  GSW:'Golden State Warriors', HOU:'Houston Rockets', IND:'Indiana Pacers',
+  LAC:'LA Clippers', LAL:'Los Angeles Lakers', MEM:'Memphis Grizzlies',
+  MIA:'Miami Heat', MIL:'Milwaukee Bucks', MIN:'Minnesota Timberwolves',
+  NOP:'New Orleans Pelicans', NYK:'New York Knicks', OKC:'Oklahoma City Thunder',
+  ORL:'Orlando Magic', PHI:'Philadelphia 76ers', PHX:'Phoenix Suns',
+  POR:'Portland Trail Blazers', SAC:'Sacramento Kings', SAS:'San Antonio Spurs',
+  TOR:'Toronto Raptors', UTA:'Utah Jazz', WAS:'Washington Wizards',
+  NY:'New York Liberty', LVA:'Las Vegas Aces', SEA:'Seattle Storm',
+  CON:'Connecticut Sun', CHI:'Chicago Sky', LA:'Los Angeles Sparks',
+  MIN:'Minnesota Lynx', PHX:'Phoenix Mercury', DAL:'Dallas Wings',
+  IND:'Indiana Fever', WAS:'Washington Mystics',
+};
+
+function findGameInOdds(data, hAbv, aAbv) {
+  const hFull = (oddsHomeFullName || '').toLowerCase();
+  const aFull = (oddsAwayFullName || '').toLowerCase();
+  const hMap  = (ABV_TO_ODDS_NAME[hAbv] || hAbv).toLowerCase();
+  const aMap  = (ABV_TO_ODDS_NAME[aAbv] || aAbv).toLowerCase();
+
+  function score(g) {
+    const ht = g.home_team.toLowerCase();
+    const at = g.away_team.toLowerCase();
+    let pts = 0;
+    if (hFull && ht.includes(hFull)) pts += 4;
+    if (hFull && at.includes(hFull)) pts += 4;
+    if (aFull && at.includes(aFull)) pts += 4;
+    if (aFull && ht.includes(aFull)) pts += 4;
+    const hLast = hFull.split(' ').pop();
+    const aLast = aFull.split(' ').pop();
+    if (hLast && hLast.length > 2 && (ht.includes(hLast) || at.includes(hLast))) pts += 2;
+    if (aLast && aLast.length > 2 && (at.includes(aLast) || ht.includes(aLast))) pts += 2;
+    if (ht.includes(hMap) || at.includes(hMap)) pts += 2;
+    if (at.includes(aMap) || ht.includes(aMap)) pts += 2;
+    return pts;
+  }
+
+  return data.map(g => ({ g, s: score(g) }))
+             .filter(x => x.s > 0)
+             .sort((a, b) => b.s - a.s)[0]?.g || null;
+}
+
+async function fetchOddsAPI() {
+  const dot       = document.getElementById('oas-dot');
+  const txt       = document.getElementById('oas-txt');
+  const container = document.getElementById('odds-api-lines');
+  if (!dot || !txt || !container) return;
+
+  const hAbv = document.getElementById('home-abbr')?.textContent?.trim() || '';
+  const aAbv = document.getElementById('away-abbr')?.textContent?.trim() || '';
+
+  txt.textContent = 'Conectando con The Odds API…';
+  dot.className   = 'oas-dot';
+
+  try {
+    const sport = ODDS_SPORTS[currentLeague] || 'basketball_nba';
+    const url   = `/api/odds?sport=${sport}&regions=us&markets=h2h,totals,spreads&oddsFormat=decimal`;
+    const r     = await fetch(url);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+
+    const game = findGameInOdds(data, hAbv, aAbv);
+
+    if (!game) {
+      dot.className   = 'oas-dot off';
+      txt.textContent = `Sin odds para ${hAbv} vs ${aAbv} (${data.length} partidos en API)`;
+      container.innerHTML = `<div style="font-family:'Noto Sans',sans-serif;font-size:0.65rem;color:var(--ink4);text-align:center;padding:1rem 0">No se encontró el partido. Puede que aún no tenga líneas activas.</div>`;
+      return;
+    }
+
+    dot.className   = 'oas-dot live';
+    txt.textContent = `${data.length} partidos · ${game.bookmakers?.length || 0} casas · ${game.home_team} vs ${game.away_team}`;
+    renderOddsAPILines(game);
+
+  } catch (err) {
+    dot.className   = 'oas-dot off';
+    txt.textContent = 'Error al conectar';
+    container.innerHTML = `<div style="font-family:'Noto Sans',sans-serif;font-size:0.65rem;color:var(--red);text-align:center;padding:1rem 0">Error: ${err.message}</div>`;
+  }
+}
 
 async function fetchOddsAPI(){
   const dot = document.getElementById('oas-dot');
