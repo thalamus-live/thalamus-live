@@ -1116,6 +1116,11 @@ header{position:sticky;top:0;z-index:100;background:var(--brand-d);padding:0 1.5
       <span style="font-family:'Noto Sans',sans-serif;font-size:0.52rem;color:rgba(255,255,255,0.25);letter-spacing:0.1em;padding:0 4px;align-self:center">⚽</span>
       <button class="ltab"        id="lt-fifa_world"  onclick="switchLeague('fifa_world')" style="background:rgba(212,175,55,0.15);color:#d4af37">Mundial</button>
       <button class="ltab"        id="lt-mls"         onclick="switchLeague('mls')">MLS</button>
+      <button class="ltab"        id="lt-epl"        onclick="switchLeague('epl')">Premier</button>
+      <button class="ltab"        id="lt-laliga"     onclick="switchLeague('laliga')">La Liga</button>
+      <button class="ltab"        id="lt-seriea"     onclick="switchLeague('seriea')">Serie A</button>
+      <button class="ltab"        id="lt-bundesliga" onclick="switchLeague('bundesliga')">Bundesliga</button>
+      <button class="ltab"        id="lt-ucl"        onclick="switchLeague('ucl')" style="background:rgba(14,30,91,0.15);color:#3a5cff">Champions</button>
     </div>
     <div class="hclock" id="hclock">—</div>
     <button class="hbtn hbtn-ghost" onclick="loadGames()">↻</button>
@@ -1806,6 +1811,11 @@ const LEAGUES={
   // ── SOCCER ──
   fifa_world:{ base:'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world',                 label:'Mundial 2026',color:'#d4af37',qSecs:2700, toMax:0, leagueAvg:2.6, sport:'soccer' },
   mls:      { base:'https://site.api.espn.com/apis/site/v2/sports/soccer/usa.1',                       label:'MLS',        color:'#e51837', qSecs:2700, toMax:0, leagueAvg:2.8, sport:'soccer' },
+  epl:       { base:'https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1',              label:'Premier League', color:'#3d195b', qSecs:2700, toMax:0, leagueAvg:2.8, sport:'soccer' },
+  laliga:    { base:'https://site.api.espn.com/apis/site/v2/sports/soccer/esp.1',              label:'La Liga',        color:'#ee8707', qSecs:2700, toMax:0, leagueAvg:2.6, sport:'soccer' },
+  seriea:    { base:'https://site.api.espn.com/apis/site/v2/sports/soccer/ita.1',              label:'Serie A',        color:'#024494', qSecs:2700, toMax:0, leagueAvg:2.7, sport:'soccer' },
+  bundesliga:{ base:'https://site.api.espn.com/apis/site/v2/sports/soccer/ger.1',              label:'Bundesliga',     color:'#d20515', qSecs:2700, toMax:0, leagueAvg:3.1, sport:'soccer' },
+  ucl:       { base:'https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.champions',     label:'Champions League',color:'#0e1e5b',qSecs:2700, toMax:0, leagueAvg:2.9, sport:'soccer' },
 };
 let currentLeague='nba';
 let ESPN=LEAGUES.nba.base;
@@ -1840,6 +1850,11 @@ function switchLeague(league){
     nbl:       {home:'#00843d', away:'#1a3a6b'},
     fifa_world:{home:'#1a5276', away:'#7d6608'},
     mls:       {home:'#e51837', away:'#1a3a6b'},
+    epl:       {home:'#3d195b', away:'#00ff85'},
+    laliga:    {home:'#ee8707', away:'#1a3a6b'},
+    seriea:    {home:'#024494', away:'#008c45'},
+    bundesliga:{home:'#d20515', away:'#1a1a1a'},
+    ucl:       {home:'#0e1e5b', away:'#3a5cff'},
   };
   const c = colors[league] || colors.nba;
   document.documentElement.style.setProperty('--home', c.home);
