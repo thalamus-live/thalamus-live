@@ -1061,7 +1061,8 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
   <div class="source-tag" id="source-tag">ESPN API</div>
   <div class="demo-tag" id="demo-tag">DEMO</div>
   <div class="header-r">
-    <div class="league-toggle" style="overflow-x:auto;max-width:340px;scrollbar-width:none">
+    <div class="league-toggle" style="overflow-x:auto;max-width:380px;scrollbar-width:none;-webkit-overflow-scrolling:touch">
+      <span style="font-family:'Syne Mono',monospace;font-size:0.52rem;color:rgba(255,255,255,0.25);letter-spacing:0.1em;padding:0 4px;align-self:center">🏀</span>
       <button class="ltab active" id="lt-nba"         onclick="switchLeague('nba')">NBA</button>
       <button class="ltab"        id="lt-wnba"        onclick="switchLeague('wnba')">WNBA</button>
       <button class="ltab"        id="lt-euroleague"  onclick="switchLeague('euroleague')">EuroLeague</button>
@@ -1069,6 +1070,9 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
       <button class="ltab"        id="lt-ncaawb"      onclick="switchLeague('ncaawb')">NCAA ♀</button>
       <button class="ltab"        id="lt-acb"         onclick="switchLeague('acb')">ACB</button>
       <button class="ltab"        id="lt-nbl"         onclick="switchLeague('nbl')">NBL</button>
+      <span style="font-family:'Syne Mono',monospace;font-size:0.52rem;color:rgba(255,255,255,0.25);letter-spacing:0.1em;padding:0 4px;align-self:center">⚽</span>
+      <button class="ltab"        id="lt-fifa_world"  onclick="switchLeague('fifa_world')" style="background:rgba(212,175,55,0.15);color:#d4af37">Mundial</button>
+      <button class="ltab"        id="lt-mls"         onclick="switchLeague('mls')">MLS</button>
     </div>
     <div class="hclock" id="hclock">—</div>
     <button class="hbtn hbtn-ghost" onclick="loadGames()">↻</button>
@@ -1628,9 +1632,78 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
     </div>
   </div>
 
-</div>
+  <!-- ═══════════ SOCCER ANALYSIS PANEL ═══════════ -->
+  <div class="card soccer-only" id="soccer-analysis-card" style="display:none;flex:1 1 100%" data-card="soccer-analysis-card">
+    <div class="drag-handle" draggable="true">⠿</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.9rem;flex-wrap:wrap;gap:0.5rem">
+      <div class="card-title" style="margin-bottom:0" id="soccer-league-title">⚽ Análisis de Partido</div>
+      <div style="display:flex;gap:0.4rem">
+        <span class="sig-badge neutral" id="soccer-half-badge">PRE-PARTIDO</span>
+        <span id="soccer-minute-badge" style="font-family:'Syne Mono',monospace;font-size:0.6rem;color:var(--ink4)"></span>
+      </div>
+    </div>
 
-<!-- ═══════════ BET FLOW MODAL ═══════════ -->
+    <!-- 1X2 Probabilities -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.6rem;margin-bottom:0.85rem">
+      <div class="sig-block" id="soccer-prob-1" style="align-items:center;text-align:center">
+        <div class="sig-label">LOCAL GANA (1)</div>
+        <div class="sig-value" id="sp-home-win">—%</div>
+        <div class="sig-sub" id="sp-home-name">—</div>
+      </div>
+      <div class="sig-block" id="soccer-prob-x" style="align-items:center;text-align:center">
+        <div class="sig-label">EMPATE (X)</div>
+        <div class="sig-value" id="sp-draw">—%</div>
+        <div class="sig-sub">Sin gol diferencia</div>
+      </div>
+      <div class="sig-block" id="soccer-prob-2" style="align-items:center;text-align:center">
+        <div class="sig-label">VISITA GANA (2)</div>
+        <div class="sig-value" id="sp-away-win">—%</div>
+        <div class="sig-sub" id="sp-away-name">—</div>
+      </div>
+    </div>
+
+    <!-- xG and Projected Goals -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;margin-bottom:0.85rem">
+      <div style="background:var(--ink);border-radius:9px;padding:0.85rem 1rem">
+        <div style="font-family:'Syne Mono',monospace;font-size:0.58rem;color:rgba(255,255,255,0.4);letter-spacing:0.1em;margin-bottom:0.4rem">GOLES PROYECTADOS</div>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="text-align:center">
+            <div style="font-family:'Unbounded',sans-serif;font-size:2rem;font-weight:900;color:rgba(140,180,255,0.9);line-height:1" id="soccer-proj-home">—</div>
+            <div style="font-family:'Syne Mono',monospace;font-size:0.55rem;color:rgba(255,255,255,0.35);margin-top:2px" id="soccer-proj-home-lbl">LOCAL</div>
+          </div>
+          <div style="font-family:'Unbounded',sans-serif;font-size:1.2rem;color:rgba(255,255,255,0.2)">:</div>
+          <div style="text-align:center">
+            <div style="font-family:'Unbounded',sans-serif;font-size:2rem;font-weight:900;color:rgba(255,150,120,0.9);line-height:1" id="soccer-proj-away">—</div>
+            <div style="font-family:'Syne Mono',monospace;font-size:0.55rem;color:rgba(255,255,255,0.35);margin-top:2px" id="soccer-proj-away-lbl">VISITA</div>
+          </div>
+        </div>
+        <div style="font-family:'Syne Mono',monospace;font-size:0.58rem;color:rgba(255,255,255,0.3);margin-top:0.4rem;text-align:center" id="soccer-proj-total-lbl">Total proy: — goles</div>
+      </div>
+      <div style="background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:0.85rem 1rem">
+        <div style="font-family:'Syne Mono',monospace;font-size:0.58rem;color:var(--ink4);letter-spacing:0.1em;margin-bottom:0.5rem">STATS EN VIVO</div>
+        <div id="soccer-live-stats" style="display:flex;flex-direction:column;gap:0.3rem">
+          <div style="font-family:'Syne Mono',monospace;font-size:0.62rem;color:var(--ink4);text-align:center;padding:0.5rem 0">Esperando datos…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Over/Under goals betting opps -->
+    <div style="font-family:'Syne Mono',monospace;font-size:0.58rem;color:var(--ink4);letter-spacing:0.12em;margin-bottom:0.5rem">OPORTUNIDADES DE APUESTA — GOLES</div>
+    <div id="soccer-bet-opps" style="display:flex;flex-direction:column;gap:0.4rem">
+      <div style="font-family:'Syne Mono',monospace;font-size:0.65rem;color:var(--ink4);text-align:center;padding:0.75rem 0">Esperando datos del partido…</div>
+    </div>
+
+    <!-- Momentum: corners, shots, cards -->
+    <div style="font-family:'Syne Mono',monospace;font-size:0.58rem;color:var(--ink4);letter-spacing:0.12em;margin:0.85rem 0 0.5rem">MOMENTUM DEL PARTIDO</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.5rem" id="soccer-momentum-grid">
+      <div class="sig-block"><div class="sig-label">CÓRNERS</div><div class="sig-value" id="sm-corners">—</div><div class="sig-sub" id="sm-corners-sub">local : visita</div></div>
+      <div class="sig-block"><div class="sig-label">TIROS</div><div class="sig-value" id="sm-shots">—</div><div class="sig-sub" id="sm-shots-sub">al arco</div></div>
+      <div class="sig-block"><div class="sig-label">TARJETAS</div><div class="sig-value" id="sm-cards">—</div><div class="sig-sub" id="sm-cards-sub">amarillas</div></div>
+      <div class="sig-block"><div class="sig-label">POSESIÓN</div><div class="sig-value" id="sm-poss">—</div><div class="sig-sub" id="sm-poss-sub">% local</div></div>
+    </div>
+  </div>
+
+</div>
 <div class="bet-flow-modal" id="bet-flow-modal">
   <div class="bfm-sheet">
     <div class="bfm-handle"></div>
@@ -1679,13 +1752,17 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 
 <script>
 const LEAGUES={
-  nba:      { base:'https://site.api.espn.com/apis/site/v2/sports/basketball/nba',                    label:'NBA',        color:'#1a3a6b', qSecs:720, toMax:7,  leagueAvg:113 },
-  wnba:     { base:'https://site.api.espn.com/apis/site/v2/sports/basketball/wnba',                   label:'WNBA',       color:'#ff6b35', qSecs:600, toMax:3,  leagueAvg:82  },
-  euroleague:{ base:'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-euroleague',       label:'EuroLeague', color:'#003c8f', qSecs:600, toMax:4,  leagueAvg:82  },
-  ncaamb:   { base:'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball',label:'NCAA ♂',     color:'#bf5700', qSecs:1200,toMax:5,  leagueAvg:140 },
-  ncaawb:   { base:'https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball',label:'NCAA ♀',  color:'#6b2d8b', qSecs:600, toMax:4,  leagueAvg:120 },
-  acb:      { base:'https://site.api.espn.com/apis/site/v2/sports/basketball/acb',                    label:'ACB',        color:'#c8102e', qSecs:600, toMax:4,  leagueAvg:84  },
-  nbl:      { base:'https://site.api.espn.com/apis/site/v2/sports/basketball/nbl',                    label:'NBL',        color:'#00843d', qSecs:600, toMax:4,  leagueAvg:85  },
+  // ── BASKETBALL ──
+  nba:      { base:'https://site.api.espn.com/apis/site/v2/sports/basketball/nba',                     label:'NBA',        color:'#1a3a6b', qSecs:720,  toMax:7, leagueAvg:113, sport:'basketball' },
+  wnba:     { base:'https://site.api.espn.com/apis/site/v2/sports/basketball/wnba',                    label:'WNBA',       color:'#ff6b35', qSecs:600,  toMax:3, leagueAvg:82,  sport:'basketball' },
+  euroleague:{ base:'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-euroleague',        label:'EuroLeague', color:'#003c8f', qSecs:600,  toMax:4, leagueAvg:82,  sport:'basketball' },
+  ncaamb:   { base:'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball', label:'NCAA ♂',     color:'#bf5700', qSecs:1200, toMax:5, leagueAvg:140, sport:'basketball' },
+  ncaawb:   { base:'https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball',label:'NCAA ♀',   color:'#6b2d8b', qSecs:600,  toMax:4, leagueAvg:120, sport:'basketball' },
+  acb:      { base:'https://site.api.espn.com/apis/site/v2/sports/basketball/acb',                     label:'ACB',        color:'#c8102e', qSecs:600,  toMax:4, leagueAvg:84,  sport:'basketball' },
+  nbl:      { base:'https://site.api.espn.com/apis/site/v2/sports/basketball/nbl',                     label:'NBL',        color:'#00843d', qSecs:600,  toMax:4, leagueAvg:85,  sport:'basketball' },
+  // ── SOCCER ──
+  fifa_world:{ base:'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world',                 label:'Mundial 2026',color:'#d4af37',qSecs:2700, toMax:0, leagueAvg:2.6, sport:'soccer' },
+  mls:      { base:'https://site.api.espn.com/apis/site/v2/sports/soccer/usa.1',                       label:'MLS',        color:'#e51837', qSecs:2700, toMax:0, leagueAvg:2.8, sport:'soccer' },
 };
 let currentLeague='nba';
 let ESPN=LEAGUES.nba.base;
@@ -1698,46 +1775,49 @@ let canvas,ctx;
 const seenPlays=new Set();
 const demo={homeScore:0,awayScore:0,quarter:1,secs:720,tick:0,hAbv:'LAL',aAbv:'BOS',hLogo:'https://a.espncdn.com/i/teamlogos/nba/500/lal.png',aLogo:'https://a.espncdn.com/i/teamlogos/nba/500/bos.png'};
 
+function isSoccer(){ return LEAGUES[currentLeague]?.sport === 'soccer'; }
+
 function switchLeague(league){
   if(currentLeague===league)return;
   currentLeague=league;
   ESPN=LEAGUES[league].base;
 
-  // Toggle all tabs
   Object.keys(LEAGUES).forEach(k=>{
     const el=document.getElementById('lt-'+k);
     if(el) el.classList.toggle('active', k===league);
   });
 
-  // Dynamic team colors per league
   const colors={
-    nba:      {home:'#1a3a6b', away:'#8b1a1a'},
-    wnba:     {home:'#6b2d8b', away:'#c45c00'},
-    euroleague:{home:'#003c8f',away:'#9e1b1b'},
-    ncaamb:   {home:'#bf5700', away:'#1a5276'},
-    ncaawb:   {home:'#6b2d8b', away:'#1a6b3a'},
-    acb:      {home:'#c8102e', away:'#002d62'},
-    nbl:      {home:'#00843d', away:'#1a3a6b'},
+    nba:       {home:'#1a3a6b', away:'#8b1a1a'},
+    wnba:      {home:'#6b2d8b', away:'#c45c00'},
+    euroleague:{home:'#003c8f', away:'#9e1b1b'},
+    ncaamb:    {home:'#bf5700', away:'#1a5276'},
+    ncaawb:    {home:'#6b2d8b', away:'#1a6b3a'},
+    acb:       {home:'#c8102e', away:'#002d62'},
+    nbl:       {home:'#00843d', away:'#1a3a6b'},
+    fifa_world:{home:'#1a5276', away:'#7d6608'},
+    mls:       {home:'#e51837', away:'#1a3a6b'},
   };
   const c = colors[league] || colors.nba;
   document.documentElement.style.setProperty('--home', c.home);
   document.documentElement.style.setProperty('--away', c.away);
 
-  // Update selector label
+  // Show/hide sport-specific panels
+  document.querySelectorAll('.soccer-only').forEach(el=>el.style.display=LEAGUES[league].sport==='soccer'?'':'none');
+  document.querySelectorAll('.basketball-only').forEach(el=>el.style.display=LEAGUES[league].sport==='soccer'?'none':'');
+
   const lbl=document.querySelector('#game-selector .sel-label');
   if(lbl)lbl.textContent=LEAGUES[league].label+' · PARTIDOS';
 
-  // Reset state
   games=[]; selId=null;
   probHist={home:[],away:[]};
   prevOdds={home:null,away:null};
-  projState.homeSeasonPPG = null;
-  projState.awaySeasonPPG = null;
-  projState.isWNBA = LEAGUES[league].qSecs < 720;
+  projState.homeSeasonPPG=null; projState.awaySeasonPPG=null;
+  projState.isWNBA = LEAGUES[league].qSecs < 720 && LEAGUES[league].sport!=='soccer';
+  soccerState={...soccerStateDefault};
   document.getElementById('feed').innerHTML='';
   seenPlays.clear();
   resetEdgeState();
-
   loadGames();
 }
 
@@ -1830,7 +1910,9 @@ async function loadGame(id){
   try{
     const r=await fetch(`${ESPN}/summary?event=${id}`,{cache:'no-store'});
     if(!r.ok)throw new Error('HTTP '+r.status);
-    parseGame(await r.json());hideLoad();
+    const data = await r.json();
+    if(isSoccer()) parseSoccerGame(data); else parseGame(data);
+    hideLoad();
     isDemo=false;
     document.getElementById('source-tag').style.display='';
     document.getElementById('demo-tag').style.display='none';
@@ -3027,15 +3109,19 @@ function startLiveRefresh(){
       const r = await fetch(`${ESPN}/summary?event=${selId}`,{cache:'no-store'});
       if(!r.ok) return;
       const d = await r.json();
-      const savedLine = marketLine.value;
-      const savedDir  = marketLine.direction;
-      parseGame(d);
-      if(savedLine !== null){
-        marketLine.value = savedLine;
-        marketLine.direction = savedDir;
-        const inp = document.getElementById('mline-input');
-        if(inp && !inp.value) inp.value = savedLine;
-        renderMarketVerdict();
+      if(isSoccer()){
+        parseSoccerGame(d);
+      } else {
+        const savedLine = marketLine.value;
+        const savedDir  = marketLine.direction;
+        parseGame(d);
+        if(savedLine !== null){
+          marketLine.value = savedLine;
+          marketLine.direction = savedDir;
+          const inp = document.getElementById('mline-input');
+          if(inp && !inp.value) inp.value = savedLine;
+          renderMarketVerdict();
+        }
       }
     }catch(_){}
   }, ms);
@@ -5212,6 +5298,353 @@ renderBettingOpportunities = function(){
     item.querySelector('.bopp-body')?.appendChild(btn);
   });
 };
+
+
+// ═══════════════════════════════════════════════════════
+// SOCCER ENGINE — Motor de análisis para fútbol
+// Proyección de goles, 1X2, over/under, xG, momentum
+// ═══════════════════════════════════════════════════════
+const soccerStateDefault = {
+  homeGoals: 0, awayGoals: 0,
+  minute: 0, half: 0, state: 'pre',
+  homeXG: 0, awayXG: 0,
+  homeShots: 0, awayShots: 0,
+  homeShotsOT: 0, awayShotsOT: 0,
+  homeCorners: 0, awayCorners: 0,
+  homeYellow: 0, awayYellow: 0,
+  homeRed: 0, awayRed: 0,
+  homePoss: 50, awayPoss: 50,
+};
+let soccerState = {...soccerStateDefault};
+
+// Parse soccer game from ESPN summary
+function parseSoccerGame(d){
+  if(!d) return;
+  const comp = d.competitions?.[0] || d.header?.competitions?.[0];
+  if(!comp) return;
+
+  const home = comp.competitors?.find(t=>t.homeAway==='home');
+  const away = comp.competitors?.find(t=>t.homeAway==='away');
+  if(!home||!away) return;
+
+  const status  = comp.status?.type;
+  const state   = status?.state || 'pre';
+  const desc    = status?.shortDetail || '';
+  const minute  = parseInt(desc) || 0;
+  const hS      = parseInt(home.score) || 0;
+  const aS      = parseInt(away.score) || 0;
+  const hA      = home.team?.abbreviation || 'LOC';
+  const aA      = away.team?.abbreviation || 'VIS';
+
+  soccerState.homeGoals  = hS;
+  soccerState.awayGoals  = aS;
+  soccerState.minute     = minute;
+  soccerState.state      = state;
+  soccerState.half       = minute <= 45 ? 1 : 2;
+
+  // Update scoreboard
+  animScore('sc-home', hS);
+  animScore('sc-away', aS);
+  setText('home-abbr', hA);
+  setText('away-abbr', aA);
+  setText('home-full', home.team?.displayName || hA);
+  setText('away-full', away.team?.displayName || aA);
+  const hLogo = document.getElementById('home-logo');
+  const aLogo = document.getElementById('away-logo');
+  if(hLogo) hLogo.src = home.team?.logo || '';
+  if(aLogo) aLogo.src = away.team?.logo || '';
+
+  // Squad label
+  setText('sq-label', minute > 0 ? `${minute}'` : 'KO');
+  setText('sq-home', hS);
+  setText('sq-away', aS);
+
+  // Clock
+  const clockEl = document.getElementById('gc-time');
+  if(clockEl) clockEl.textContent = minute > 0 ? `${minute}'` : '—:——';
+  const qEl = document.getElementById('gc-quarter');
+  if(qEl) qEl.textContent = state==='post' ? 'FINAL' : minute<=45 ? '1T' : '2T';
+
+  // State pill
+  const stateMap = {pre:'pre', in:'running', post:'final', halftime:'halftime'};
+  setClockStatePill(stateMap[state]||'pre',
+    state==='post' ? '✓ FINAL' :
+    state==='in'   ? `● ${minute}'` :
+    state==='halftime' ? '◑ MEDIO TIEMPO' : 'PRE-PARTIDO');
+
+  // Extract stats
+  const stats = d.boxscore?.players || [];
+  const hStats = d.boxscore?.teams?.find(t=>t.homeAway==='home')?.statistics || [];
+  const aStats = d.boxscore?.teams?.find(t=>t.homeAway==='away')?.statistics || [];
+
+  const getStat = (arr, name) => {
+    const s = arr.find(s=>s.name===name||s.label===name||s.abbreviation===name);
+    return parseFloat(s?.displayValue||s?.value||'0') || 0;
+  };
+
+  soccerState.homeShots    = getStat(hStats,'shots')||getStat(hStats,'Shots');
+  soccerState.awayShots    = getStat(aStats,'shots')||getStat(aStats,'Shots');
+  soccerState.homeShotsOT  = getStat(hStats,'shotsOnTarget')||getStat(hStats,'ShotsOnTarget');
+  soccerState.awayShotsOT  = getStat(aStats,'shotsOnTarget')||getStat(aStats,'ShotsOnTarget');
+  soccerState.homeCorners  = getStat(hStats,'corners')||getStat(hStats,'Corners');
+  soccerState.awayCorners  = getStat(aStats,'corners')||getStat(aStats,'Corners');
+  soccerState.homeYellow   = getStat(hStats,'yellowCards')||getStat(hStats,'YellowCards');
+  soccerState.awayYellow   = getStat(aStats,'yellowCards')||getStat(aStats,'YellowCards');
+  soccerState.homeRed      = getStat(hStats,'redCards')||getStat(hStats,'RedCards');
+  soccerState.awayRed      = getStat(aStats,'redCards')||getStat(aStats,'RedCards');
+  const possPct = getStat(hStats,'possessionPct')||getStat(hStats,'Possession');
+  soccerState.homePoss     = possPct || 50;
+  soccerState.awayPoss     = 100 - soccerState.homePoss;
+
+  // xG approximation: shots on target × 0.33 + shots × 0.07
+  soccerState.homeXG = (soccerState.homeShotsOT * 0.33 + soccerState.homeShots * 0.07).toFixed(2);
+  soccerState.awayXG = (soccerState.awayShotsOT * 0.33 + soccerState.awayShots * 0.07).toFixed(2);
+
+  // Feed events from plays
+  if(d.plays?.length){
+    d.plays.slice(-5).reverse().forEach(p=>{
+      if(seenPlays.has(p.id)) return; seenPlays.add(p.id);
+      const isHome = p.team?.id === home.team?.id;
+      const icon = p.type?.id==='goal'?'⚽':p.type?.id==='yellowCard'?'🟨':p.type?.id==='redCard'?'🟥':'⚡';
+      addEv(isHome?'home':'away', `${icon} ${p.text||'—'}`, p.clock?.displayValue||`${minute}'`);
+    });
+  }
+
+  renderSoccerPanel(hA, aA, state, minute);
+  renderSoccerBettingOpps(hA, aA, minute, state);
+}
+
+// Poisson PMF: P(X=k) for mean λ
+function poissonPMF(lambda, k){
+  if(lambda <= 0) return k===0 ? 1 : 0;
+  let logP = k * Math.log(lambda) - lambda;
+  for(let i=1; i<=k; i++) logP -= Math.log(i);
+  return Math.exp(logP);
+}
+
+// Project expected goals remaining using xG rate
+function projectSoccerGoals(){
+  const { homeGoals, awayGoals, minute, state, homeXG, awayXG, homePoss } = soccerState;
+  const leagueAvgGoals = LEAGUES[currentLeague]?.leagueAvg || 2.6;
+
+  let totalMinutes = 90;
+  let minsRemaining = Math.max(0, totalMinutes - minute);
+  if(state === 'post') minsRemaining = 0;
+  if(state === 'halftime') minsRemaining = 45;
+
+  // Base rate: league avg / 90 mins per team
+  const baseRate = leagueAvgGoals / 2 / 90;
+
+  // Adjust by xG rate if available
+  const hXGRate = parseFloat(homeXG) > 0 && minute > 5
+    ? parseFloat(homeXG) / minute
+    : baseRate;
+  const aXGRate = parseFloat(awayXG) > 0 && minute > 5
+    ? parseFloat(awayXG) / minute
+    : baseRate;
+
+  // Possession adjustment
+  const possAdj = (homePoss / 50);
+
+  const hLambda = hXGRate * possAdj * minsRemaining;
+  const aLambda = aXGRate * (2 - possAdj) * minsRemaining;
+
+  // Calculate 1X2 probabilities using Poisson
+  let pHome = 0, pDraw = 0, pAway = 0;
+  for(let hG = 0; hG <= 8; hG++){
+    const pH = poissonPMF(hLambda, hG);
+    for(let aG = 0; aG <= 8; aG++){
+      const pA = poissonPMF(aLambda, aG);
+      const prob = pH * pA;
+      const totalH = homeGoals + hG;
+      const totalA = awayGoals + aG;
+      if(totalH > totalA) pHome += prob;
+      else if(totalH === totalA) pDraw += prob;
+      else pAway += prob;
+    }
+  }
+
+  // Normalize
+  const total = pHome + pDraw + pAway;
+  pHome /= total; pDraw /= total; pAway /= total;
+
+  // Expected goals remaining
+  const projH = homeGoals + hLambda;
+  const projA = awayGoals + aLambda;
+
+  return { pHome, pDraw, pAway, projH, projA, hLambda, aLambda, minsRemaining };
+}
+
+function renderSoccerPanel(hA, aA, state, minute){
+  const proj = projectSoccerGoals();
+
+  // 1X2
+  setText('sp-home-win', Math.round(proj.pHome*100)+'%');
+  setText('sp-draw',     Math.round(proj.pDraw*100)+'%');
+  setText('sp-away-win', Math.round(proj.pAway*100)+'%');
+  setText('sp-home-name', hA);
+  setText('sp-away-name', aA);
+  setText('soccer-proj-home', proj.projH.toFixed(1));
+  setText('soccer-proj-away', proj.projA.toFixed(1));
+  setText('soccer-proj-home-lbl', hA);
+  setText('soccer-proj-away-lbl', aA);
+  setText('soccer-proj-total-lbl', `Total proy: ${(proj.projH+proj.projA).toFixed(1)} goles · xG: ${soccerState.homeXG}+${soccerState.awayXG}`);
+
+  // Color 1X2 blocks
+  const maxP = Math.max(proj.pHome, proj.pDraw, proj.pAway);
+  const blocks = [
+    {id:'soccer-prob-1', p:proj.pHome},
+    {id:'soccer-prob-x', p:proj.pDraw},
+    {id:'soccer-prob-2', p:proj.pAway},
+  ];
+  blocks.forEach(b=>{
+    const el = document.getElementById(b.id);
+    if(!el) return;
+    el.className = 'sig-block' + (b.p===maxP ? ' active' : '');
+  });
+
+  // Badge
+  setText('soccer-half-badge',
+    state==='post'?'FINAL':state==='halftime'?'MEDIO TIEMPO':
+    minute>0?`${minute}' EN CURSO`:'PRE-PARTIDO');
+  setText('soccer-league-title', `⚽ ${LEAGUES[currentLeague]?.label || 'Fútbol'} — Análisis`);
+
+  // Live stats
+  const statsEl = document.getElementById('soccer-live-stats');
+  if(statsEl && (soccerState.homeShots || soccerState.awayShots)){
+    statsEl.innerHTML = [
+      {l:'Tiros', h:soccerState.homeShots, a:soccerState.awayShots},
+      {l:'Al arco', h:soccerState.homeShotsOT, a:soccerState.awayShotsOT},
+      {l:'xG', h:soccerState.homeXG, a:soccerState.awayXG},
+    ].map(s=>`
+      <div style="display:grid;grid-template-columns:1fr 60px 1fr;gap:4px;align-items:center;font-size:0.72rem">
+        <div style="font-family:'Unbounded',sans-serif;font-weight:700;color:var(--home);text-align:right">${s.h}</div>
+        <div style="font-family:'Syne Mono',monospace;font-size:0.55rem;color:var(--ink4);text-align:center;letter-spacing:0.08em">${s.l}</div>
+        <div style="font-family:'Unbounded',sans-serif;font-weight:700;color:var(--away)">${s.a}</div>
+      </div>`).join('');
+  }
+
+  // Momentum
+  setText('sm-corners', `${soccerState.homeCorners}:${soccerState.awayCorners}`);
+  setText('sm-shots', `${soccerState.homeShotsOT}:${soccerState.awayShotsOT}`);
+  setText('sm-cards', `${soccerState.homeYellow+soccerState.homeRed*2}:${soccerState.awayYellow+soccerState.awayRed*2}`);
+  setText('sm-poss', `${soccerState.homePoss}%`);
+  setText('sm-corners-sub', `${hA} : ${aA}`);
+  setText('sm-shots-sub', 'al arco');
+  setText('sm-poss-sub', `${hA}`);
+}
+
+function renderSoccerBettingOpps(hA, aA, minute, state){
+  const container = document.getElementById('soccer-bet-opps');
+  if(!container) return;
+
+  const proj = projectSoccerGoals();
+  const totalGoals = soccerState.homeGoals + soccerState.awayGoals;
+  const projTotal = proj.projH + proj.projA;
+  const minsLeft = proj.minsRemaining;
+
+  if(state === 'post' || minsLeft < 2){
+    container.innerHTML = '<div style="font-family:\'Syne Mono\',monospace;font-size:0.65rem;color:var(--ink4);text-align:center;padding:0.75rem 0">Partido finalizado</div>';
+    return;
+  }
+
+  const opps = [];
+  const sigma = Math.sqrt(Math.max(0.5, proj.hLambda + proj.aLambda));
+
+  // Over/Under lines
+  [0.5, 1.5, 2.5, 3.5].forEach(line => {
+    if(totalGoals > line) return; // ya superado, no interesante para over
+    const z = (line - projTotal) / sigma;
+    const pOver = 1 - normalCDF(z);
+    const pUnder = normalCDF(z);
+
+    if(pOver >= 0.60 && pOver <= 0.96){
+      opps.push({
+        icon:'⚽', prob:pOver, heat:pOver>=0.80?'hot':'warm',
+        desc:`Over ${line} goles (${minsLeft} min restantes)`,
+        meta:`Proyección: ${projTotal.toFixed(1)} goles · actual: ${totalGoals}`,
+        dir:'OVER', line
+      });
+    }
+    if(pUnder >= 0.60 && pUnder <= 0.96){
+      opps.push({
+        icon:'🛡️', prob:pUnder, heat:pUnder>=0.80?'hot':'warm',
+        desc:`Under ${line} goles (${minsLeft} min restantes)`,
+        meta:`Proyección: ${projTotal.toFixed(1)} goles · actual: ${totalGoals}`,
+        dir:'UNDER', line
+      });
+    }
+  });
+
+  // 1X2 if one outcome is very likely
+  if(proj.pHome >= 0.72){
+    opps.push({icon:'🏆', prob:proj.pHome, heat:proj.pHome>=0.82?'hot':'warm',
+      desc:`${hA} gana el partido (1)`,
+      meta:`${hA} ${soccerState.homeGoals}:${soccerState.awayGoals} ${aA} · ${minsLeft}' restantes`,
+      dir:'1'});
+  }
+  if(proj.pAway >= 0.72){
+    opps.push({icon:'🏆', prob:proj.pAway, heat:proj.pAway>=0.82?'hot':'warm',
+      desc:`${aA} gana el partido (2)`,
+      meta:`${hA} ${soccerState.homeGoals}:${soccerState.awayGoals} ${aA} · ${minsLeft}' restantes`,
+      dir:'2'});
+  }
+  if(proj.pDraw >= 0.40 && minute >= 75){
+    opps.push({icon:'🤝', prob:proj.pDraw, heat:'warm',
+      desc:`Empate (X) — últimos minutos`,
+      meta:`Marcador actual: ${soccerState.homeGoals}:${soccerState.awayGoals} · ${minsLeft}' restantes`,
+      dir:'X'});
+  }
+
+  // BTTS (both teams to score)
+  const pBTTS = (1-poissonPMF(proj.hLambda+soccerState.homeGoals,0)) * (1-poissonPMF(proj.aLambda+soccerState.awayGoals,0));
+  if(pBTTS >= 0.62 && soccerState.homeGoals === 0 || soccerState.awayGoals === 0){
+    opps.push({icon:'🎯', prob:pBTTS, heat:pBTTS>=0.75?'hot':'warm',
+      desc:'Ambos equipos marcan (BTTS)',
+      meta:`${hA}: ${soccerState.homeGoals} goles · ${aA}: ${soccerState.awayGoals} goles`,
+      dir:'BTTS'});
+  }
+
+  const sorted = opps.sort((a,b)=>b.prob-a.prob).slice(0,8);
+
+  if(!sorted.length){
+    container.innerHTML = '<div style="font-family:\'Syne Mono\',monospace;font-size:0.65rem;color:var(--ink4);text-align:center;padding:0.75rem 0">Sin oportunidades claras en este momento</div>';
+    return;
+  }
+
+  container.innerHTML = sorted.map(o=>{
+    const hc = o.heat==='hot'?'var(--green)':'var(--amber)';
+    const hbg = o.heat==='hot'?'rgba(26,122,74,0.05)':'rgba(184,98,10,0.04)';
+    const pct = Math.round(o.prob*100);
+    return `<div style="display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;
+      padding:8px 10px;border-radius:8px;border:1.5px solid ${o.heat==='hot'?'var(--green)':'var(--amber)'};
+      background:${hbg};margin-bottom:4px">
+      <div style="font-size:16px">${o.icon}</div>
+      <div>
+        <div style="font-size:11px;font-weight:600;color:var(--ink);line-height:1.3;margin-bottom:2px">${o.desc}</div>
+        <div style="font-family:'Syne Mono',monospace;font-size:8px;color:var(--ink4)">${o.meta}</div>
+        <div style="height:3px;background:var(--surface);border-radius:2px;overflow:hidden;margin-top:4px">
+          <div style="height:100%;background:${hc};width:${pct}%;border-radius:2px"></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:52px">
+        <div style="font-family:'Unbounded',sans-serif;font-weight:900;font-size:18px;color:${hc}">${pct}%</div>
+        <span style="font-family:'Syne Mono',monospace;font-size:7px;padding:1px 5px;border-radius:4px;
+          background:${hbg};color:${hc};font-weight:700;border:1px solid ${hc}44">
+          ${o.heat==='hot'?'🔥 ALTA':'⚡ MEDIA'}
+        </span>
+        <button onclick="openBetFlow('${o.desc}','total_game')"
+          style="font-family:'Syne Mono',monospace;font-size:7px;padding:2px 6px;border-radius:4px;
+          border:1px solid var(--border2);background:transparent;color:var(--ink4);cursor:pointer">
+          + Apostar
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Hook parseSoccerGame into the refresh cycle
+const _origLoadGame = typeof loadGame !== 'undefined' ? loadGame : null;
 
 function setText(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
 function setLoad(msg){setText('load-txt',msg);document.getElementById('loader').classList.remove('hidden');}
