@@ -3,64 +3,90 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#1a1714">
+<meta name="theme-color" content="#2d7d5a">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Thalamus Live — NBA Analyzer</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Syne+Mono&family=Unbounded:wght@700;900&display=swap" rel="stylesheet">
+<title>thalamus live</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=Noto+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg:#f5f0e8; --surface:#ede8de; --card:#ffffff; --card2:#faf8f4;
-  --ink:#1a1714; --ink2:#3d3830; --ink3:#7a7060; --ink4:#b0a898;
-  --blue:#1a3a6b; --blue2:#2756a8; --blue-bg:rgba(26,58,107,0.07);
-  --red:#c0392b; --red-bg:rgba(192,57,43,0.08);
-  --green:#1a7a4a; --green-bg:rgba(26,122,74,0.08);
-  --amber:#b8620a; --amber-bg:rgba(184,98,10,0.08);
-  --home:#1a3a6b; --away:#8b1a1a;
-  --border:rgba(26,23,20,0.10); --border2:rgba(26,23,20,0.18);
-  --radius:10px;
-  --shadow:0 2px 12px rgba(26,23,20,0.08),0 1px 3px rgba(26,23,20,0.05);
+  /* ── Thalamus Brand Colors ── */
+  --brand:    #6ebd91;        /* verde principal Pantone 7499C */
+  --brand-d:  #2d7d5a;        /* verde oscuro para hover/active */
+  --brand-l:  #edf7f2;        /* verde muy claro / fondo mint */
+  --brand-mid:#9ed4b3;        /* verde medio */
+  --gray:     #bcbcbb;        /* gris Pantone 11-0203 TSX */
+  --dark:     #1a1a1a;        /* negro Pantone Black 6C */
+  --white:    #ffffff;
+
+  /* ── UI tokens usando paleta de marca ── */
+  --bg:       #f0faf4;        /* fondo mint muy suave */
+  --surface:  #e6f4ec;
+  --card:     #ffffff;
+  --card2:    #f7fcf9;
+  --ink:      #1a1a1a;
+  --ink2:     #2c2c2c;
+  --ink3:     #5a6b62;
+  --ink4:     #8fa898;
+  --blue:     #2d7d5a;        /* "azul" = verde oscuro en esta paleta */
+  --blue2:    #6ebd91;
+  --blue-bg:  rgba(110,189,145,0.10);
+  --red:      #c0392b;
+  --red-bg:   rgba(192,57,43,0.08);
+  --green:    #2d7d5a;
+  --green-bg: rgba(45,125,90,0.10);
+  --amber:    #b8620a;
+  --amber-bg: rgba(184,98,10,0.08);
+  --amber2:   #d4a017;
+  --home:     #1a5c3a;
+  --away:     #8b1a1a;
+  --border:   rgba(110,189,145,0.18);
+  --border2:  rgba(110,189,145,0.30);
+  --radius:   10px;
+  --shadow:   0 2px 12px rgba(45,125,90,0.09),0 1px 3px rgba(45,125,90,0.05);
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html{font-size:14px}
-body{background:var(--bg);color:var(--ink);font-family:'Space Grotesk',sans-serif;min-height:100vh}
+body{background:var(--bg);color:var(--ink);font-family:'Noto Sans',sans-serif;min-height:100vh}
 
-/* HEADER */
-header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;height:52px;display:flex;align-items:center;gap:1rem}
-.wordmark{font-family:'Unbounded',sans-serif;font-size:0.9rem;font-weight:900;letter-spacing:0.08em;color:#fff}
-.wordmark span{color:rgba(255,255,255,0.35);font-weight:700;font-size:0.75rem}
-.live-chip{display:flex;align-items:center;gap:0.35rem;background:var(--red);padding:0.2rem 0.65rem;border-radius:100px;font-family:'Syne Mono',monospace;font-size:0.62rem;color:#fff;letter-spacing:0.12em}
+/* HEADER — verde Thalamus */
+header{position:sticky;top:0;z-index:100;background:var(--brand-d);padding:0 1.5rem;height:52px;display:flex;align-items:center;gap:1rem;border-bottom:1px solid rgba(255,255,255,0.12)}
+.wordmark{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.wordmark-logo{display:flex;align-items:center}
+.wordmark-txt{font-family:'Poppins',sans-serif;font-size:1.1rem;font-weight:700;color:#fff;letter-spacing:-0.01em}
+.wordmark-sub{font-family:'Poppins',sans-serif;font-size:0.55rem;font-weight:500;color:rgba(255,255,255,0.55);letter-spacing:0.15em;text-transform:uppercase;margin-left:6px;align-self:flex-end;margin-bottom:1px}
+.live-chip{display:flex;align-items:center;gap:0.35rem;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);padding:0.18rem 0.65rem;border-radius:100px;font-family:'Poppins',monospace;font-size:0.58rem;color:#fff;letter-spacing:0.12em;font-weight:600}
 .ldot{width:5px;height:5px;border-radius:50%;background:#fff;animation:blink 1s ease-in-out infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
-.source-tag{font-family:'Syne Mono',monospace;font-size:0.6rem;color:rgba(255,255,255,0.4);letter-spacing:0.08em}
-.demo-tag{background:var(--amber);color:#fff;font-family:'Syne Mono',monospace;font-size:0.6rem;padding:0.15rem 0.5rem;border-radius:4px;letter-spacing:0.08em;display:none}
+.source-tag{font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:rgba(255,255,255,0.5);letter-spacing:0.08em;font-weight:500}
+.demo-tag{background:var(--amber);color:#fff;font-family:'Poppins',sans-serif;font-size:0.58rem;padding:0.15rem 0.5rem;border-radius:4px;letter-spacing:0.08em;font-weight:600;display:none}
 .header-r{margin-left:auto;display:flex;align-items:center;gap:0.6rem}
-.hclock{font-family:'Syne Mono',monospace;font-size:0.72rem;color:rgba(255,255,255,0.4)}
-.hbtn{padding:0.3rem 0.85rem;border-radius:6px;font-family:'Space Grotesk',sans-serif;font-size:0.75rem;font-weight:600;cursor:pointer;border:none;transition:all 0.15s}
-.hbtn-ghost{background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.7)}
-.hbtn-ghost:hover{background:rgba(255,255,255,0.18);color:#fff}
-.hbtn-live{background:#fff;color:var(--ink)}
+.hclock{font-family:'Noto Sans',sans-serif;font-size:0.7rem;color:rgba(255,255,255,0.5);font-weight:500}
+.hbtn{padding:0.3rem 0.85rem;border-radius:6px;font-family:'Poppins',sans-serif;font-size:0.72rem;font-weight:600;cursor:pointer;border:none;transition:all 0.15s}
+.hbtn-ghost{background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.8)}
+.hbtn-ghost:hover{background:rgba(255,255,255,0.22);color:#fff}
+.hbtn-live{background:#fff;color:var(--brand-d);font-weight:700}
 .hbtn-live:hover{background:rgba(255,255,255,0.9)}
-.hbtn-live.active{background:var(--green);color:#fff}
+.hbtn-live.active{background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3)}
 .league-toggle{display:flex;background:rgba(255,255,255,0.08);border-radius:6px;overflow:hidden;border:1px solid rgba(255,255,255,0.15)}
-.ltab{padding:0.28rem 0.85rem;font-family:'Syne Mono',monospace;font-size:0.68rem;font-weight:600;cursor:pointer;border:none;background:transparent;color:rgba(255,255,255,0.5);letter-spacing:0.06em;transition:all 0.15s}
-.ltab.active{background:#fff;color:var(--ink)}
+.ltab{padding:0.28rem 0.85rem;font-family:'Poppins',sans-serif;font-size:0.65rem;font-weight:600;cursor:pointer;border:none;background:transparent;color:rgba(255,255,255,0.55);letter-spacing:0.04em;transition:all 0.15s}
+.ltab.active{background:#fff;color:var(--brand-d);font-weight:700}
 .ltab:hover:not(.active){color:#fff;background:rgba(255,255,255,0.12)}
 
 /* GAME SELECTOR */
-#game-selector{background:var(--surface);border-bottom:1px solid var(--border2);padding:0.65rem 1.5rem;display:flex;align-items:center;gap:0.5rem;overflow-x:auto;scrollbar-width:none}
+#game-selector{background:var(--brand-l);border-bottom:1px solid var(--border2);padding:0.65rem 1.5rem;display:flex;align-items:center;gap:0.5rem;overflow-x:auto;scrollbar-width:none}
 #game-selector::-webkit-scrollbar{display:none}
-.sel-label{font-family:'Syne Mono',monospace;font-size:0.6rem;color:var(--ink4);letter-spacing:0.1em;white-space:nowrap;margin-right:0.4rem}
+.sel-label{font-family:'Poppins',sans-serif;font-size:0.58rem;font-weight:600;color:var(--ink4);letter-spacing:0.12em;white-space:nowrap;margin-right:0.4rem;text-transform:uppercase}
 .gchip{display:flex;flex-direction:column;gap:0.1rem;background:var(--card);border:1.5px solid var(--border);border-radius:8px;padding:0.4rem 0.85rem;cursor:pointer;transition:all 0.15s;white-space:nowrap;box-shadow:var(--shadow)}
-.gchip:hover{border-color:var(--blue2)}
-.gchip.active{border-color:var(--blue);background:var(--blue-bg)}
-.gchip.glive{border-color:rgba(192,57,43,0.4)}
-.gchip.glive.active{border-color:var(--red);background:var(--red-bg)}
+.gchip:hover{border-color:var(--brand)}
+.gchip.active{border-color:var(--brand);background:var(--green-bg)}
+.gchip.glive{border-color:rgba(110,189,145,0.5);background:rgba(110,189,145,0.06)}
+.gchip.glive.active{border-color:var(--brand);background:var(--green-bg)}
 .chip-t{font-size:0.75rem;font-weight:600;color:var(--ink)}
-.chip-s{font-family:'Syne Mono',monospace;font-size:0.6rem;color:var(--ink3)}
+.chip-s{font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:var(--ink3)}
 .chip-s.live{color:var(--red);font-weight:500}
 .chip-s.post{color:var(--ink4)}
-.chip-load{font-family:'Syne Mono',monospace;font-size:0.72rem;color:var(--ink3)}
+.chip-load{font-family:'Noto Sans',sans-serif;font-size:0.72rem;color:var(--ink3)}
 .gpost{opacity:0.6}
 
 /* ═══════════════════════════════════════
@@ -68,7 +94,7 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
    4 columnas: team-home | score-total | clock+linescores | team-away
    ═══════════════════════════════════════ */
 #scoreboard{
-  background:var(--ink);
+  background:var(--brand-d);
   display:grid;
   grid-template-columns:1fr 1fr 1fr 1fr;
   align-items:stretch;
@@ -80,15 +106,15 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 .team-block.away{align-items:flex-end;border-left:1px solid rgba(255,255,255,0.07)}
 .team-block.home{border-right:1px solid rgba(255,255,255,0.07)}
 .team-logo{width:40px;height:40px;object-fit:contain;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.4)) brightness(1.15)}
-.team-abbr{font-family:'Unbounded',sans-serif;font-weight:900;font-size:2.6rem;letter-spacing:0.01em;line-height:1;color:#fff}
+.team-abbr{font-family:'Poppins',sans-serif;font-weight:900;font-size:2.6rem;letter-spacing:0.01em;line-height:1;color:#fff}
 .team-full{font-size:0.68rem;font-weight:500;color:rgba(255,255,255,0.4);letter-spacing:0.02em;margin-top:0.1rem}
-.team-record{font-family:'Syne Mono',monospace;font-size:0.58rem;color:rgba(255,255,255,0.25)}
+.team-record{font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:rgba(255,255,255,0.25)}
 .team-prob-row{display:flex;align-items:center;gap:0.4rem;margin-top:0.25rem}
 .pbar-wrap{flex:1;max-width:80px;height:2px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden}
 .pbar{height:100%;border-radius:2px;transition:width 0.8s ease}
 .pbar.home{background:rgba(140,180,255,0.85)}
 .pbar.away{background:rgba(255,150,120,0.85)}
-.pnum{font-family:'Unbounded',sans-serif;font-size:0.8rem;font-weight:900;color:rgba(255,255,255,0.55)}
+.pnum{font-family:'Poppins',sans-serif;font-size:0.8rem;font-weight:900;color:rgba(255,255,255,0.55)}
 
 /* Columna 2 — SCORE TOTAL */
 .score-total-col{
@@ -96,18 +122,18 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
   padding:1rem 0.75rem;gap:0.2rem;
   border-right:1px solid rgba(255,255,255,0.07);
 }
-.stc-label{font-family:'Syne Mono',monospace;font-size:0.52rem;letter-spacing:0.18em;color:rgba(255,255,255,0.28);text-transform:uppercase;margin-bottom:0.15rem}
+.stc-label{font-family:'Noto Sans',sans-serif;font-size:0.52rem;letter-spacing:0.18em;color:rgba(255,255,255,0.28);text-transform:uppercase;margin-bottom:0.15rem}
 .stc-scores{display:flex;align-items:center;gap:0.6rem}
-.score-num{font-family:'Unbounded',sans-serif;font-size:3.6rem;font-weight:900;letter-spacing:-0.02em;line-height:1;color:#fff;transition:all 0.3s ease}
+.score-num{font-family:'Poppins',sans-serif;font-size:3.6rem;font-weight:900;letter-spacing:-0.02em;line-height:1;color:#fff;transition:all 0.3s ease}
 .score-num.pop{animation:score-pop 0.35s ease}
 @keyframes score-pop{0%{transform:scale(1)}35%{transform:scale(1.18)}100%{transform:scale(1)}}
-.score-divider{font-family:'Unbounded',sans-serif;font-size:2rem;font-weight:300;color:rgba(255,255,255,0.18)}
+.score-divider{font-family:'Poppins',sans-serif;font-size:2rem;font-weight:300;color:rgba(255,255,255,0.18)}
 /* Score cuarto abajo del total */
 .stc-quarter-row{display:flex;flex-direction:column;align-items:center;gap:0.05rem;margin-top:0.35rem;padding:0.4rem 0.85rem;background:rgba(255,255,255,0.06);border-radius:7px;border:1px solid rgba(255,255,255,0.09);min-width:100px}
-.stc-q-label{font-family:'Syne Mono',monospace;font-size:0.5rem;color:rgba(255,255,255,0.3);letter-spacing:0.14em;text-transform:uppercase}
+.stc-q-label{font-family:'Noto Sans',sans-serif;font-size:0.5rem;color:rgba(255,255,255,0.3);letter-spacing:0.14em;text-transform:uppercase}
 .stc-q-scores{display:flex;align-items:center;gap:0.4rem}
-.stc-q-num{font-family:'Unbounded',sans-serif;font-size:1.5rem;font-weight:900;color:rgba(255,255,255,0.65);line-height:1}
-.stc-q-div{font-family:'Unbounded',sans-serif;font-size:0.9rem;font-weight:300;color:rgba(255,255,255,0.2)}
+.stc-q-num{font-family:'Poppins',sans-serif;font-size:1.5rem;font-weight:900;color:rgba(255,255,255,0.65);line-height:1}
+.stc-q-div{font-family:'Poppins',sans-serif;font-size:0.9rem;font-weight:300;color:rgba(255,255,255,0.2)}
 
 /* Columna 3 — RELOJ + LINESCORES */
 .score-clock-col{
@@ -117,12 +143,12 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 }
 /* Reloj inline */
 .scc-clock-row{display:flex;align-items:center;gap:0.5rem}
-.scc-time{font-family:'Unbounded',sans-serif;font-size:1.1rem;font-weight:900;color:#fff;letter-spacing:-0.01em;transition:color 0.3s}
+.scc-time{font-family:'Poppins',sans-serif;font-size:1.1rem;font-weight:900;color:#fff;letter-spacing:-0.01em;transition:color 0.3s}
 .scc-time.stopped{color:#f7c07a}
 .scc-time.timeout{color:#ff9090}
-.scc-sep{font-family:'Syne Mono',monospace;font-size:0.6rem;color:rgba(255,255,255,0.25)}
-.scc-period{font-family:'Syne Mono',monospace;font-size:0.68rem;letter-spacing:0.1em;color:rgba(255,255,255,0.45)}
-.scc-state{display:flex;align-items:center;gap:0.3rem;font-family:'Syne Mono',monospace;font-size:0.55rem;letter-spacing:0.08em;padding:0.15rem 0.6rem;border-radius:100px;transition:all 0.3s}
+.scc-sep{font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:rgba(255,255,255,0.25)}
+.scc-period{font-family:'Noto Sans',sans-serif;font-size:0.68rem;letter-spacing:0.1em;color:rgba(255,255,255,0.45)}
+.scc-state{display:flex;align-items:center;gap:0.3rem;font-family:'Noto Sans',sans-serif;font-size:0.55rem;letter-spacing:0.08em;padding:0.15rem 0.6rem;border-radius:100px;transition:all 0.3s}
 .scc-state.running{background:rgba(26,122,74,0.2);border:1px solid rgba(94,232,160,0.3);color:#5ee8a0}
 .scc-state.stopped{background:rgba(184,98,10,0.2);border:1px solid rgba(247,192,122,0.3);color:#f7c07a}
 .scc-state.timeout{background:rgba(192,57,43,0.25);border:1px solid rgba(255,110,110,0.4);color:#ff9090;animation:pulse-to 1.5s ease-in-out infinite}
@@ -142,12 +168,12 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 
 /* Linescores — tabla compacta */
 .linescores-table{display:flex;flex-direction:column;gap:0.18rem;width:100%}
-.lsc-header{display:grid;font-family:'Syne Mono',monospace;font-size:0.5rem;color:rgba(255,255,255,0.22);letter-spacing:0.08em;gap:0.2rem;padding:0 0.1rem}
+.lsc-header{display:grid;font-family:'Noto Sans',sans-serif;font-size:0.5rem;color:rgba(255,255,255,0.22);letter-spacing:0.08em;gap:0.2rem;padding:0 0.1rem}
 .lsc-row{display:grid;gap:0.2rem;align-items:center;padding:0.15rem 0.25rem;border-radius:4px}
 .lsc-row.home-row{background:rgba(140,180,255,0.06)}
 .lsc-row.away-row{background:rgba(255,150,120,0.06)}
-.lsc-team{font-family:'Syne Mono',monospace;font-size:0.55rem;font-weight:600;color:rgba(255,255,255,0.4);letter-spacing:0.06em}
-.lsc-val{font-family:'Unbounded',sans-serif;font-size:0.72rem;font-weight:700;text-align:center}
+.lsc-team{font-family:'Noto Sans',sans-serif;font-size:0.55rem;font-weight:600;color:rgba(255,255,255,0.4);letter-spacing:0.06em}
+.lsc-val{font-family:'Poppins',sans-serif;font-size:0.72rem;font-weight:700;text-align:center}
 .lsc-val.home-c{color:rgba(140,180,255,0.9)}
 .lsc-val.away-c{color:rgba(255,150,120,0.9)}
 .lsc-val.total{color:#fff;font-size:0.8rem}
@@ -156,7 +182,7 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 /* timeout dots inline */
 .to-strip{display:flex;gap:0.65rem;margin-top:0.2rem}
 .to-grp{display:flex;flex-direction:column;align-items:center;gap:0.18rem}
-.to-lbl{font-family:'Syne Mono',monospace;font-size:0.48rem;color:rgba(255,255,255,0.22);letter-spacing:0.06em}
+.to-lbl{font-family:'Noto Sans',sans-serif;font-size:0.48rem;color:rgba(255,255,255,0.22);letter-spacing:0.06em}
 .to-dots{display:flex;gap:2px}
 .to-dot{width:5px;height:5px;border-radius:50%}
 .to-dot.h-av{background:rgba(140,180,255,0.7)}
@@ -169,15 +195,15 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 
 /* refresh bar */
 .refresh-bar{height:2px;background:rgba(255,255,255,0.04);overflow:hidden}
-.refresh-progress{height:100%;background:rgba(140,180,255,0.35);width:0%;transition:width linear}
+.refresh-progress{height:100%;background:rgba(110,189,145,0.6);width:0%;transition:width linear}
 
 /* LAYOUT */
 .layout{display:flex;flex-wrap:wrap;gap:1rem;padding:1rem 1.5rem;max-width:1700px;margin:0 auto;align-items:flex-start}
 
 /* CARD */
 .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:1.2rem 1.4rem}
-.card-title{font-family:'Syne Mono',monospace;font-size:0.58rem;color:var(--ink4);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem}
-.card-title::before{content:'';width:3px;height:12px;background:var(--blue);border-radius:2px;flex-shrink:0}
+.card-title{font-family:'Poppins',sans-serif;font-size:0.58rem;font-weight:700;color:var(--ink4);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem}
+.card-title::before{content:'';width:3px;height:12px;background:var(--brand);border-radius:2px;flex-shrink:0}
 
 /* CHART */
 #chart-card{flex:1 1 580px}
@@ -195,21 +221,21 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 .odds-block{background:var(--card2);border:1.5px solid var(--border);border-radius:8px;padding:0.9rem;display:flex;flex-direction:column;gap:0.3rem;position:relative;overflow:hidden;transition:border-color 0.3s,background 0.3s}
 .odds-block.home{border-top:3px solid var(--home)}
 .odds-block.away{border-top:3px solid var(--away)}
-.odds-lbl{font-family:'Syne Mono',monospace;font-size:0.58rem;color:var(--ink4);letter-spacing:0.08em}
-.odds-val{font-family:'Unbounded',sans-serif;font-size:2.2rem;font-weight:900;line-height:1;color:var(--ink);transition:color 0.3s}
+.odds-lbl{font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:var(--ink4);letter-spacing:0.08em}
+.odds-val{font-family:'Poppins',sans-serif;font-size:2.2rem;font-weight:900;line-height:1;color:var(--ink);transition:color 0.3s}
 .odds-val.up{color:var(--green)!important}
 .odds-val.dn{color:var(--red)!important}
-.odds-move{font-family:'Syne Mono',monospace;font-size:0.6rem;display:flex;align-items:center;gap:0.2rem}
+.odds-move{font-family:'Noto Sans',sans-serif;font-size:0.6rem;display:flex;align-items:center;gap:0.2rem}
 .mu{color:var(--green)}.md{color:var(--red)}.mn{color:var(--ink4)}
-.odds-book{font-family:'Syne Mono',monospace;font-size:0.58rem;color:var(--ink4);margin-top:0.1rem}
+.odds-book{font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:var(--ink4);margin-top:0.1rem}
 .odds-block::after{content:'';position:absolute;inset:0;background:var(--amber-bg);opacity:0;pointer-events:none}
 .odds-block.flash::after{animation:flash-out 0.5s ease forwards}
 @keyframes flash-out{from{opacity:1}to{opacity:0}}
 .arb-box{background:var(--green-bg);border:1.5px solid var(--green);border-radius:8px;padding:0.8rem;display:none}
 .arb-box.show{display:block;animation:pulse-g 2.5s ease-in-out infinite}
 @keyframes pulse-g{0%,100%{box-shadow:0 0 0 0 rgba(26,122,74,0.2)}50%{box-shadow:0 0 0 6px rgba(26,122,74,0.05)}}
-.arb-title{font-family:'Syne Mono',monospace;font-size:0.62rem;color:var(--green);letter-spacing:0.1em;margin-bottom:0.35rem}
-.arb-pct{font-family:'Unbounded',sans-serif;font-size:1.8rem;font-weight:900;color:var(--green);line-height:1}
+.arb-title{font-family:'Noto Sans',sans-serif;font-size:0.62rem;color:var(--green);letter-spacing:0.1em;margin-bottom:0.35rem}
+.arb-pct{font-family:'Poppins',sans-serif;font-size:1.8rem;font-weight:900;color:var(--green);line-height:1}
 .arb-detail{font-size:0.72rem;color:var(--ink2);margin-top:0.2rem;line-height:1.4}
 .odds-divider{border:none;border-top:1px solid var(--border);margin:0.9rem 0}
 .next-list{display:flex;flex-direction:column;gap:0.6rem}
@@ -217,12 +243,12 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 .nrow-label{font-size:0.7rem;color:var(--ink2);font-weight:500;width:100px;flex-shrink:0}
 .nrow-bar{flex:1;height:5px;background:var(--surface);border-radius:3px;overflow:hidden}
 .nrow-fill{height:100%;border-radius:3px;transition:width 0.8s ease}
-.nrow-pct{font-family:'Unbounded',sans-serif;font-size:0.7rem;font-weight:700;width:34px;text-align:right;color:var(--ink)}
+.nrow-pct{font-family:'Poppins',sans-serif;font-size:0.7rem;font-weight:700;width:34px;text-align:right;color:var(--ink)}
 
 /* MOMENTUM */
 #momentum-card{flex:1 1 360px}
 .mom-track{display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem}
-.mom-team{font-family:'Unbounded',sans-serif;font-size:0.65rem;font-weight:700;width:36px;flex-shrink:0}
+.mom-team{font-family:'Poppins',sans-serif;font-size:0.65rem;font-weight:700;width:36px;flex-shrink:0}
 .mom-team.home{color:var(--home)}
 .mom-team.away{color:var(--away);text-align:right}
 .mom-bar{flex:1;height:10px;background:var(--surface);border-radius:6px;overflow:hidden;position:relative}
@@ -236,31 +262,31 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 .ev.away{border-left-color:var(--away)}
 .ev.alert{border-left-color:var(--amber);background:var(--amber-bg)}
 .ev.system{border-left-color:var(--green);background:var(--green-bg)}
-.ev-t{font-family:'Syne Mono',monospace;font-size:0.6rem;color:var(--ink4);white-space:nowrap;min-width:40px;padding-top:1px}
+.ev-t{font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:var(--ink4);white-space:nowrap;min-width:40px;padding-top:1px}
 .ev-txt{font-size:0.75rem;color:var(--ink2);line-height:1.4}
 
 /* STATS */
 #stats-card{flex:1 1 300px}
-.stats-header{display:grid;grid-template-columns:1fr auto 1fr;gap:0.5rem;margin-bottom:0.75rem;font-family:'Unbounded',sans-serif;font-size:0.62rem;font-weight:700}
+.stats-header{display:grid;grid-template-columns:1fr auto 1fr;gap:0.5rem;margin-bottom:0.75rem;font-family:'Poppins',sans-serif;font-size:0.62rem;font-weight:700}
 .sh-home{color:var(--home)}
 .sh-away{color:var(--away);text-align:right}
-.sh-mid{color:var(--ink4);font-size:0.55rem;text-align:center;font-weight:400;font-family:'Syne Mono',monospace}
+.sh-mid{color:var(--ink4);font-size:0.55rem;text-align:center;font-weight:400;font-family:'Noto Sans',sans-serif}
 .stat-row{display:grid;grid-template-columns:1fr auto 1fr;gap:0.5rem;padding:0.45rem 0;border-bottom:1px solid var(--border);align-items:center}
 .stat-row:last-child{border-bottom:none}
-.sv{font-family:'Unbounded',sans-serif;font-size:1rem;font-weight:700;line-height:1}
+.sv{font-family:'Poppins',sans-serif;font-size:1rem;font-weight:700;line-height:1}
 .sv.home{color:var(--home)}
 .sv.away{color:var(--away);text-align:right}
-.sk{font-family:'Syne Mono',monospace;font-size:0.58rem;color:var(--ink4);text-align:center;letter-spacing:0.06em}
+.sk{font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:var(--ink4);text-align:center;letter-spacing:0.06em}
 
 /* BOTTOM */
-#bstrip{background:var(--ink);padding:0.7rem 2rem;display:flex;gap:2.5rem;align-items:center;overflow-x:auto;scrollbar-width:none}
+#bstrip{background:var(--brand-d);padding:0.7rem 2rem;display:flex;gap:2.5rem;align-items:center;overflow-x:auto;scrollbar-width:none}
 #bstrip::-webkit-scrollbar{display:none}
 .bstat{display:flex;flex-direction:column;gap:0.1rem;flex-shrink:0}
-.blbl{font-family:'Syne Mono',monospace;font-size:0.55rem;color:rgba(255,255,255,0.35);letter-spacing:0.1em;text-transform:uppercase}
-.bval{font-family:'Unbounded',sans-serif;font-size:0.85rem;font-weight:700;color:#fff;line-height:1.2}
+.blbl{font-family:'Noto Sans',sans-serif;font-size:0.55rem;color:rgba(255,255,255,0.35);letter-spacing:0.1em;text-transform:uppercase}
+.bval{font-family:'Poppins',sans-serif;font-size:0.85rem;font-weight:700;color:#fff;line-height:1.2}
 .bval.blue{color:#7eb8f7}.bval.green{color:#5ee8a0}.bval.amber{color:#f7c07a}
 .bstrip-r{margin-left:auto;display:flex;gap:0.5rem;flex-shrink:0}
-.sbtn{padding:0.35rem 1rem;border-radius:6px;font-family:'Space Grotesk',sans-serif;font-size:0.75rem;font-weight:600;cursor:pointer;border:none;transition:all 0.15s}
+.sbtn{padding:0.35rem 1rem;border-radius:6px;font-family:'Noto Sans',sans-serif;font-size:0.75rem;font-weight:600;cursor:pointer;border:none;transition:all 0.15s}
 .sbtn-ghost{background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.7)}
 .sbtn-ghost:hover{background:rgba(255,255,255,0.18);color:#fff}
 .sbtn-demo{background:#fff;color:var(--ink)}
@@ -273,16 +299,16 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 #proj-card{flex:1 1 100%}
 .proj-grid{display:grid;grid-template-columns:repeat(4,1fr) 1.2fr;gap:0.75rem;overflow-x:auto}
 .proj-col{display:flex;flex-direction:column;gap:0.4rem;min-width:0}
-.proj-col-title{font-family:'Unbounded',sans-serif;font-size:0.7rem;font-weight:900;color:var(--ink2);padding-bottom:0.4rem;border-bottom:2px solid var(--border2);display:flex;align-items:center;gap:0.4rem;white-space:nowrap}
-.proj-col-title .qt{font-size:0.55rem;font-family:'Syne Mono',monospace;color:var(--ink4);font-weight:400}
+.proj-col-title{font-family:'Poppins',sans-serif;font-size:0.7rem;font-weight:900;color:var(--ink2);padding-bottom:0.4rem;border-bottom:2px solid var(--border2);display:flex;align-items:center;gap:0.4rem;white-space:nowrap}
+.proj-col-title .qt{font-size:0.55rem;font-family:'Noto Sans',sans-serif;color:var(--ink4);font-weight:400}
 .proj-row{display:flex;align-items:center;justify-content:space-between;padding:0.3rem 0.5rem;border-radius:5px;transition:background 0.2s}
 .proj-row:hover{background:var(--surface)}
-.proj-pct{font-family:'Unbounded',sans-serif;font-size:0.72rem;font-weight:700;width:38px;flex-shrink:0}
+.proj-pct{font-family:'Poppins',sans-serif;font-size:0.72rem;font-weight:700;width:38px;flex-shrink:0}
 .pct-80{color:#1a7a4a}.pct-70{color:#3a8a2a}.pct-60{color:#7a8a1a}.pct-50{color:#b8620a}.pct-40{color:#c0392b}
-.proj-pts{font-family:'Unbounded',sans-serif;font-size:0.85rem;font-weight:900;color:var(--ink)}
+.proj-pts{font-family:'Poppins',sans-serif;font-size:0.85rem;font-weight:900;color:var(--ink)}
 .proj-bar-wrap{flex:1;height:4px;background:var(--surface);border-radius:2px;overflow:hidden;margin:0 0.5rem}
 .proj-bar-fill{height:100%;border-radius:2px;background:var(--blue);opacity:0.5;transition:width 0.8s ease}
-.proj-updated{font-family:'Syne Mono',monospace;font-size:0.58rem;color:var(--ink4);margin-top:0.5rem;text-align:right}
+.proj-updated{font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:var(--ink4);margin-top:0.5rem;text-align:right}
 .proj-live-dot{width:5px;height:5px;border-radius:50%;background:var(--green);display:inline-block;animation:blink 1s ease-in-out infinite}
 
 
@@ -292,25 +318,25 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 .st-block{background:var(--card2);border-radius:8px;padding:0.75rem;display:flex;flex-direction:column;gap:0.15rem}
 .st-block.home-b{border-top:3px solid var(--home)}
 .st-block.away-b{border-top:3px solid var(--away)}
-.st-team{font-family:'Syne Mono',monospace;font-size:0.6rem;letter-spacing:0.08em}
+.st-team{font-family:'Noto Sans',sans-serif;font-size:0.6rem;letter-spacing:0.08em}
 .st-team.h{color:var(--home)}.st-team.a{color:var(--away)}
-.st-total{font-family:'Unbounded',sans-serif;font-size:2rem;font-weight:900;line-height:1}
+.st-total{font-family:'Poppins',sans-serif;font-size:2rem;font-weight:900;line-height:1}
 .st-total.h{color:var(--home)}.st-total.a{color:var(--away)}
-.st-sub{font-family:'Syne Mono',monospace;font-size:0.6rem;color:var(--ink4)}
-.combined-box{background:var(--ink);border-radius:8px;padding:0.85rem;display:flex;align-items:center;justify-content:space-between}
-.cb-label{font-family:'Syne Mono',monospace;font-size:0.6rem;color:rgba(255,255,255,0.45);letter-spacing:0.1em;text-transform:uppercase}
-.cb-val{font-family:'Unbounded',sans-serif;font-size:2.2rem;font-weight:900;color:#fff;line-height:1}
-.cb-pace{font-family:'Syne Mono',monospace;font-size:0.65rem;color:rgba(255,255,255,0.5);margin-top:0.15rem}
+.st-sub{font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:var(--ink4)}
+.combined-box{background:var(--brand-d);border-radius:8px;padding:0.85rem;display:flex;align-items:center;justify-content:space-between}
+.cb-label{font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:rgba(255,255,255,0.45);letter-spacing:0.1em;text-transform:uppercase}
+.cb-val{font-family:'Poppins',sans-serif;font-size:2.2rem;font-weight:900;color:#fff;line-height:1}
+.cb-pace{font-family:'Noto Sans',sans-serif;font-size:0.65rem;color:rgba(255,255,255,0.5);margin-top:0.15rem}
 .q-breakdown{margin-top:0.75rem}
 .qb-row{display:grid;grid-template-columns:28px 1fr 1fr;gap:0.3rem;padding:0.3rem 0;border-bottom:1px solid var(--border);align-items:center}
 .qb-row:last-child{border-bottom:none}
-.qb-q{font-family:'Syne Mono',monospace;font-size:0.58rem;color:var(--ink4)}
-.qb-h{font-family:'Unbounded',sans-serif;font-size:0.8rem;font-weight:700;color:var(--home);text-align:right}
-.qb-a{font-family:'Unbounded',sans-serif;font-size:0.8rem;font-weight:700;color:var(--away);text-align:right}
+.qb-q{font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:var(--ink4)}
+.qb-h{font-family:'Poppins',sans-serif;font-size:0.8rem;font-weight:700;color:var(--home);text-align:right}
+.qb-a{font-family:'Poppins',sans-serif;font-size:0.8rem;font-weight:700;color:var(--away);text-align:right}
 .qb-h.current,.qb-a.current{opacity:0.5;font-style:italic}
 .qb-total{grid-column:1/-1;display:flex;justify-content:space-between;padding-top:0.4rem;margin-top:0.2rem;border-top:2px solid var(--border2)}
-.qbt-label{font-family:'Syne Mono',monospace;font-size:0.6rem;color:var(--ink4);letter-spacing:0.06em}
-.qbt-val{font-family:'Unbounded',sans-serif;font-size:0.85rem;font-weight:900;color:var(--ink)}
+.qbt-label{font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:var(--ink4);letter-spacing:0.06em}
+.qbt-val{font-family:'Poppins',sans-serif;font-size:0.85rem;font-weight:900;color:var(--ink)}
 
 
 /* ── FACTOR LOG ── */
@@ -319,37 +345,37 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 .flog-row{display:flex;gap:0.7rem;align-items:flex-start;padding:0.55rem 0.75rem;background:var(--card2);border-radius:7px;border-left:3px solid var(--blue)}
 .flog-row.warn{border-left-color:var(--amber)}
 .flog-row.good{border-left-color:var(--green)}
-.flog-time{font-family:'Syne Mono',monospace;font-size:0.6rem;color:var(--ink4);white-space:nowrap;min-width:52px;padding-top:1px}
+.flog-time{font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:var(--ink4);white-space:nowrap;min-width:52px;padding-top:1px}
 .flog-txt{font-size:0.75rem;color:var(--ink2);line-height:1.5}
 .flog-txt b{color:var(--ink);font-weight:600}
-.flog-val{font-family:'Unbounded',sans-serif;font-weight:700;color:var(--blue)}
+.flog-val{font-family:'Poppins',sans-serif;font-weight:700;color:var(--blue)}
 
 /* ── PREDICTION TRACKER ── */
 #tracker-card{flex:1 1 580px}
 .tracker-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:0.5rem;margin-bottom:0.85rem}
 .ts-box{background:var(--card2);border-radius:8px;padding:0.6rem;text-align:center}
-.ts-num{font-family:'Unbounded',sans-serif;font-size:1.4rem;font-weight:900;line-height:1}
+.ts-num{font-family:'Poppins',sans-serif;font-size:1.4rem;font-weight:900;line-height:1}
 .ts-num.total{color:var(--ink)}.ts-num.win{color:var(--green)}.ts-num.loss{color:var(--red)}.ts-num.rate{color:var(--blue)}
-.ts-lbl{font-family:'Syne Mono',monospace;font-size:0.55rem;color:var(--ink4);letter-spacing:0.08em;margin-top:0.2rem}
+.ts-lbl{font-family:'Noto Sans',sans-serif;font-size:0.55rem;color:var(--ink4);letter-spacing:0.08em;margin-top:0.2rem}
 .pred-list{display:flex;flex-direction:column;gap:0.4rem;max-height:240px;overflow-y:auto;scrollbar-width:thin}
 .pred-row{display:grid;grid-template-columns:auto 1fr auto auto;gap:0.6rem;align-items:center;padding:0.55rem 0.7rem;background:var(--card2);border-radius:7px;border-left:3px solid var(--border2)}
 .pred-row.win{border-left-color:var(--green);background:rgba(26,122,74,0.05)}
 .pred-row.loss{border-left-color:var(--red);background:rgba(192,57,43,0.05)}
 .pred-row.pending{border-left-color:var(--amber)}
-.pred-date{font-family:'Syne Mono',monospace;font-size:0.58rem;color:var(--ink4);min-width:52px}
+.pred-date{font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:var(--ink4);min-width:52px}
 .pred-info{display:flex;flex-direction:column;gap:0.1rem}
 .pred-match{font-size:0.72rem;font-weight:600;color:var(--ink)}
-.pred-bet{font-family:'Syne Mono',monospace;font-size:0.62rem;color:var(--ink3)}
-.pred-proj{font-family:'Unbounded',sans-serif;font-size:0.72rem;font-weight:700;color:var(--blue);text-align:right}
-.pred-result{font-family:'Unbounded',sans-serif;font-size:0.65rem;font-weight:900;padding:0.2rem 0.5rem;border-radius:4px;text-align:center;min-width:48px}
+.pred-bet{font-family:'Noto Sans',sans-serif;font-size:0.62rem;color:var(--ink3)}
+.pred-proj{font-family:'Poppins',sans-serif;font-size:0.72rem;font-weight:700;color:var(--blue);text-align:right}
+.pred-result{font-family:'Poppins',sans-serif;font-size:0.65rem;font-weight:900;padding:0.2rem 0.5rem;border-radius:4px;text-align:center;min-width:48px}
 .pred-result.win{background:rgba(26,122,74,0.15);color:var(--green)}
 .pred-result.loss{background:rgba(192,57,43,0.15);color:var(--red)}
 .pred-result.pending{background:rgba(184,98,10,0.12);color:var(--amber)}
-.save-pred-btn{width:100%;padding:0.5rem;background:var(--ink);color:#fff;border:none;border-radius:6px;font-family:'Space Grotesk',sans-serif;font-size:0.75rem;font-weight:600;cursor:pointer;margin-bottom:0.75rem;transition:all 0.15s}
+.save-pred-btn{width:100%;padding:0.5rem;background:var(--ink);color:#fff;border:none;border-radius:6px;font-family:'Noto Sans',sans-serif;font-size:0.75rem;font-weight:600;cursor:pointer;margin-bottom:0.75rem;transition:all 0.15s}
 .save-pred-btn:hover{background:var(--ink2)}
 .save-pred-btn:disabled{opacity:0.4;cursor:not-allowed}
 .week-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.6rem}
-.week-label{font-family:'Syne Mono',monospace;font-size:0.62rem;color:var(--ink3)}
+.week-label{font-family:'Noto Sans',sans-serif;font-size:0.62rem;color:var(--ink3)}
 .week-btn{background:var(--surface);border:1px solid var(--border2);border-radius:5px;padding:0.2rem 0.6rem;cursor:pointer;font-size:0.7rem;color:var(--ink3)}
 .week-btn:hover{border-color:var(--blue);color:var(--blue)}
 
@@ -364,15 +390,15 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 .drag-handle:hover{opacity:1 !important;color:var(--blue)}
 .drag-handle:active{cursor:grabbing}
 .layout-controls{display:flex;align-items:center;gap:0.6rem;padding:0.5rem 1.5rem 0}
-.lc-hint{font-family:'Syne Mono',monospace;font-size:0.62rem;color:var(--ink4)}
-.lc-reset{background:var(--surface);border:1px solid var(--border2);border-radius:5px;padding:0.25rem 0.7rem;cursor:pointer;font-size:0.68rem;color:var(--ink3);font-family:'Space Grotesk',sans-serif}
+.lc-hint{font-family:'Noto Sans',sans-serif;font-size:0.62rem;color:var(--ink4)}
+.lc-reset{background:var(--surface);border:1px solid var(--border2);border-radius:5px;padding:0.25rem 0.7rem;cursor:pointer;font-size:0.68rem;color:var(--ink3);font-family:'Noto Sans',sans-serif}
 .lc-reset:hover{border-color:var(--blue);color:var(--blue)}
 
 /* ── BETTING OPPORTUNITY PANEL ── */
 #edge-card{flex:1 1 100%}
 .edge-header-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.9rem}
 .edge-status{display:flex;align-items:center;gap:0.5rem}
-.edge-scanning{font-family:'Syne Mono',monospace;font-size:0.6rem;color:var(--ink4);letter-spacing:0.1em}
+.edge-scanning{font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:var(--ink4);letter-spacing:0.1em}
 .edge-scanning .scan-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 1.4s ease-in-out infinite;margin-right:0.3rem;vertical-align:middle}
 
 /* Alert banner — fires when edge detected */
@@ -382,14 +408,14 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 @keyframes edge-in{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
 .ea-icon{font-size:1.6rem;line-height:1;flex-shrink:0;margin-top:0.1rem}
 .ea-body{flex:1;display:flex;flex-direction:column;gap:0.25rem}
-.ea-title{font-family:'Unbounded',sans-serif;font-size:0.72rem;font-weight:900;color:#fff;letter-spacing:0.04em}
+.ea-title{font-family:'Poppins',sans-serif;font-size:0.72rem;font-weight:900;color:#fff;letter-spacing:0.04em}
 .ea-desc{font-size:0.78rem;color:rgba(255,255,255,0.75);line-height:1.45}
 .ea-chips{display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.3rem}
-.ea-chip{font-family:'Syne Mono',monospace;font-size:0.6rem;padding:0.18rem 0.6rem;border-radius:100px;border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.65)}
+.ea-chip{font-family:'Noto Sans',sans-serif;font-size:0.6rem;padding:0.18rem 0.6rem;border-radius:100px;border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.65)}
 .ea-chip.green{border-color:rgba(94,232,160,0.5);color:#5ee8a0;background:rgba(94,232,160,0.08)}
 .ea-chip.amber{border-color:rgba(247,192,122,0.5);color:#f7c07a;background:rgba(247,192,122,0.08)}
 .ea-chip.red{border-color:rgba(255,110,110,0.5);color:#ff9090;background:rgba(255,80,80,0.08)}
-.ea-value{font-family:'Unbounded',sans-serif;font-size:2.2rem;font-weight:900;color:#5ee8a0;line-height:1;flex-shrink:0;align-self:center}
+.ea-value{font-family:'Poppins',sans-serif;font-size:2.2rem;font-weight:900;color:#5ee8a0;line-height:1;flex-shrink:0;align-self:center}
 .ea-dismiss{position:absolute;top:0.7rem;right:0.9rem;background:rgba(255,255,255,0.1);border:none;color:rgba(255,255,255,0.45);font-size:0.75rem;padding:0.15rem 0.5rem;border-radius:4px;cursor:pointer}
 .ea-dismiss:hover{color:#fff;background:rgba(255,255,255,0.18)}
 
@@ -405,13 +431,13 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 .sig-block.active::after{background:var(--green);opacity:1}
 .sig-block.warn::after{background:var(--amber);opacity:1}
 .sig-block.danger::after{background:var(--red);opacity:1}
-.sig-label{font-family:'Syne Mono',monospace;font-size:0.58rem;color:var(--ink4);letter-spacing:0.1em;text-transform:uppercase}
-.sig-value{font-family:'Unbounded',sans-serif;font-size:1.5rem;font-weight:900;color:var(--ink);line-height:1;transition:color 0.3s}
+.sig-label{font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:var(--ink4);letter-spacing:0.1em;text-transform:uppercase}
+.sig-value{font-family:'Poppins',sans-serif;font-size:1.5rem;font-weight:900;color:var(--ink);line-height:1;transition:color 0.3s}
 .sig-block.active .sig-value{color:var(--green)}
 .sig-block.warn .sig-value{color:var(--amber)}
 .sig-block.danger .sig-value{color:var(--red)}
 .sig-sub{font-size:0.72rem;color:var(--ink3);line-height:1.4}
-.sig-badge{display:inline-block;font-family:'Syne Mono',monospace;font-size:0.55rem;padding:0.12rem 0.45rem;border-radius:4px;margin-top:0.25rem;font-weight:600;letter-spacing:0.06em}
+.sig-badge{display:inline-block;font-family:'Noto Sans',sans-serif;font-size:0.55rem;padding:0.12rem 0.45rem;border-radius:4px;margin-top:0.25rem;font-weight:600;letter-spacing:0.06em}
 .sig-badge.ok{background:rgba(26,122,74,0.12);color:var(--green)}
 .sig-badge.neutral{background:var(--surface);color:var(--ink4)}
 .sig-badge.alert{background:rgba(184,98,10,0.12);color:var(--amber)}
@@ -419,13 +445,13 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 
 /* Foul tracker inside signal block */
 .foul-row{display:flex;align-items:center;justify-content:space-between;margin-top:0.4rem;gap:0.4rem}
-.foul-team{font-family:'Syne Mono',monospace;font-size:0.6rem;color:var(--ink4);width:32px;flex-shrink:0}
+.foul-team{font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:var(--ink4);width:32px;flex-shrink:0}
 .foul-dots{display:flex;gap:3px;flex:1}
 .foul-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--border2);background:transparent;transition:all 0.3s}
 .foul-dot.filled.home{background:var(--home);border-color:var(--home)}
 .foul-dot.filled.away{background:var(--away);border-color:var(--away)}
 .foul-dot.danger{background:var(--red);border-color:var(--red);box-shadow:0 0 0 2px rgba(192,57,43,0.25)}
-.foul-count{font-family:'Unbounded',sans-serif;font-size:0.75rem;font-weight:700;width:18px;text-align:right}
+.foul-count{font-family:'Poppins',sans-serif;font-size:0.75rem;font-weight:700;width:18px;text-align:right}
 
 /* Alert history strip */
 .edge-history{display:flex;flex-direction:column;gap:0.35rem;margin-top:0.85rem;max-height:160px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
@@ -433,36 +459,36 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 .eh-row.edge{border-left-color:var(--green)}
 .eh-row.foul{border-left-color:var(--red)}
 .eh-row.momentum{border-left-color:var(--amber)}
-.eh-t{font-family:'Syne Mono',monospace;font-size:0.58rem;color:var(--ink4);white-space:nowrap;min-width:40px}
+.eh-t{font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:var(--ink4);white-space:nowrap;min-width:40px}
 .eh-txt{font-size:0.72rem;color:var(--ink2);line-height:1.4}
 
 /* ── MARKET LINE WIDGET ── */
 .mline-bar{display:flex;flex-direction:column;gap:0.6rem;margin-bottom:0.85rem;padding:0.9rem 1rem;background:var(--ink);border-radius:9px}
 .mline-top{display:flex;align-items:center;justify-content:space-between;gap:0.75rem}
-.mline-label{font-family:'Syne Mono',monospace;font-size:0.6rem;color:rgba(255,255,255,0.45);letter-spacing:0.1em;text-transform:uppercase}
+.mline-label{font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:rgba(255,255,255,0.45);letter-spacing:0.1em;text-transform:uppercase}
 .mline-input-wrap{display:flex;align-items:center;gap:0.5rem}
-.mline-input{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:6px;color:#fff;font-family:'Unbounded',sans-serif;font-size:1.1rem;font-weight:700;width:80px;text-align:center;padding:0.3rem 0.4rem;outline:none}
+.mline-input{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:6px;color:#fff;font-family:'Poppins',sans-serif;font-size:1.1rem;font-weight:700;width:80px;text-align:center;padding:0.3rem 0.4rem;outline:none}
 .mline-input:focus{border-color:rgba(255,255,255,0.5);background:rgba(255,255,255,0.15)}
 .mline-dir-wrap{display:flex;gap:0.3rem}
-.mline-dir{font-family:'Syne Mono',monospace;font-size:0.62rem;padding:0.25rem 0.7rem;border-radius:5px;border:1px solid rgba(255,255,255,0.15);background:transparent;color:rgba(255,255,255,0.45);cursor:pointer;transition:all 0.15s;letter-spacing:0.06em}
+.mline-dir{font-family:'Noto Sans',sans-serif;font-size:0.62rem;padding:0.25rem 0.7rem;border-radius:5px;border:1px solid rgba(255,255,255,0.15);background:transparent;color:rgba(255,255,255,0.45);cursor:pointer;transition:all 0.15s;letter-spacing:0.06em}
 .mline-dir:hover{border-color:rgba(255,255,255,0.4);color:#fff}
 .mline-dir.over.active{background:rgba(26,122,74,0.4);border-color:#5ee8a0;color:#5ee8a0}
 .mline-dir.under.active{background:rgba(192,57,43,0.4);border-color:#ff9090;color:#ff9090}
 .mline-comparison{display:grid;grid-template-columns:1fr auto 1fr;gap:0.5rem;align-items:center}
 .mline-team-proj{display:flex;flex-direction:column;gap:0.2rem}
-.mtp-lbl{font-family:'Syne Mono',monospace;font-size:0.58rem;color:rgba(255,255,255,0.4);letter-spacing:0.08em}
-.mtp-val{font-family:'Unbounded',sans-serif;font-size:1.6rem;font-weight:900;color:#fff;line-height:1}
-.mtp-avg{font-family:'Syne Mono',monospace;font-size:0.6rem;color:rgba(255,255,255,0.4);margin-top:0.1rem}
-.mline-vs{font-family:'Syne Mono',monospace;font-size:0.62rem;color:rgba(255,255,255,0.25);text-align:center}
+.mtp-lbl{font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:rgba(255,255,255,0.4);letter-spacing:0.08em}
+.mtp-val{font-family:'Poppins',sans-serif;font-size:1.6rem;font-weight:900;color:#fff;line-height:1}
+.mtp-avg{font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:rgba(255,255,255,0.4);margin-top:0.1rem}
+.mline-vs{font-family:'Noto Sans',sans-serif;font-size:0.62rem;color:rgba(255,255,255,0.25);text-align:center}
 .mline-verdict{display:flex;align-items:center;justify-content:space-between;padding:0.6rem 0.75rem;border-radius:7px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);transition:all 0.3s}
 .mline-verdict.over{background:rgba(26,122,74,0.2);border-color:rgba(94,232,160,0.4)}
 .mline-verdict.under{background:rgba(192,57,43,0.2);border-color:rgba(255,100,100,0.4)}
-.mv-signal{font-family:'Unbounded',sans-serif;font-size:0.72rem;font-weight:900;letter-spacing:0.04em}
+.mv-signal{font-family:'Poppins',sans-serif;font-size:0.72rem;font-weight:900;letter-spacing:0.04em}
 .mv-signal.over{color:#5ee8a0}
 .mv-signal.under{color:#ff9090}
 .mv-signal.neutral{color:rgba(255,255,255,0.4)}
-.mv-detail{font-family:'Syne Mono',monospace;font-size:0.6rem;color:rgba(255,255,255,0.45)}
-.mv-edge{font-family:'Unbounded',sans-serif;font-size:1.2rem;font-weight:900}
+.mv-detail{font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:rgba(255,255,255,0.45)}
+.mv-edge{font-family:'Poppins',sans-serif;font-size:1.2rem;font-weight:900}
 .mv-edge.over{color:#5ee8a0}
 .mv-edge.under{color:#ff9090}
 .mv-edge.neutral{color:rgba(255,255,255,0.25)}
@@ -470,22 +496,22 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 .team-avgs-row{display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;margin-bottom:0.85rem;padding:0.75rem 0.85rem;background:var(--card2);border:1px solid var(--border);border-radius:8px}
 .ta-block{display:flex;flex-direction:column;gap:0.25rem}
 .ta-block.away-side{border-left:1px solid var(--border);padding-left:0.75rem}
-.ta-name{font-family:'Syne Mono',monospace;font-size:0.58rem;letter-spacing:0.08em;color:var(--ink4)}
-.ta-ppg{font-family:'Unbounded',sans-serif;font-size:1.3rem;font-weight:900;line-height:1}
+.ta-name{font-family:'Noto Sans',sans-serif;font-size:0.58rem;letter-spacing:0.08em;color:var(--ink4)}
+.ta-ppg{font-family:'Poppins',sans-serif;font-size:1.3rem;font-weight:900;line-height:1}
 .ta-ppg.home{color:var(--home)}
 .ta-ppg.away{color:var(--away)}
-.ta-detail{font-family:'Syne Mono',monospace;font-size:0.58rem;color:var(--ink4);line-height:1.5}
-.ta-source{font-family:'Syne Mono',monospace;font-size:0.55rem;color:var(--amber);margin-top:0.15rem}
+.ta-detail{font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:var(--ink4);line-height:1.5}
+.ta-source{font-family:'Noto Sans',sans-serif;font-size:0.55rem;color:var(--amber);margin-top:0.15rem}
 
 /* ── GAME CLOCK ── */
 .game-clock-strip{background:var(--ink);display:flex;align-items:center;justify-content:center;gap:1.5rem;padding:0.55rem 2rem;border-bottom:2px solid var(--border2)}
-.gc-quarter{font-family:'Syne Mono',monospace;font-size:0.7rem;letter-spacing:0.14em;color:rgba(255,255,255,0.45);text-transform:uppercase}
-.gc-time{font-family:'Unbounded',sans-serif;font-size:2.4rem;font-weight:900;color:#fff;line-height:1;letter-spacing:-0.02em;transition:color 0.3s}
+.gc-quarter{font-family:'Noto Sans',sans-serif;font-size:0.7rem;letter-spacing:0.14em;color:rgba(255,255,255,0.45);text-transform:uppercase}
+.gc-time{font-family:'Poppins',sans-serif;font-size:2.4rem;font-weight:900;color:#fff;line-height:1;letter-spacing:-0.02em;transition:color 0.3s}
 .gc-time.running{color:#fff}
 .gc-time.stopped{color:var(--amber)}
 .gc-time.timeout{color:#ff9090}
 .gc-state{display:flex;align-items:center;gap:0.5rem}
-.gc-state-pill{display:flex;align-items:center;gap:0.4rem;font-family:'Syne Mono',monospace;font-size:0.65rem;letter-spacing:0.1em;padding:0.22rem 0.8rem;border-radius:100px;transition:all 0.3s}
+.gc-state-pill{display:flex;align-items:center;gap:0.4rem;font-family:'Noto Sans',sans-serif;font-size:0.65rem;letter-spacing:0.1em;padding:0.22rem 0.8rem;border-radius:100px;transition:all 0.3s}
 .gc-state-pill.running{background:rgba(26,122,74,0.25);border:1px solid rgba(94,232,160,0.4);color:#5ee8a0}
 .gc-state-pill.stopped{background:rgba(184,98,10,0.25);border:1px solid rgba(247,192,122,0.4);color:#f7c07a}
 .gc-state-pill.timeout{background:rgba(192,57,43,0.3);border:1px solid rgba(255,110,110,0.4);color:#ff9090;animation:pulse-to 1.5s ease-in-out infinite}
@@ -499,7 +525,7 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 .gc-dot.halftime,.gc-dot.final{background:rgba(255,255,255,0.3)}
 .gc-timeouts{display:flex;align-items:center;gap:1.2rem}
 .gc-to-team{display:flex;flex-direction:column;align-items:center;gap:0.3rem}
-.gc-to-label{font-family:'Syne Mono',monospace;font-size:0.55rem;color:rgba(255,255,255,0.35);letter-spacing:0.08em}
+.gc-to-label{font-family:'Noto Sans',sans-serif;font-size:0.55rem;color:rgba(255,255,255,0.35);letter-spacing:0.08em}
 .gc-to-dots{display:flex;gap:3px}
 .gc-to-dot{width:7px;height:7px;border-radius:50%;transition:all 0.3s}
 .gc-to-dot.home-used{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.1)}
@@ -513,7 +539,7 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
    ═══════════════════════════════════════ */
 #bet-opps-card{flex:1 1 100%}
 .bopp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
-.bopp-scan{font-family:'Syne Mono',monospace;font-size:0.58rem;color:var(--ink4);letter-spacing:0.1em}
+.bopp-scan{font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:var(--ink4);letter-spacing:0.1em}
 .bopp-grid{display:flex;flex-direction:column;gap:0.5rem}
 .bopp-item{display:grid;grid-template-columns:auto 1fr auto;gap:0.75rem;align-items:center;padding:0.75rem 1rem;border-radius:9px;border:1.5px solid var(--border);background:var(--card2);transition:all 0.3s;cursor:default}
 .bopp-item.hot{border-color:var(--green);background:rgba(26,122,74,0.05)}
@@ -522,22 +548,22 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 .bopp-icon{font-size:1.2rem;line-height:1}
 .bopp-body{display:flex;flex-direction:column;gap:0.2rem;min-width:0}
 .bopp-desc{font-size:0.78rem;color:var(--ink);font-weight:600;line-height:1.3}
-.bopp-meta{font-family:'Syne Mono',monospace;font-size:0.58rem;color:var(--ink4)}
+.bopp-meta{font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:var(--ink4)}
 .bopp-right{display:flex;flex-direction:column;align-items:flex-end;gap:0.2rem;flex-shrink:0}
-.bopp-prob{font-family:'Unbounded',sans-serif;font-size:1.4rem;font-weight:900;line-height:1}
+.bopp-prob{font-family:'Poppins',sans-serif;font-size:1.4rem;font-weight:900;line-height:1}
 .bopp-prob.hot{color:var(--green)}
 .bopp-prob.warm{color:var(--amber)}
 .bopp-prob.cold{color:var(--ink4)}
-.bopp-tag{font-family:'Syne Mono',monospace;font-size:0.55rem;padding:0.1rem 0.4rem;border-radius:4px;font-weight:700;letter-spacing:0.06em}
+.bopp-tag{font-family:'Noto Sans',sans-serif;font-size:0.55rem;padding:0.1rem 0.4rem;border-radius:4px;font-weight:700;letter-spacing:0.06em}
 .bopp-tag.hot{background:rgba(26,122,74,0.12);color:var(--green)}
 .bopp-tag.warm{background:rgba(184,98,10,0.12);color:var(--amber)}
 .bopp-tag.cold{background:var(--surface);color:var(--ink4)}
 /* Probability bar inside bopp */
 .bopp-pbar{height:3px;border-radius:2px;background:var(--surface);overflow:hidden;margin-top:0.35rem}
 .bopp-pfill{height:100%;border-radius:2px;transition:width 0.8s ease}
-.bopp-empty{font-family:'Syne Mono',monospace;font-size:0.65rem;color:var(--ink4);text-align:center;padding:1.5rem 0}
+.bopp-empty{font-family:'Noto Sans',sans-serif;font-size:0.65rem;color:var(--ink4);text-align:center;padding:1.5rem 0}
 /* Category divider */
-.bopp-cat{font-family:'Syne Mono',monospace;font-size:0.55rem;color:var(--ink4);letter-spacing:0.12em;text-transform:uppercase;padding:0.35rem 0 0.2rem;border-top:1px solid var(--border);margin-top:0.35rem}
+.bopp-cat{font-family:'Noto Sans',sans-serif;font-size:0.55rem;color:var(--ink4);letter-spacing:0.12em;text-transform:uppercase;padding:0.35rem 0 0.2rem;border-top:1px solid var(--border);margin-top:0.35rem}
 .bopp-cat:first-child{border-top:none;margin-top:0}
 
 /* ═══════════════════════════════════════
@@ -545,10 +571,10 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
    ═══════════════════════════════════════ */
 #ai-analysis-card{flex:1 1 100%}
 .ai-trigger-row{display:flex;align-items:center;gap:0.75rem;margin-bottom:0.85rem;flex-wrap:wrap}
-.ai-run-btn{display:flex;align-items:center;gap:0.5rem;padding:0.5rem 1.2rem;border-radius:8px;border:none;background:var(--ink);color:#fff;font-family:'Space Grotesk',sans-serif;font-size:0.8rem;font-weight:600;cursor:pointer;transition:all 0.2s}
+.ai-run-btn{display:flex;align-items:center;gap:0.5rem;padding:0.5rem 1.2rem;border-radius:8px;border:none;background:var(--ink);color:#fff;font-family:'Noto Sans',sans-serif;font-size:0.8rem;font-weight:600;cursor:pointer;transition:all 0.2s}
 .ai-run-btn:hover{background:#2a2420;transform:translateY(-1px)}
 .ai-run-btn:disabled{background:var(--ink4);cursor:default;transform:none}
-.ai-status{font-family:'Syne Mono',monospace;font-size:0.6rem;color:var(--ink4)}
+.ai-status{font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:var(--ink4)}
 .ai-loading{display:none;align-items:center;gap:0.5rem}
 .ai-loading.show{display:flex}
 .ai-spinner{width:14px;height:14px;border:2px solid var(--border2);border-top-color:var(--blue);border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0}
@@ -559,19 +585,19 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 .ai-h2h-strip{display:grid;grid-template-columns:1fr auto 1fr;gap:0.5rem;align-items:center;padding:0.85rem 1rem;background:var(--ink);border-radius:9px}
 .ai-h2h-team{display:flex;flex-direction:column;gap:0.2rem}
 .ai-h2h-team.away{align-items:flex-end}
-.ai-h2h-abbr{font-family:'Unbounded',sans-serif;font-size:1.2rem;font-weight:900;color:#fff;line-height:1}
-.ai-h2h-record{font-family:'Syne Mono',monospace;font-size:0.58rem;color:rgba(255,255,255,0.45)}
+.ai-h2h-abbr{font-family:'Poppins',sans-serif;font-size:1.2rem;font-weight:900;color:#fff;line-height:1}
+.ai-h2h-record{font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:rgba(255,255,255,0.45)}
 .ai-h2h-vs{display:flex;flex-direction:column;align-items:center;gap:0.15rem}
-.ai-h2h-wins{font-family:'Unbounded',sans-serif;font-size:0.65rem;font-weight:900;color:rgba(255,255,255,0.3);letter-spacing:0.05em}
+.ai-h2h-wins{font-family:'Poppins',sans-serif;font-size:0.65rem;font-weight:900;color:rgba(255,255,255,0.3);letter-spacing:0.05em}
 .ai-h2h-wins span{color:#fff;font-size:1rem}
 /* Recent games grid */
 .ai-games-grid{display:flex;flex-direction:column;gap:0.35rem}
 .ai-game-row{display:flex;align-items:center;gap:0.5rem;padding:0.45rem 0.65rem;background:var(--card2);border-radius:6px;border-left:3px solid var(--border2)}
 .ai-game-row.hw{border-left-color:var(--home)}
 .ai-game-row.aw{border-left-color:var(--away)}
-.ai-gr-date{font-family:'Syne Mono',monospace;font-size:0.58rem;color:var(--ink4);width:52px;flex-shrink:0}
-.ai-gr-score{font-family:'Unbounded',sans-serif;font-size:0.8rem;font-weight:900;color:var(--ink);flex:1}
-.ai-gr-result{font-family:'Syne Mono',monospace;font-size:0.58rem;font-weight:700;padding:0.1rem 0.4rem;border-radius:4px}
+.ai-gr-date{font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:var(--ink4);width:52px;flex-shrink:0}
+.ai-gr-score{font-family:'Poppins',sans-serif;font-size:0.8rem;font-weight:900;color:var(--ink);flex:1}
+.ai-gr-result{font-family:'Noto Sans',sans-serif;font-size:0.58rem;font-weight:700;padding:0.1rem 0.4rem;border-radius:4px}
 .ai-gr-result.w{background:rgba(26,122,74,0.12);color:var(--green)}
 .ai-gr-result.l{background:rgba(192,57,43,0.1);color:var(--red)}
 /* AI narrative */
@@ -580,9 +606,9 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 /* AI predictions row */
 .ai-pred-row{display:grid;grid-template-columns:repeat(3,1fr);gap:0.6rem}
 .ai-pred-box{display:flex;flex-direction:column;gap:0.2rem;padding:0.75rem 0.85rem;background:var(--card2);border:1.5px solid var(--border);border-radius:8px;align-items:center;text-align:center}
-.ai-pred-label{font-family:'Syne Mono',monospace;font-size:0.55rem;color:var(--ink4);letter-spacing:0.08em}
-.ai-pred-val{font-family:'Unbounded',sans-serif;font-size:1.1rem;font-weight:900;color:var(--ink);line-height:1}
-.ai-pred-conf{font-family:'Syne Mono',monospace;font-size:0.58rem;color:var(--amber)}
+.ai-pred-label{font-family:'Noto Sans',sans-serif;font-size:0.55rem;color:var(--ink4);letter-spacing:0.08em}
+.ai-pred-val{font-family:'Poppins',sans-serif;font-size:1.1rem;font-weight:900;color:var(--ink);line-height:1}
+.ai-pred-conf{font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:var(--amber)}
 @media(max-width:480px){.ai-pred-row{grid-template-columns:1fr 1fr}}
 
 /* ═══════════════════════════════════════
@@ -590,14 +616,14 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
    ═══════════════════════════════════════ */
 #surebet-card{flex:1 1 100%}
 .sb-tabs{display:flex;gap:0.35rem;margin-bottom:1rem;background:var(--surface);padding:3px;border-radius:8px}
-.sb-tab{flex:1;padding:0.3rem 0.5rem;border:none;border-radius:6px;background:transparent;font-family:'Syne Mono',monospace;font-size:0.62rem;font-weight:600;cursor:pointer;color:var(--ink4);letter-spacing:0.06em;transition:all 0.15s;text-align:center}
+.sb-tab{flex:1;padding:0.3rem 0.5rem;border:none;border-radius:6px;background:transparent;font-family:'Noto Sans',sans-serif;font-size:0.62rem;font-weight:600;cursor:pointer;color:var(--ink4);letter-spacing:0.06em;transition:all 0.15s;text-align:center}
 .sb-tab.active{background:var(--card);color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,0.08)}
 .sb-panel{display:none}
 .sb-panel.active{display:flex;flex-direction:column;gap:0.75rem}
 /* Input rows */
 .sb-row{display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap}
-.sb-label{font-family:'Syne Mono',monospace;font-size:0.6rem;color:var(--ink4);letter-spacing:0.08em;min-width:70px;flex-shrink:0}
-.sb-input{flex:1;min-width:80px;padding:0.4rem 0.7rem;border:1.5px solid var(--border2);border-radius:6px;font-family:'Unbounded',sans-serif;font-size:0.9rem;font-weight:700;color:var(--ink);background:var(--card);outline:none;transition:border-color 0.2s}
+.sb-label{font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:var(--ink4);letter-spacing:0.08em;min-width:70px;flex-shrink:0}
+.sb-input{flex:1;min-width:80px;padding:0.4rem 0.7rem;border:1.5px solid var(--border2);border-radius:6px;font-family:'Poppins',sans-serif;font-size:0.9rem;font-weight:700;color:var(--ink);background:var(--card);outline:none;transition:border-color 0.2s}
 .sb-input:focus{border-color:var(--blue)}
 .sb-stake-input{border-color:var(--amber);background:rgba(184,98,10,0.04)}
 .sb-stake-input:focus{border-color:var(--amber)}
@@ -607,19 +633,19 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 .sb-result.arb{background:linear-gradient(135deg,rgba(26,122,74,0.15),transparent);border:1.5px solid var(--green)}
 .sb-result.no-arb{background:var(--surface);border:1.5px solid var(--border2)}
 .sbr-main{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem}
-.sbr-profit-label{font-family:'Syne Mono',monospace;font-size:0.58rem;color:rgba(255,255,255,0.4);letter-spacing:0.1em}
-.sbr-profit{font-family:'Unbounded',sans-serif;font-size:2rem;font-weight:900;line-height:1}
+.sbr-profit-label{font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:rgba(255,255,255,0.4);letter-spacing:0.1em}
+.sbr-profit{font-family:'Poppins',sans-serif;font-size:2rem;font-weight:900;line-height:1}
 .sbr-profit.pos{color:#5ee8a0}
 .sbr-profit.neg{color:#ff9090}
-.sbr-arb-pct{font-family:'Unbounded',sans-serif;font-size:1rem;font-weight:900;color:rgba(255,255,255,0.4)}
+.sbr-arb-pct{font-family:'Poppins',sans-serif;font-size:1rem;font-weight:900;color:rgba(255,255,255,0.4)}
 .sbr-stakes{display:flex;flex-direction:column;gap:0.3rem;margin-top:0.25rem}
 .sbr-stake-row{display:flex;align-items:center;justify-content:space-between;font-size:0.78rem;color:rgba(255,255,255,0.7)}
-.sbr-stake-val{font-family:'Unbounded',sans-serif;font-size:0.85rem;font-weight:700;color:#fff}
+.sbr-stake-val{font-family:'Poppins',sans-serif;font-size:0.85rem;font-weight:700;color:#fff}
 .sbr-divider{border:none;border-top:1px solid rgba(255,255,255,0.1);margin:0.2rem 0}
-.sbr-roi{font-family:'Syne Mono',monospace;font-size:0.6rem;color:rgba(255,255,255,0.4)}
+.sbr-roi{font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:rgba(255,255,255,0.4)}
 /* No arb state */
-.sbr-no-arb-txt{font-family:'Syne Mono',monospace;font-size:0.7rem;color:var(--ink3);text-align:center;padding:0.5rem 0}
-.sb-calc-btn{align-self:flex-start;padding:0.45rem 1.4rem;border-radius:7px;border:none;background:var(--ink);color:#fff;font-family:'Space Grotesk',sans-serif;font-size:0.78rem;font-weight:600;cursor:pointer;transition:all 0.15s}
+.sbr-no-arb-txt{font-family:'Noto Sans',sans-serif;font-size:0.7rem;color:var(--ink3);text-align:center;padding:0.5rem 0}
+.sb-calc-btn{align-self:flex-start;padding:0.45rem 1.4rem;border-radius:7px;border:none;background:var(--ink);color:#fff;font-family:'Noto Sans',sans-serif;font-size:0.78rem;font-weight:600;cursor:pointer;transition:all 0.15s}
 .sb-calc-btn:hover{background:#2a2420}
 @media(max-width:480px){
   .sb-row{flex-direction:column;align-items:stretch}
@@ -633,10 +659,10 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 .odds-live-row{display:flex;align-items:center;gap:0.5rem;margin-bottom:0.6rem;padding:0.6rem 0.85rem;background:var(--card2);border:1.5px solid var(--border);border-radius:8px;transition:border-color 0.3s}
 .odds-live-row.matched{border-color:var(--green);background:rgba(26,122,74,0.04)}
 .odds-live-row.gap{border-color:var(--amber);background:rgba(184,98,10,0.04)}
-.olr-book{font-family:'Syne Mono',monospace;font-size:0.58rem;color:var(--ink4);width:68px;flex-shrink:0;letter-spacing:0.06em}
-.olr-line{font-family:'Unbounded',sans-serif;font-size:0.85rem;font-weight:900;color:var(--ink);width:48px}
-.olr-odd{font-family:'Unbounded',sans-serif;font-size:0.78rem;font-weight:700;color:var(--ink2);width:38px}
-.olr-gap{font-family:'Syne Mono',monospace;font-size:0.62rem;font-weight:700;padding:0.12rem 0.45rem;border-radius:4px;margin-left:auto}
+.olr-book{font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:var(--ink4);width:68px;flex-shrink:0;letter-spacing:0.06em}
+.olr-line{font-family:'Poppins',sans-serif;font-size:0.85rem;font-weight:900;color:var(--ink);width:48px}
+.olr-odd{font-family:'Poppins',sans-serif;font-size:0.78rem;font-weight:700;color:var(--ink2);width:38px}
+.olr-gap{font-family:'Noto Sans',sans-serif;font-size:0.62rem;font-weight:700;padding:0.12rem 0.45rem;border-radius:4px;margin-left:auto}
 .olr-gap.pos{background:rgba(26,122,74,0.12);color:var(--green)}
 .olr-gap.neg{background:rgba(192,57,43,0.1);color:var(--red)}
 .olr-gap.neu{background:var(--surface);color:var(--ink4)}
@@ -644,7 +670,7 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 .oas-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
 .oas-dot.live{background:var(--green);animation:blink 1s ease-in-out infinite}
 .oas-dot.off{background:var(--ink4)}
-.oas-txt{font-family:'Syne Mono',monospace;font-size:0.6rem;color:var(--ink4);letter-spacing:0.08em}
+.oas-txt{font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:var(--ink4);letter-spacing:0.08em}
 #odds-api-card{flex:1 1 100%}
 
 /* ═══════════════════════════════════════
@@ -655,24 +681,24 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 .bfm-sheet{background:var(--card);border-radius:16px 16px 0 0;padding:1.4rem 1.4rem 2.2rem;width:100%;max-width:540px;margin:0 auto;max-height:85vh;overflow-y:auto;animation:slide-up 0.28s cubic-bezier(0.16,1,0.3,1)}
 @keyframes slide-up{from{transform:translateY(100%)}to{transform:translateY(0)}}
 .bfm-handle{width:36px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 1rem}
-.bfm-title{font-family:'Unbounded',sans-serif;font-size:0.85rem;font-weight:900;color:var(--ink);margin-bottom:0.3rem}
+.bfm-title{font-family:'Poppins',sans-serif;font-size:0.85rem;font-weight:900;color:var(--ink);margin-bottom:0.3rem}
 .bfm-opp{font-size:0.8rem;color:var(--ink3);margin-bottom:1.2rem;line-height:1.4}
 .bfm-row{display:flex;align-items:center;gap:0.75rem;margin-bottom:0.85rem;flex-wrap:wrap}
-.bfm-label{font-family:'Syne Mono',monospace;font-size:0.6rem;color:var(--ink4);letter-spacing:0.1em;min-width:80px;flex-shrink:0}
-.bfm-input{flex:1;min-width:100px;padding:0.55rem 0.85rem;border:1.5px solid var(--border2);border-radius:8px;font-family:'Unbounded',sans-serif;font-size:1rem;font-weight:700;color:var(--ink);background:var(--card);outline:none;transition:border-color 0.2s}
+.bfm-label{font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:var(--ink4);letter-spacing:0.1em;min-width:80px;flex-shrink:0}
+.bfm-input{flex:1;min-width:100px;padding:0.55rem 0.85rem;border:1.5px solid var(--border2);border-radius:8px;font-family:'Poppins',sans-serif;font-size:1rem;font-weight:700;color:var(--ink);background:var(--card);outline:none;transition:border-color 0.2s}
 .bfm-input:focus{border-color:var(--blue)}
 .bfm-input.stake{border-color:var(--amber)}
 .bfm-calc-preview{background:var(--ink);border-radius:10px;padding:1rem 1.2rem;margin:0.5rem 0 1rem;display:none}
 .bfm-calc-preview.show{display:block}
-.bfp-profit{font-family:'Unbounded',sans-serif;font-size:1.8rem;font-weight:900;color:#5ee8a0;line-height:1}
-.bfp-detail{font-family:'Syne Mono',monospace;font-size:0.62rem;color:rgba(255,255,255,0.45);margin-top:0.35rem}
+.bfp-profit{font-family:'Poppins',sans-serif;font-size:1.8rem;font-weight:900;color:#5ee8a0;line-height:1}
+.bfp-detail{font-family:'Noto Sans',sans-serif;font-size:0.62rem;color:rgba(255,255,255,0.45);margin-top:0.35rem}
 .bfm-btns{display:flex;gap:0.6rem}
-.bfm-btn{flex:1;padding:0.7rem 1rem;border-radius:9px;border:none;font-family:'Space Grotesk',sans-serif;font-size:0.85rem;font-weight:700;cursor:pointer;transition:all 0.15s}
+.bfm-btn{flex:1;padding:0.7rem 1rem;border-radius:9px;border:none;font-family:'Noto Sans',sans-serif;font-size:0.85rem;font-weight:700;cursor:pointer;transition:all 0.15s}
 .bfm-btn-cancel{background:var(--surface);color:var(--ink3)}
 .bfm-btn-save{background:var(--ink);color:#fff}
 .bfm-btn-save:hover{background:#2a2420}
 /* "Apostar" button inside bopp items */
-.bopp-bet-btn{font-family:'Syne Mono',monospace;font-size:0.55rem;padding:0.15rem 0.55rem;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--ink4);cursor:pointer;margin-top:0.3rem;transition:all 0.15s;letter-spacing:0.06em}
+.bopp-bet-btn{font-family:'Noto Sans',sans-serif;font-size:0.55rem;padding:0.15rem 0.55rem;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--ink4);cursor:pointer;margin-top:0.3rem;transition:all 0.15s;letter-spacing:0.06em}
 .bopp-bet-btn:hover{background:var(--ink);color:#fff;border-color:var(--ink)}
 
 /* ═══════════════════════════════════════
@@ -685,32 +711,32 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 .cal-bucket.good{border-color:var(--green);background:rgba(26,122,74,0.05)}
 .cal-bucket.warn{border-color:var(--amber);background:rgba(184,98,10,0.04)}
 .cal-bucket.bad{border-color:var(--red);background:rgba(192,57,43,0.04)}
-.cal-pct{font-family:'Unbounded',sans-serif;font-size:0.65rem;font-weight:900;color:var(--ink4)}
+.cal-pct{font-family:'Poppins',sans-serif;font-size:0.65rem;font-weight:900;color:var(--ink4)}
 .cal-bar-wrap{width:100%;height:40px;display:flex;flex-direction:column;justify-content:flex-end;gap:1px}
 .cal-bar-exp{width:100%;border-radius:2px 2px 0 0;opacity:0.25;transition:height 0.8s ease}
 .cal-bar-act{width:100%;border-radius:2px 2px 0 0;transition:height 0.8s ease}
-.cal-n{font-family:'Syne Mono',monospace;font-size:0.55rem;color:var(--ink4)}
-.cal-diff{font-family:'Syne Mono',monospace;font-size:0.6rem;font-weight:700}
+.cal-n{font-family:'Noto Sans',sans-serif;font-size:0.55rem;color:var(--ink4)}
+.cal-diff{font-family:'Noto Sans',sans-serif;font-size:0.6rem;font-weight:700}
 .cal-diff.pos{color:var(--green)}
 .cal-diff.neg{color:var(--red)}
 .cal-diff.neu{color:var(--ink4)}
 .cal-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:0.6rem;margin-top:0.75rem}
 @media(max-width:480px){.cal-summary{grid-template-columns:repeat(2,1fr)}}
 .cal-sum-box{padding:0.65rem 0.8rem;background:var(--card2);border:1px solid var(--border);border-radius:8px;display:flex;flex-direction:column;gap:0.2rem}
-.cal-sum-val{font-family:'Unbounded',sans-serif;font-size:1.2rem;font-weight:900;color:var(--ink);line-height:1}
-.cal-sum-lbl{font-family:'Syne Mono',monospace;font-size:0.55rem;color:var(--ink4);letter-spacing:0.08em}
-.cal-empty{font-family:'Syne Mono',monospace;font-size:0.65rem;color:var(--ink4);text-align:center;padding:1.5rem 0}
+.cal-sum-val{font-family:'Poppins',sans-serif;font-size:1.2rem;font-weight:900;color:var(--ink);line-height:1}
+.cal-sum-lbl{font-family:'Noto Sans',sans-serif;font-size:0.55rem;color:var(--ink4);letter-spacing:0.08em}
+.cal-empty{font-family:'Noto Sans',sans-serif;font-size:0.65rem;color:var(--ink4);text-align:center;padding:1.5rem 0}
 
 /* ═══════════════════════════════════════
    D — PUSH NOTIFICATIONS
    ═══════════════════════════════════════ */
 .notif-permission-bar{display:flex;align-items:center;gap:0.75rem;padding:0.7rem 1rem;background:var(--blue-bg);border:1.5px solid var(--blue);border-radius:8px;margin-bottom:0.85rem;flex-wrap:wrap}
 .npb-txt{flex:1;font-size:0.78rem;color:var(--ink2);min-width:160px}
-.npb-btn{padding:0.35rem 0.9rem;border-radius:6px;border:none;background:var(--blue);color:#fff;font-family:'Space Grotesk',sans-serif;font-size:0.75rem;font-weight:600;cursor:pointer;white-space:nowrap}
+.npb-btn{padding:0.35rem 0.9rem;border-radius:6px;border:none;background:var(--blue);color:#fff;font-family:'Noto Sans',sans-serif;font-size:0.75rem;font-weight:600;cursor:pointer;white-space:nowrap}
 .notif-settings{display:flex;flex-direction:column;gap:0.5rem}
 .ns-row{display:flex;align-items:center;justify-content:space-between;padding:0.55rem 0.85rem;background:var(--card2);border-radius:7px;border:1px solid var(--border)}
 .ns-label{font-size:0.78rem;color:var(--ink2);font-weight:500}
-.ns-sub{font-family:'Syne Mono',monospace;font-size:0.58rem;color:var(--ink4)}
+.ns-sub{font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:var(--ink4)}
 .ns-toggle{position:relative;width:36px;height:20px;flex-shrink:0}
 .ns-toggle input{opacity:0;width:0;height:0}
 .ns-slider{position:absolute;cursor:pointer;inset:0;background:var(--border2);border-radius:20px;transition:all 0.2s}
@@ -719,7 +745,7 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 .ns-toggle input:checked+.ns-slider:before{transform:translateX(16px)}
 .notif-log{margin-top:0.85rem;display:flex;flex-direction:column;gap:0.35rem;max-height:140px;overflow-y:auto}
 .nl-row{display:flex;gap:0.6rem;padding:0.45rem 0.65rem;background:var(--card2);border-radius:6px;border-left:3px solid var(--green)}
-.nl-t{font-family:'Syne Mono',monospace;font-size:0.58rem;color:var(--ink4);white-space:nowrap}
+.nl-t{font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:var(--ink4);white-space:nowrap}
 .nl-txt{font-size:0.72rem;color:var(--ink2)}
 
 /* ═══════════════════════════════════════
@@ -730,12 +756,12 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 @media(max-width:600px){.roi-top{grid-template-columns:repeat(2,1fr)}}
 .roi-box{padding:0.85rem 1rem;background:var(--card2);border:1px solid var(--border);border-radius:9px;display:flex;flex-direction:column;gap:0.25rem}
 .roi-box.highlight{background:var(--ink);border-color:transparent}
-.roi-val{font-family:'Unbounded',sans-serif;font-size:1.5rem;font-weight:900;line-height:1}
+.roi-val{font-family:'Poppins',sans-serif;font-size:1.5rem;font-weight:900;line-height:1}
 .roi-val.pos{color:var(--green)}
 .roi-val.neg{color:var(--red)}
 .roi-val.neu{color:var(--ink)}
 .roi-val.white{color:#fff}
-.roi-lbl{font-family:'Syne Mono',monospace;font-size:0.55rem;color:var(--ink4);letter-spacing:0.08em}
+.roi-lbl{font-family:'Noto Sans',sans-serif;font-size:0.55rem;color:var(--ink4);letter-spacing:0.08em}
 .roi-lbl.white{color:rgba(255,255,255,0.4)}
 /* Breakdown by bet type */
 .roi-breakdown{display:flex;flex-direction:column;gap:0.4rem;margin-bottom:1rem}
@@ -743,21 +769,21 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 .roi-br-label{font-size:0.75rem;color:var(--ink2);font-weight:500;width:130px;flex-shrink:0}
 .roi-br-bar{flex:1;height:8px;background:var(--surface);border-radius:4px;overflow:hidden}
 .roi-br-fill{height:100%;border-radius:4px;transition:width 0.8s ease}
-.roi-br-pct{font-family:'Unbounded',sans-serif;font-size:0.7rem;font-weight:900;width:42px;text-align:right}
-.roi-br-n{font-family:'Syne Mono',monospace;font-size:0.58rem;color:var(--ink4);width:24px;text-align:right}
+.roi-br-pct{font-family:'Poppins',sans-serif;font-size:0.7rem;font-weight:900;width:42px;text-align:right}
+.roi-br-n{font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:var(--ink4);width:24px;text-align:right}
 /* Equity curve */
 .roi-curve{height:80px;margin-bottom:1rem;position:relative}
 .roi-curve svg{width:100%;height:100%}
 /* Recent bets table */
 .roi-table{width:100%;border-collapse:collapse;font-size:0.75rem}
-.roi-table th{font-family:'Syne Mono',monospace;font-size:0.55rem;color:var(--ink4);letter-spacing:0.1em;text-align:left;padding:0 0.5rem 0.5rem;border-bottom:1.5px solid var(--border2)}
+.roi-table th{font-family:'Noto Sans',sans-serif;font-size:0.55rem;color:var(--ink4);letter-spacing:0.1em;text-align:left;padding:0 0.5rem 0.5rem;border-bottom:1.5px solid var(--border2)}
 .roi-table td{padding:0.45rem 0.5rem;border-bottom:1px solid var(--border);color:var(--ink2);vertical-align:middle}
 .roi-table tr:last-child td{border-bottom:none}
-.roi-result{font-family:'Syne Mono',monospace;font-size:0.6rem;font-weight:700;padding:0.1rem 0.4rem;border-radius:4px}
+.roi-result{font-family:'Noto Sans',sans-serif;font-size:0.6rem;font-weight:700;padding:0.1rem 0.4rem;border-radius:4px}
 .roi-result.w{background:rgba(26,122,74,0.12);color:var(--green)}
 .roi-result.l{background:rgba(192,57,43,0.1);color:var(--red)}
 .roi-result.p{background:var(--surface);color:var(--ink4)}
-.roi-empty{font-family:'Syne Mono',monospace;font-size:0.65rem;color:var(--ink4);text-align:center;padding:1.5rem 0}
+.roi-empty{font-family:'Noto Sans',sans-serif;font-size:0.65rem;color:var(--ink4);text-align:center;padding:1.5rem 0}
 
 /* ═══════════════════════════════════════
    FLOATING THALAMUS CALCULATOR
@@ -857,13 +883,13 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 #loader.hidden{display:none}
 .spin{width:32px;height:32px;border:2px solid var(--border2);border-top-color:var(--blue);border-radius:50%;animation:spin 0.7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.load-txt{font-family:'Syne Mono',monospace;font-size:0.8rem;color:var(--ink3);letter-spacing:0.05em}
+.load-txt{font-family:'Noto Sans',sans-serif;font-size:0.8rem;color:var(--ink3);letter-spacing:0.05em}
 
 /* EMPTY */
 #empty-state{display:none;grid-column:1/-1;flex-direction:column;align-items:center;justify-content:center;padding:4rem 2rem;gap:1rem;text-align:center}
 #empty-state.show{display:flex}
-.empty-h{font-family:'Unbounded',sans-serif;font-size:1.4rem;font-weight:900;color:var(--ink2)}
-.empty-sub{font-family:'Syne Mono',monospace;font-size:0.75rem;color:var(--ink4);line-height:1.7}
+.empty-h{font-family:'Poppins',sans-serif;font-size:1.4rem;font-weight:900;color:var(--ink2)}
+.empty-sub{font-family:'Noto Sans',sans-serif;font-size:0.75rem;color:var(--ink4);line-height:1.7}
 /* ═══════════════════════════════════════════════
    RESPONSIVE — mobile first
    ═══════════════════════════════════════════════ */
@@ -1056,13 +1082,29 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 </div>
 
 <header>
-  <div class="wordmark">THALAMUS <span>LIVE</span></div>
+  <!-- Logo Thalamus — SVG inline fiel al manual -->
+  <div class="wordmark">
+    <div class="wordmark-logo">
+      <svg width="28" height="28" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Chevron top -->
+        <path d="M6 9 L20 3 L34 9 L28 12 L20 8 L12 12 Z" fill="white" rx="1"/>
+        <!-- Chevron middle -->
+        <path d="M6 16 L20 10 L34 16 L28 19 L20 15 L12 19 Z" fill="white" opacity="0.85"/>
+        <!-- Diamond base -->
+        <path d="M12 23 L20 27 L28 23 L20 19 Z" fill="white" opacity="0.7"/>
+        <!-- Diamond hole -->
+        <path d="M16 23 L20 25 L24 23 L20 21 Z" fill="var(--brand-d)"/>
+      </svg>
+    </div>
+    <span class="wordmark-txt">thalamus</span>
+    <span class="wordmark-sub">LIVE</span>
+  </div>
   <div class="live-chip"><div class="ldot"></div>EN VIVO</div>
   <div class="source-tag" id="source-tag">ESPN API</div>
   <div class="demo-tag" id="demo-tag">DEMO</div>
   <div class="header-r">
     <div class="league-toggle" style="overflow-x:auto;max-width:380px;scrollbar-width:none;-webkit-overflow-scrolling:touch">
-      <span style="font-family:'Syne Mono',monospace;font-size:0.52rem;color:rgba(255,255,255,0.25);letter-spacing:0.1em;padding:0 4px;align-self:center">🏀</span>
+      <span style="font-family:'Noto Sans',sans-serif;font-size:0.52rem;color:rgba(255,255,255,0.25);letter-spacing:0.1em;padding:0 4px;align-self:center">🏀</span>
       <button class="ltab active" id="lt-nba"         onclick="switchLeague('nba')">NBA</button>
       <button class="ltab"        id="lt-wnba"        onclick="switchLeague('wnba')">WNBA</button>
       <button class="ltab"        id="lt-euroleague"  onclick="switchLeague('euroleague')">EuroLeague</button>
@@ -1070,7 +1112,7 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
       <button class="ltab"        id="lt-ncaawb"      onclick="switchLeague('ncaawb')">NCAA ♀</button>
       <button class="ltab"        id="lt-acb"         onclick="switchLeague('acb')">ACB</button>
       <button class="ltab"        id="lt-nbl"         onclick="switchLeague('nbl')">NBL</button>
-      <span style="font-family:'Syne Mono',monospace;font-size:0.52rem;color:rgba(255,255,255,0.25);letter-spacing:0.1em;padding:0 4px;align-self:center">⚽</span>
+      <span style="font-family:'Noto Sans',sans-serif;font-size:0.52rem;color:rgba(255,255,255,0.25);letter-spacing:0.1em;padding:0 4px;align-self:center">⚽</span>
       <button class="ltab"        id="lt-fifa_world"  onclick="switchLeague('fifa_world')" style="background:rgba(212,175,55,0.15);color:#d4af37">Mundial</button>
       <button class="ltab"        id="lt-mls"         onclick="switchLeague('mls')">MLS</button>
     </div>
@@ -1183,7 +1225,7 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
     <div class="chart-legend">
       <div class="leg"><div class="leg-dot" style="background:var(--home)"></div><span id="leg-home">LOCAL</span></div>
       <div class="leg"><div class="leg-dot" style="background:var(--away)"></div><span id="leg-away">VISITA</span></div>
-      <div class="leg" style="margin-left:auto;font-family:'Syne Mono',monospace;font-size:0.6rem;color:var(--ink4)">Modelo bayesiano · score diff · tiempo restante</div>
+      <div class="leg" style="margin-left:auto;font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:var(--ink4)">Modelo bayesiano · score diff · tiempo restante</div>
     </div>
   </div>
 
@@ -1282,7 +1324,7 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
       </div>
       <div style="text-align:right">
         <div class="cb-label">Proyectado</div>
-        <div style="font-family:'Unbounded',sans-serif;font-size:1.4rem;font-weight:900;color:var(--amber2)" id="stt-projected">—</div>
+        <div style="font-family:'Poppins',sans-serif;font-size:1.4rem;font-weight:900;color:var(--amber2)" id="stt-projected">—</div>
         <div class="cb-pace" id="stt-over-under">over/under —</div>
       </div>
     </div>
@@ -1294,9 +1336,9 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
     <div class="drag-handle" draggable="true">⠿</div>
     <div class="card-title">
       Proyecciones por cuarto & puntaje final
-      <span id="proj-mode-badge" style="font-family:'Syne Mono',monospace;font-size:0.55rem;font-weight:700;padding:0.1rem 0.45rem;border-radius:4px;background:rgba(184,98,10,0.15);color:var(--amber);letter-spacing:0.08em">PRE-PARTIDO</span>
+      <span id="proj-mode-badge" style="font-family:'Noto Sans',sans-serif;font-size:0.55rem;font-weight:700;padding:0.1rem 0.45rem;border-radius:4px;background:rgba(184,98,10,0.15);color:var(--amber);letter-spacing:0.08em">PRE-PARTIDO</span>
       <span class="proj-live-dot"></span>
-      <span style="font-family:'Syne Mono',monospace;font-size:0.58rem;color:var(--ink4);font-weight:400" id="proj-updated-lbl">actualizando…</span>
+      <span style="font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:var(--ink4);font-weight:400" id="proj-updated-lbl">actualizando…</span>
     </div>
 
     <!-- Team season averages row -->
@@ -1434,7 +1476,7 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
 
     <!-- Alert history -->
     <div class="edge-history" id="edge-history">
-      <div style="font-family:'Syne Mono',monospace;font-size:0.65rem;color:var(--ink4);text-align:center;padding:0.75rem 0">Sin alertas aún — esperando datos del partido</div>
+      <div style="font-family:'Noto Sans',sans-serif;font-size:0.65rem;color:var(--ink4);text-align:center;padding:0.75rem 0">Sin alertas aún — esperando datos del partido</div>
     </div>
   </div>
 
@@ -1455,7 +1497,7 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
       <button class="week-btn" onclick="changeWeek(1)">siguiente →</button>
     </div>
     <div class="pred-list" id="pred-list">
-      <div style="font-family:'Syne Mono',monospace;font-size:0.68rem;color:var(--ink4);text-align:center;padding:1.5rem 0">Sin pronósticos guardados aún</div>
+      <div style="font-family:'Noto Sans',sans-serif;font-size:0.68rem;color:var(--ink4);text-align:center;padding:1.5rem 0">Sin pronósticos guardados aún</div>
     </div>
   </div>
 
@@ -1488,7 +1530,7 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
       <!-- H2H strip -->
       <div class="ai-h2h-strip" id="ai-h2h-strip"></div>
       <!-- Recent games -->
-      <div style="font-family:'Syne Mono',monospace;font-size:0.58rem;color:var(--ink4);letter-spacing:0.1em;margin-bottom:0.3rem">ÚLTIMOS H2H</div>
+      <div style="font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:var(--ink4);letter-spacing:0.1em;margin-bottom:0.3rem">ÚLTIMOS H2H</div>
       <div class="ai-games-grid" id="ai-games-grid"></div>
       <!-- AI narrative -->
       <div class="ai-narrative" id="ai-narrative"></div>
@@ -1576,10 +1618,10 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
     <div class="odds-api-status">
       <div class="oas-dot off" id="oas-dot"></div>
       <div class="oas-txt" id="oas-txt">Conectar para ver líneas reales</div>
-      <button style="margin-left:auto;padding:0.25rem 0.8rem;border-radius:6px;border:none;background:var(--ink);color:#fff;font-family:'Syne Mono',monospace;font-size:0.6rem;cursor:pointer;letter-spacing:0.06em" onclick="fetchOddsAPI()">CARGAR ODDS</button>
+      <button style="margin-left:auto;padding:0.25rem 0.8rem;border-radius:6px;border:none;background:var(--ink);color:#fff;font-family:'Noto Sans',sans-serif;font-size:0.6rem;cursor:pointer;letter-spacing:0.06em" onclick="fetchOddsAPI()">CARGAR ODDS</button>
     </div>
     <div id="odds-api-lines">
-      <div style="font-family:'Syne Mono',monospace;font-size:0.65rem;color:var(--ink4);text-align:center;padding:1rem 0">Carga las odds del partido activo para ver comparación con el modelo</div>
+      <div style="font-family:'Noto Sans',sans-serif;font-size:0.65rem;color:var(--ink4);text-align:center;padding:1rem 0">Carga las odds del partido activo para ver comparación con el modelo</div>
     </div>
   </div>
 
@@ -1610,7 +1652,7 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
       </div>
     </div>
     <div class="notif-log" id="notif-log">
-      <div style="font-family:'Syne Mono',monospace;font-size:0.65rem;color:var(--ink4);text-align:center;padding:0.5rem 0">Sin notificaciones enviadas aún</div>
+      <div style="font-family:'Noto Sans',sans-serif;font-size:0.65rem;color:var(--ink4);text-align:center;padding:0.5rem 0">Sin notificaciones enviadas aún</div>
     </div>
   </div>
 
@@ -1639,7 +1681,7 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
       <div class="card-title" style="margin-bottom:0" id="soccer-league-title">⚽ Análisis de Partido</div>
       <div style="display:flex;gap:0.4rem">
         <span class="sig-badge neutral" id="soccer-half-badge">PRE-PARTIDO</span>
-        <span id="soccer-minute-badge" style="font-family:'Syne Mono',monospace;font-size:0.6rem;color:var(--ink4)"></span>
+        <span id="soccer-minute-badge" style="font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:var(--ink4)"></span>
       </div>
     </div>
 
@@ -1665,36 +1707,36 @@ header{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 1.5rem;
     <!-- xG and Projected Goals -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;margin-bottom:0.85rem">
       <div style="background:var(--ink);border-radius:9px;padding:0.85rem 1rem">
-        <div style="font-family:'Syne Mono',monospace;font-size:0.58rem;color:rgba(255,255,255,0.4);letter-spacing:0.1em;margin-bottom:0.4rem">GOLES PROYECTADOS</div>
+        <div style="font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:rgba(255,255,255,0.4);letter-spacing:0.1em;margin-bottom:0.4rem">GOLES PROYECTADOS</div>
         <div style="display:flex;align-items:center;justify-content:space-between">
           <div style="text-align:center">
-            <div style="font-family:'Unbounded',sans-serif;font-size:2rem;font-weight:900;color:rgba(140,180,255,0.9);line-height:1" id="soccer-proj-home">—</div>
-            <div style="font-family:'Syne Mono',monospace;font-size:0.55rem;color:rgba(255,255,255,0.35);margin-top:2px" id="soccer-proj-home-lbl">LOCAL</div>
+            <div style="font-family:'Poppins',sans-serif;font-size:2rem;font-weight:900;color:rgba(140,180,255,0.9);line-height:1" id="soccer-proj-home">—</div>
+            <div style="font-family:'Noto Sans',sans-serif;font-size:0.55rem;color:rgba(255,255,255,0.35);margin-top:2px" id="soccer-proj-home-lbl">LOCAL</div>
           </div>
-          <div style="font-family:'Unbounded',sans-serif;font-size:1.2rem;color:rgba(255,255,255,0.2)">:</div>
+          <div style="font-family:'Poppins',sans-serif;font-size:1.2rem;color:rgba(255,255,255,0.2)">:</div>
           <div style="text-align:center">
-            <div style="font-family:'Unbounded',sans-serif;font-size:2rem;font-weight:900;color:rgba(255,150,120,0.9);line-height:1" id="soccer-proj-away">—</div>
-            <div style="font-family:'Syne Mono',monospace;font-size:0.55rem;color:rgba(255,255,255,0.35);margin-top:2px" id="soccer-proj-away-lbl">VISITA</div>
+            <div style="font-family:'Poppins',sans-serif;font-size:2rem;font-weight:900;color:rgba(255,150,120,0.9);line-height:1" id="soccer-proj-away">—</div>
+            <div style="font-family:'Noto Sans',sans-serif;font-size:0.55rem;color:rgba(255,255,255,0.35);margin-top:2px" id="soccer-proj-away-lbl">VISITA</div>
           </div>
         </div>
-        <div style="font-family:'Syne Mono',monospace;font-size:0.58rem;color:rgba(255,255,255,0.3);margin-top:0.4rem;text-align:center" id="soccer-proj-total-lbl">Total proy: — goles</div>
+        <div style="font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:rgba(255,255,255,0.3);margin-top:0.4rem;text-align:center" id="soccer-proj-total-lbl">Total proy: — goles</div>
       </div>
       <div style="background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:0.85rem 1rem">
-        <div style="font-family:'Syne Mono',monospace;font-size:0.58rem;color:var(--ink4);letter-spacing:0.1em;margin-bottom:0.5rem">STATS EN VIVO</div>
+        <div style="font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:var(--ink4);letter-spacing:0.1em;margin-bottom:0.5rem">STATS EN VIVO</div>
         <div id="soccer-live-stats" style="display:flex;flex-direction:column;gap:0.3rem">
-          <div style="font-family:'Syne Mono',monospace;font-size:0.62rem;color:var(--ink4);text-align:center;padding:0.5rem 0">Esperando datos…</div>
+          <div style="font-family:'Noto Sans',sans-serif;font-size:0.62rem;color:var(--ink4);text-align:center;padding:0.5rem 0">Esperando datos…</div>
         </div>
       </div>
     </div>
 
     <!-- Over/Under goals betting opps -->
-    <div style="font-family:'Syne Mono',monospace;font-size:0.58rem;color:var(--ink4);letter-spacing:0.12em;margin-bottom:0.5rem">OPORTUNIDADES DE APUESTA — GOLES</div>
+    <div style="font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:var(--ink4);letter-spacing:0.12em;margin-bottom:0.5rem">OPORTUNIDADES DE APUESTA — GOLES</div>
     <div id="soccer-bet-opps" style="display:flex;flex-direction:column;gap:0.4rem">
-      <div style="font-family:'Syne Mono',monospace;font-size:0.65rem;color:var(--ink4);text-align:center;padding:0.75rem 0">Esperando datos del partido…</div>
+      <div style="font-family:'Noto Sans',sans-serif;font-size:0.65rem;color:var(--ink4);text-align:center;padding:0.75rem 0">Esperando datos del partido…</div>
     </div>
 
     <!-- Momentum: corners, shots, cards -->
-    <div style="font-family:'Syne Mono',monospace;font-size:0.58rem;color:var(--ink4);letter-spacing:0.12em;margin:0.85rem 0 0.5rem">MOMENTUM DEL PARTIDO</div>
+    <div style="font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:var(--ink4);letter-spacing:0.12em;margin:0.85rem 0 0.5rem">MOMENTUM DEL PARTIDO</div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.5rem" id="soccer-momentum-grid">
       <div class="sig-block"><div class="sig-label">CÓRNERS</div><div class="sig-value" id="sm-corners">—</div><div class="sig-sub" id="sm-corners-sub">local : visita</div></div>
       <div class="sig-block"><div class="sig-label">TIROS</div><div class="sig-value" id="sm-shots">—</div><div class="sig-sub" id="sm-shots-sub">al arco</div></div>
@@ -2938,12 +2980,12 @@ function renderProjections(){
         </div>
         <div style="padding:0.5rem 0;display:flex;flex-direction:column;gap:0.3rem">
           <div style="display:flex;justify-content:space-between;align-items:center;padding:0.3rem 0.5rem;background:var(--blue-bg);border-radius:5px">
-            <span style="font-family:'Syne Mono',monospace;font-size:0.65rem;color:var(--home)">${hAbv}</span>
-            <span style="font-family:'Unbounded',sans-serif;font-size:1.1rem;font-weight:900;color:var(--home)">${displayH}</span>
+            <span style="font-family:'Noto Sans',sans-serif;font-size:0.65rem;color:var(--home)">${hAbv}</span>
+            <span style="font-family:'Poppins',sans-serif;font-size:1.1rem;font-weight:900;color:var(--home)">${displayH}</span>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;padding:0.3rem 0.5rem;background:rgba(139,26,26,0.06);border-radius:5px">
-            <span style="font-family:'Syne Mono',monospace;font-size:0.65rem;color:var(--away)">${aAbv}</span>
-            <span style="font-family:'Unbounded',sans-serif;font-size:1.1rem;font-weight:900;color:var(--away)">${displayA}</span>
+            <span style="font-family:'Noto Sans',sans-serif;font-size:0.65rem;color:var(--away)">${aAbv}</span>
+            <span style="font-family:'Poppins',sans-serif;font-size:1.1rem;font-weight:900;color:var(--away)">${displayA}</span>
           </div>
         </div>
       </div>`;
@@ -2969,7 +3011,7 @@ function renderProjections(){
         </div>`;
 
       // Home rows
-      html += `<div style="font-family:'Syne Mono',monospace;font-size:0.6rem;color:var(--home);margin-bottom:0.2rem;padding-left:0.2rem">${hAbv}</div>`;
+      html += `<div style="font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:var(--home);margin-bottom:0.2rem;padding-left:0.2rem">${hAbv}</div>`;
       projsH.forEach((p, i) => {
         const barW = Math.round((p.pts / (maxPts * 1.1)) * 100);
         html += `<div class="proj-row">
@@ -2980,7 +3022,7 @@ function renderProjections(){
       });
 
       // Away rows
-      html += `<div style="font-family:'Syne Mono',monospace;font-size:0.6rem;color:var(--away);margin:0.5rem 0 0.2rem;padding-left:0.2rem">${aAbv}</div>`;
+      html += `<div style="font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:var(--away);margin:0.5rem 0 0.2rem;padding-left:0.2rem">${aAbv}</div>`;
       projsA.forEach((p, i) => {
         const barW = Math.round((p.pts / (maxPts * 1.1)) * 100);
         html += `<div class="proj-row">
@@ -3004,16 +3046,16 @@ function renderProjections(){
   if(gameState === 'post'){
     const finalTotal = projState.homeScore + projState.awayScore;
     html += `<div style="display:flex;align-items:center;justify-content:center;padding:1rem 0;flex-direction:column;gap:0.3rem">
-      <div style="font-family:'Syne Mono',monospace;font-size:0.62rem;color:var(--ink4)">PUNTAJE FINAL</div>
-      <div style="font-family:'Unbounded',sans-serif;font-size:2rem;font-weight:900;color:var(--ink)">${finalTotal}</div>
+      <div style="font-family:'Noto Sans',sans-serif;font-size:0.62rem;color:var(--ink4)">PUNTAJE FINAL</div>
+      <div style="font-family:'Poppins',sans-serif;font-size:2rem;font-weight:900;color:var(--ink)">${finalTotal}</div>
     </div>`;
   } else if(totals){
     // Show OT probability if relevant
     const otP = totals[0]?.otProb;
     if(otP && otP > 0.05){
       html += `<div style="background:rgba(184,98,10,0.1);border:1px solid var(--amber);border-radius:6px;padding:0.5rem 0.6rem;margin-bottom:0.6rem;display:flex;align-items:center;justify-content:space-between">
-        <span style="font-family:'Syne Mono',monospace;font-size:0.6rem;color:var(--amber)">⚡ PROB. OVERTIME</span>
-        <span style="font-family:'Unbounded',sans-serif;font-size:1rem;font-weight:900;color:var(--amber)">${Math.round(otP*100)}%</span>
+        <span style="font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:var(--amber)">⚡ PROB. OVERTIME</span>
+        <span style="font-family:'Poppins',sans-serif;font-size:1rem;font-weight:900;color:var(--amber)">${Math.round(otP*100)}%</span>
       </div>`;
     }
     const pctColors = ['pct-80','pct-70','pct-60','pct-50','pct-50','pct-40'];
@@ -4590,7 +4632,7 @@ function renderAIAnalysis(d, hAbv, aAbv){
     </div>
     <div class="ai-h2h-vs">
       <div class="ai-h2h-wins"><span>${d.homeWinsH2H}</span> — <span>${d.awayWinsH2H}</span></div>
-      <div style="font-family:'Syne Mono',monospace;font-size:0.52rem;color:rgba(255,255,255,0.3);letter-spacing:0.1em">Ø ${d.avgTotalH2H} pts</div>
+      <div style="font-family:'Noto Sans',sans-serif;font-size:0.52rem;color:rgba(255,255,255,0.3);letter-spacing:0.1em">Ø ${d.avgTotalH2H} pts</div>
     </div>
     <div class="ai-h2h-team away">
       <div class="ai-h2h-abbr" style="color:rgba(255,150,120,0.9)">${aAbv}</div>
@@ -4774,7 +4816,7 @@ async function fetchOddsAPI(){
 
     if(!game){
       txt.textContent = `Sin odds disponibles para ${hAbv} vs ${aAbv}`;
-      container.innerHTML = `<div style="font-family:'Syne Mono',monospace;font-size:0.65rem;color:var(--ink4);text-align:center;padding:1rem 0">No se encontró el partido en las odds disponibles. El partido puede no tener líneas activas.</div>`;
+      container.innerHTML = `<div style="font-family:'Noto Sans',sans-serif;font-size:0.65rem;color:var(--ink4);text-align:center;padding:1rem 0">No se encontró el partido en las odds disponibles. El partido puede no tener líneas activas.</div>`;
       return;
     }
 
@@ -4787,7 +4829,7 @@ async function fetchOddsAPI(){
   }catch(err){
     dot.className = 'oas-dot off';
     txt.textContent = 'Error al conectar — verifica la key o la red';
-    container.innerHTML = `<div style="font-family:'Syne Mono',monospace;font-size:0.65rem;color:var(--red);text-align:center;padding:1rem 0">Error: ${err.message}</div>`;
+    container.innerHTML = `<div style="font-family:'Noto Sans',sans-serif;font-size:0.65rem;color:var(--red);text-align:center;padding:1rem 0">Error: ${err.message}</div>`;
   }
 }
 
@@ -4821,7 +4863,7 @@ function renderOddsAPILines(game){
   });
 
   if(totalsLines.length){
-    html += `<div style="font-family:'Syne Mono',monospace;font-size:0.6rem;color:var(--ink4);letter-spacing:0.1em;margin-bottom:6px">TOTALES (${totalsLines.length/2|0} casas)</div>`;
+    html += `<div style="font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:var(--ink4);letter-spacing:0.1em;margin-bottom:6px">TOTALES (${totalsLines.length/2|0} casas)</div>`;
     // Group by line
     const byLine = {};
     totalsLines.forEach(l => {
@@ -4843,11 +4885,11 @@ function renderOddsAPILines(game){
         <div class="olr-line">${line}</div>
         <div style="display:flex;gap:6px;flex:1;align-items:center">
           <div style="display:flex;flex-direction:column;align-items:center;min-width:42px">
-            <div style="font-family:'Syne Mono',monospace;font-size:0.5rem;color:var(--green)">OVR</div>
+            <div style="font-family:'Noto Sans',sans-serif;font-size:0.5rem;color:var(--green)">OVR</div>
             <div class="olr-odd">${bestOver?.price?.toFixed(2)||'—'}</div>
           </div>
           <div style="display:flex;flex-direction:column;align-items:center;min-width:42px">
-            <div style="font-family:'Syne Mono',monospace;font-size:0.5rem;color:var(--red)">UND</div>
+            <div style="font-family:'Noto Sans',sans-serif;font-size:0.5rem;color:var(--red)">UND</div>
             <div class="olr-odd">${bestUnder?.price?.toFixed(2)||'—'}</div>
           </div>
         </div>
@@ -4858,7 +4900,7 @@ function renderOddsAPILines(game){
   }
 
   if(spreadLines.length){
-    html += `<div style="font-family:'Syne Mono',monospace;font-size:0.6rem;color:var(--ink4);letter-spacing:0.1em;margin:10px 0 6px">SPREADS</div>`;
+    html += `<div style="font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:var(--ink4);letter-spacing:0.1em;margin:10px 0 6px">SPREADS</div>`;
     const seen = new Set();
     spreadLines.forEach(l => {
       const key = `${l.book}-${l.point}`;
@@ -4872,7 +4914,7 @@ function renderOddsAPILines(game){
     });
   }
 
-  if(!html) html = `<div style="font-family:'Syne Mono',monospace;font-size:0.65rem;color:var(--ink4);text-align:center;padding:1rem 0">Sin mercados activos para este partido</div>`;
+  if(!html) html = `<div style="font-family:'Noto Sans',sans-serif;font-size:0.65rem;color:var(--ink4);text-align:center;padding:1rem 0">Sin mercados activos para este partido</div>`;
   container.innerHTML = html;
 }
 
@@ -5033,7 +5075,7 @@ function renderCalibration(){
     </div>`;
   });
   calHTML += `</div>`;
-  calHTML += `<div style="font-family:'Syne Mono',monospace;font-size:0.58rem;color:var(--ink4);margin-bottom:8px">Barras: oscuro=esperado · color=real · diferencia debajo</div>`;
+  calHTML += `<div style="font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:var(--ink4);margin-bottom:8px">Barras: oscuro=esperado · color=real · diferencia debajo</div>`;
   calHTML += `<div class="cal-summary">
     <div class="cal-sum-box">
       <div class="cal-sum-val">${overallAcc}%</div>
@@ -5218,7 +5260,7 @@ function renderROIDashboard(){
       </div>
     </div>
 
-    <div style="font-family:'Syne Mono',monospace;font-size:0.58rem;color:var(--ink4);letter-spacing:0.1em;margin-bottom:6px">CURVA DE CAPITAL</div>
+    <div style="font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:var(--ink4);letter-spacing:0.1em;margin-bottom:6px">CURVA DE CAPITAL</div>
     <div class="roi-curve">
       <svg viewBox="0 0 ${eW} ${eH}" preserveAspectRatio="none">
         <defs><linearGradient id="eg" x1="0" y1="0" x2="0" y2="1">
@@ -5231,7 +5273,7 @@ function renderROIDashboard(){
       </svg>
     </div>
 
-    <div style="font-family:'Syne Mono',monospace;font-size:0.58rem;color:var(--ink4);letter-spacing:0.1em;margin-bottom:8px">RENDIMIENTO POR TIPO</div>
+    <div style="font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:var(--ink4);letter-spacing:0.1em;margin-bottom:8px">RENDIMIENTO POR TIPO</div>
     <div class="roi-breakdown">
       ${types.filter(t=>byType[t].total>0).map(t => {
         const d = byType[t];
@@ -5245,7 +5287,7 @@ function renderROIDashboard(){
       }).join('')}
     </div>
 
-    <div style="font-family:'Syne Mono',monospace;font-size:0.58rem;color:var(--ink4);letter-spacing:0.1em;margin-bottom:8px">ÚLTIMAS APUESTAS</div>
+    <div style="font-family:'Noto Sans',sans-serif;font-size:0.58rem;color:var(--ink4);letter-spacing:0.1em;margin-bottom:8px">ÚLTIMAS APUESTAS</div>
     <table class="roi-table">
       <thead><tr>
         <th>FECHA</th><th>APUESTA</th><th>STAKE</th><th>ODD</th><th>RESULTADO</th><th>P&L</th>
@@ -5257,17 +5299,17 @@ function renderROIDashboard(){
           const pnlColor = pnl > 0 ? 'var(--green)' : pnl < 0 ? 'var(--red)' : 'var(--ink4)';
           const dt = new Date(b.date).toLocaleDateString('es-PE',{month:'short',day:'numeric'});
           return `<tr>
-            <td style="font-family:'Syne Mono',monospace;font-size:0.62rem;color:var(--ink4)">${dt}</td>
+            <td style="font-family:'Noto Sans',sans-serif;font-size:0.62rem;color:var(--ink4)">${dt}</td>
             <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${b.desc}">${b.desc}</td>
             <td>$${b.stake}</td>
-            <td style="font-family:'Unbounded',sans-serif;font-weight:700">${b.odd}</td>
+            <td style="font-family:'Poppins',sans-serif;font-weight:700">${b.odd}</td>
             <td>
               <div style="display:flex;gap:4px;align-items:center">
                 <span class="roi-result ${b.result==='win'?'w':b.result==='loss'?'l':'p'}">${b.result==='win'?'✓ GANÓ':b.result==='loss'?'✗ PERDIÓ':'⏳ PEND.'}</span>
                 ${b.result==='pending'?`<button onclick="resolveBet(${b.id},'win')" style="padding:1px 5px;border-radius:3px;border:none;background:rgba(26,122,74,0.15);color:var(--green);font-size:9px;cursor:pointer">✓</button><button onclick="resolveBet(${b.id},'loss')" style="padding:1px 5px;border-radius:3px;border:none;background:rgba(192,57,43,0.1);color:var(--red);font-size:9px;cursor:pointer">✗</button>`:''}
               </div>
             </td>
-            <td style="font-family:'Unbounded',sans-serif;font-weight:700;color:${pnlColor}">${pnlStr}</td>
+            <td style="font-family:'Poppins',sans-serif;font-weight:700;color:${pnlColor}">${pnlStr}</td>
           </tr>`;
         }).join('')}
       </tbody>
@@ -5518,9 +5560,9 @@ function renderSoccerPanel(hA, aA, state, minute){
       {l:'xG', h:soccerState.homeXG, a:soccerState.awayXG},
     ].map(s=>`
       <div style="display:grid;grid-template-columns:1fr 60px 1fr;gap:4px;align-items:center;font-size:0.72rem">
-        <div style="font-family:'Unbounded',sans-serif;font-weight:700;color:var(--home);text-align:right">${s.h}</div>
-        <div style="font-family:'Syne Mono',monospace;font-size:0.55rem;color:var(--ink4);text-align:center;letter-spacing:0.08em">${s.l}</div>
-        <div style="font-family:'Unbounded',sans-serif;font-weight:700;color:var(--away)">${s.a}</div>
+        <div style="font-family:'Poppins',sans-serif;font-weight:700;color:var(--home);text-align:right">${s.h}</div>
+        <div style="font-family:'Noto Sans',sans-serif;font-size:0.55rem;color:var(--ink4);text-align:center;letter-spacing:0.08em">${s.l}</div>
+        <div style="font-family:'Poppins',sans-serif;font-weight:700;color:var(--away)">${s.a}</div>
       </div>`).join('');
   }
 
@@ -5622,19 +5664,19 @@ function renderSoccerBettingOpps(hA, aA, minute, state){
       <div style="font-size:16px">${o.icon}</div>
       <div>
         <div style="font-size:11px;font-weight:600;color:var(--ink);line-height:1.3;margin-bottom:2px">${o.desc}</div>
-        <div style="font-family:'Syne Mono',monospace;font-size:8px;color:var(--ink4)">${o.meta}</div>
+        <div style="font-family:'Noto Sans',sans-serif;font-size:8px;color:var(--ink4)">${o.meta}</div>
         <div style="height:3px;background:var(--surface);border-radius:2px;overflow:hidden;margin-top:4px">
           <div style="height:100%;background:${hc};width:${pct}%;border-radius:2px"></div>
         </div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:52px">
-        <div style="font-family:'Unbounded',sans-serif;font-weight:900;font-size:18px;color:${hc}">${pct}%</div>
-        <span style="font-family:'Syne Mono',monospace;font-size:7px;padding:1px 5px;border-radius:4px;
+        <div style="font-family:'Poppins',sans-serif;font-weight:900;font-size:18px;color:${hc}">${pct}%</div>
+        <span style="font-family:'Noto Sans',sans-serif;font-size:7px;padding:1px 5px;border-radius:4px;
           background:${hbg};color:${hc};font-weight:700;border:1px solid ${hc}44">
           ${o.heat==='hot'?'🔥 ALTA':'⚡ MEDIA'}
         </span>
         <button onclick="openBetFlow('${o.desc}','total_game')"
-          style="font-family:'Syne Mono',monospace;font-size:7px;padding:2px 6px;border-radius:4px;
+          style="font-family:'Noto Sans',sans-serif;font-size:7px;padding:2px 6px;border-radius:4px;
           border:1px solid var(--border2);background:transparent;color:var(--ink4);cursor:pointer">
           + Apostar
         </button>
