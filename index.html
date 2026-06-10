@@ -670,6 +670,7 @@ header{position:sticky;top:0;z-index:100;background:var(--brand-d);padding:0 1.5
 .oas-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
 .oas-dot.live{background:var(--green);animation:blink 1s ease-in-out infinite}
 .oas-dot.off{background:var(--ink4)}
+.oas-dot.demo{background:var(--amber);animation:blink 1s ease-in-out infinite}
 .oas-txt{font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:var(--ink4);letter-spacing:0.08em}
 #odds-api-card{flex:1 1 100%}
 
@@ -4863,9 +4864,7 @@ async function fetchOddsAPI() {
     const game = findGameInOdds(data, hAbv, aAbv);
 
     if (!game) {
-      dot.className   = 'oas-dot off';
-      txt.textContent = `Sin odds para ${hAbv} vs ${aAbv} (${data.length} partidos en API)`;
-      container.innerHTML = `<div style="font-family:'Noto Sans',sans-serif;font-size:0.65rem;color:var(--ink4);text-align:center;padding:1rem 0">No se encontró el partido. Puede que aún no tenga líneas activas.</div>`;
+      showDemoOdds(dot, txt, container, hAbv, aAbv, `Sin odds para ${hAbv} vs ${aAbv} (${data.length} partidos en API)`);
       return;
     }
 
@@ -4874,54 +4873,71 @@ async function fetchOddsAPI() {
     renderOddsAPILines(game);
 
   } catch (err) {
-    dot.className   = 'oas-dot off';
-    txt.textContent = 'Error al conectar';
-    container.innerHTML = `<div style="font-family:'Noto Sans',sans-serif;font-size:0.65rem;color:var(--red);text-align:center;padding:1rem 0">Error: ${err.message}</div>`;
+    showDemoOdds(dot, txt, container, hAbv, aAbv, err.message);
   }
 }
 
-async function fetchOddsAPI(){
-  const dot = document.getElementById('oas-dot');
-  const txt = document.getElementById('oas-txt');
-  const container = document.getElementById('odds-api-lines');
-  if(!dot||!txt||!container) return;
 
-  const hAbv = document.getElementById('home-abbr')?.textContent || '';
-  const aAbv = document.getElementById('away-abbr')?.textContent || '';
+function showDemoOdds(dot, txt, container, hAbv, aAbv, reason){
+  dot.className   = 'oas-dot demo';
+  txt.textContent = `🎮 DEMO — ${reason}`;
+  const game = getDemoOddsGame(hAbv, aAbv);
+  renderOddsAPILines(game);
+}
 
-  txt.textContent = 'Conectando con The Odds API…';
-  dot.className = 'oas-dot';
+function getDemoOddsGame(hAbv, aAbv){
+  const homeName = oddsHomeFullName || ABV_TO_ODDS_NAME[hAbv] || hAbv || 'Local';
+  const awayName = oddsAwayFullName || ABV_TO_ODDS_NAME[aAbv] || aAbv || 'Visitante';
 
-  try{
-    const sport = ODDS_SPORTS[currentLeague] || 'basketball_nba';
-    const url = `https://api.the-odds-api.com/v4/sports/${sport}/odds/?apiKey=${ODDS_API_KEY}&regions=us&markets=totals,spreads&oddsFormat=decimal`;
-    const r = await fetch(url);
-    if(!r.ok) throw new Error(`HTTP ${r.status}`);
-    const data = await r.json();
+  const proj = (typeof projectTotal === 'function') ? projectTotal() : null;
+  const baseTotal = proj ? (proj.find(t=>t.pct===50)||proj[proj.length-1])?.pts : 224.5;
+  const total = Math.round((baseTotal || 224.5) * 2) / 2;
 
-    // Find matching game
-    const game = data.find(g => {
-      const teams = (g.home_team + ' ' + g.away_team).toLowerCase();
-      return teams.includes(hAbv.toLowerCase()) || teams.includes(aAbv.toLowerCase());
-    });
+  const spreadHome = Math.round((Math.random()*7 - 3.5) * 2) / 2;
 
-    if(!game){
-      txt.textContent = `Sin odds disponibles para ${hAbv} vs ${aAbv}`;
-      container.innerHTML = `<div style="font-family:'Noto Sans',sans-serif;font-size:0.65rem;color:var(--ink4);text-align:center;padding:1rem 0">No se encontró el partido en las odds disponibles. El partido puede no tener líneas activas.</div>`;
-      return;
-    }
-
-    dot.className = 'oas-dot live';
-    txt.textContent = `${data.length} partidos encontrados · ${game.bookmakers?.length||0} casas para este juego`;
-
-    // Render comparison
-    renderOddsAPILines(game);
-
-  }catch(err){
-    dot.className = 'oas-dot off';
-    txt.textContent = 'Error al conectar — verifica la key o la red';
-    container.innerHTML = `<div style="font-family:'Noto Sans',sans-serif;font-size:0.65rem;color:var(--red);text-align:center;padding:1rem 0">Error: ${err.message}</div>`;
+  function mlFromSpread(s){
+    const fav = -110 - Math.round(Math.abs(s)*22);
+    const dog =  100 + Math.round(Math.abs(s)*24);
+    return s <= 0 ? [fav, dog] : [dog, fav];
   }
+  const [mlHome, mlAway] = mlFromSpread(spreadHome);
+  function jitter(v, amt){ return Math.round((v + (Math.random()*amt - amt/2))*2)/2; }
+
+  const now = new Date().toISOString();
+  const bookDefs = [
+    {key:'draftkings', title:'DraftKings'},
+    {key:'fanduel',    title:'FanDuel'},
+    {key:'betmgm',     title:'BetMGM'},
+    {key:'caesars',    title:'Caesars'},
+  ];
+
+  const bookmakers = bookDefs.map(b => ({
+    key: b.key,
+    title: b.title,
+    last_update: now,
+    markets: [
+      { key:'h2h', last_update: now, outcomes: [
+        { name: homeName, price: mlHome + Math.round(Math.random()*10-5) },
+        { name: awayName, price: mlAway + Math.round(Math.random()*10-5) },
+      ]},
+      { key:'spreads', last_update: now, outcomes: [
+        { name: homeName, price:-110, point: jitter(spreadHome, 1) },
+        { name: awayName, price:-110, point: jitter(-spreadHome, 1) },
+      ]},
+      { key:'totals', last_update: now, outcomes: [
+        { name:'Over',  price:-110, point: jitter(total, 1) },
+        { name:'Under', price:-110, point: jitter(total, 1) },
+      ]},
+    ]
+  }));
+
+  return {
+    id: 'demo-game',
+    sport_key: ODDS_SPORTS[currentLeague] || 'basketball_nba',
+    home_team: homeName,
+    away_team: awayName,
+    bookmakers,
+  };
 }
 
 function renderOddsAPILines(game){
