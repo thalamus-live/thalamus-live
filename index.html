@@ -148,6 +148,35 @@ header{position:sticky;top:0;z-index:100;background:var(--brand-d);padding:0 1.5
 .scc-time.timeout{color:#ff9090}
 .scc-sep{font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:rgba(255,255,255,0.25)}
 .scc-period{font-family:'Noto Sans',sans-serif;font-size:0.68rem;letter-spacing:0.1em;color:rgba(255,255,255,0.45)}
+.clock-sync-btn{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:5px;
+  width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:0.65rem;
+  cursor:pointer;transition:all 0.15s;flex-shrink:0;color:rgba(255,255,255,0.5);padding:0}
+.clock-sync-btn:hover{background:rgba(255,255,255,0.18);color:#fff}
+/* Clock sync modal */
+.clock-sync-modal{display:none;position:fixed;inset:0;z-index:600;background:rgba(26,23,20,0.55);
+  backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:1rem}
+.clock-sync-modal.show{display:flex}
+.csm-box{background:var(--card);border-radius:14px;padding:1.4rem 1.5rem;width:100%;max-width:340px;
+  box-shadow:0 12px 48px rgba(26,23,20,0.25)}
+.csm-title{font-family:'Poppins',sans-serif;font-size:0.85rem;font-weight:700;color:var(--ink);margin-bottom:0.3rem}
+.csm-sub{font-size:0.78rem;color:var(--ink3);margin-bottom:1.1rem;line-height:1.4}
+.csm-row{display:flex;align-items:center;gap:0.6rem;margin-bottom:1rem}
+.csm-input{flex:1;padding:0.6rem 0.8rem;border:1.5px solid var(--border2);border-radius:8px;
+  font-family:'Poppins',sans-serif;font-size:1.4rem;font-weight:700;color:var(--ink);
+  background:var(--card2);outline:none;text-align:center;transition:border-color 0.2s}
+.csm-input:focus{border-color:var(--brand)}
+.csm-sep{font-family:'Poppins',sans-serif;font-size:1.4rem;font-weight:700;color:var(--ink4)}
+.csm-quarter-row{display:flex;gap:0.4rem;margin-bottom:1.1rem;flex-wrap:wrap}
+.csm-q-btn{flex:1;min-width:50px;padding:0.4rem;border:1.5px solid var(--border2);border-radius:7px;
+  background:var(--card2);font-family:'Poppins',sans-serif;font-size:0.7rem;font-weight:600;
+  color:var(--ink3);cursor:pointer;transition:all 0.15s}
+.csm-q-btn.active{border-color:var(--brand);background:var(--green-bg);color:var(--brand-d)}
+.csm-btns{display:flex;gap:0.6rem}
+.csm-btn{flex:1;padding:0.65rem 1rem;border-radius:9px;border:none;font-family:'Poppins',sans-serif;
+  font-size:0.8rem;font-weight:700;cursor:pointer;transition:all 0.15s}
+.csm-btn-cancel{background:var(--surface);color:var(--ink3)}
+.csm-btn-save{background:var(--brand-d);color:#fff}
+.csm-btn-save:hover{background:var(--brand)}
 .scc-state{display:flex;align-items:center;gap:0.3rem;font-family:'Noto Sans',sans-serif;font-size:0.55rem;letter-spacing:0.08em;padding:0.15rem 0.6rem;border-radius:100px;transition:all 0.3s}
 .scc-state.running{background:rgba(26,122,74,0.2);border:1px solid rgba(94,232,160,0.3);color:#5ee8a0}
 .scc-state.stopped{background:rgba(184,98,10,0.2);border:1px solid rgba(247,192,122,0.3);color:#f7c07a}
@@ -1165,6 +1194,7 @@ header{position:sticky;top:0;z-index:100;background:var(--brand-d);padding:0 1.5
       <div class="scc-time running" id="gc-time">—:——</div>
       <div class="scc-sep">·</div>
       <div class="scc-period" id="gc-quarter">—</div>
+      <button class="clock-sync-btn" id="clock-sync-btn" onclick="openClockSync()" title="Sincronizar reloj manualmente">✏️</button>
     </div>
     <div class="scc-state pre" id="gc-state-pill">
       <div class="scc-dot pre" id="gc-dot"></div>
@@ -1746,6 +1776,30 @@ header{position:sticky;top:0;z-index:100;background:var(--brand-d);padding:0 1.5
   </div>
 
 </div>
+<!-- ═══════════ CLOCK SYNC MODAL ═══════════ -->
+<div class="clock-sync-modal" id="clock-sync-modal">
+  <div class="csm-box">
+    <div class="csm-title">Sincronizar reloj</div>
+    <div class="csm-sub">ESPN puede tener un retraso de 30-90s. Escribe el tiempo que ves en la transmisión en vivo para corregir el reloj local.</div>
+    <div class="csm-row">
+      <input class="csm-input" id="csm-min" type="number" min="0" max="20" placeholder="9" inputmode="numeric">
+      <div class="csm-sep">:</div>
+      <input class="csm-input" id="csm-sec" type="number" min="0" max="59" placeholder="55" inputmode="numeric">
+    </div>
+    <div class="csm-quarter-row" id="csm-quarter-row">
+      <button class="csm-q-btn" data-q="1" onclick="csmSelectQ(1)">Q1</button>
+      <button class="csm-q-btn" data-q="2" onclick="csmSelectQ(2)">Q2</button>
+      <button class="csm-q-btn" data-q="3" onclick="csmSelectQ(3)">Q3</button>
+      <button class="csm-q-btn" data-q="4" onclick="csmSelectQ(4)">Q4</button>
+      <button class="csm-q-btn" data-q="5" onclick="csmSelectQ(5)">OT</button>
+    </div>
+    <div class="csm-btns">
+      <button class="csm-btn csm-btn-cancel" onclick="closeClockSync()">Cancelar</button>
+      <button class="csm-btn csm-btn-save" onclick="saveClockSync()">✓ Sincronizar</button>
+    </div>
+  </div>
+</div>
+
 <div class="bet-flow-modal" id="bet-flow-modal">
   <div class="bfm-sheet">
     <div class="bfm-handle"></div>
@@ -3125,7 +3179,7 @@ function renderProjections(){
 // Auto-refresh timer — no button needed
 let liveRefreshTimer = null;
 let refreshProgressTimer = null;
-const LIVE_REFRESH_MS = 8000;
+const LIVE_REFRESH_MS = 4000;
 const PRE_REFRESH_MS  = 30000;
 
 function startLiveRefresh(){
@@ -4048,7 +4102,75 @@ let clockState = {
   lastRefreshTime: 0,
 };
 
+// ═══════════════════════════════════════════════════════
+// MANUAL CLOCK SYNC
+// Permite corregir el reloj local cuando ESPN va retrasado
+// ═══════════════════════════════════════════════════════
+let csmSelectedQ = null;
+
+function openClockSync(){
+  const modal = document.getElementById('clock-sync-modal');
+  if(!modal) return;
+  // Pre-fill with current displayed values
+  const cur = clockState.secsLeft;
+  document.getElementById('csm-min').value = Math.floor(cur/60);
+  document.getElementById('csm-sec').value = String(Math.floor(cur%60)).padStart(2,'0');
+  csmSelectedQ = clockState.quarter || 1;
+  document.querySelectorAll('.csm-q-btn').forEach(b=>{
+    b.classList.toggle('active', parseInt(b.dataset.q)===csmSelectedQ);
+  });
+  modal.classList.add('show');
+  document.getElementById('csm-min')?.focus();
+}
+
+function closeClockSync(){
+  document.getElementById('clock-sync-modal')?.classList.remove('show');
+}
+
+function csmSelectQ(q){
+  csmSelectedQ = q;
+  document.querySelectorAll('.csm-q-btn').forEach(b=>{
+    b.classList.toggle('active', parseInt(b.dataset.q)===q);
+  });
+}
+
+function saveClockSync(){
+  let mins = parseInt(document.getElementById('csm-min')?.value);
+  let secs = parseInt(document.getElementById('csm-sec')?.value);
+  if(isNaN(mins)) mins = 0;
+  if(isNaN(secs)) secs = 0;
+  const totalSecs = Math.max(0, mins*60 + secs);
+  const q = csmSelectedQ || clockState.quarter || 1;
+
+  // Force-set the clock state, bypassing the smooth-sync guard
+  clockState.quarter = q;
+  clockState.secsLeft = totalSecs;
+  clockState.gameState = totalSecs > 0 ? 'running' : 'stopped';
+  clockState.clockRunning = totalSecs > 0;
+  clockState.lastRefreshTime = Date.now();
+  clockState.manualSyncUntil = Date.now() + 30000; // 30s grace period
+
+  startClockTick();
+  renderGameClock();
+  closeClockSync();
+}
+
 function updateGameClock(quarter, secsLeft, state, desc, homeTO, awayTO){
+  // ── MANUAL SYNC GRACE PERIOD: if the user just manually corrected
+  // the clock, ignore ESPN's (likely stale) data for 30s and keep
+  // counting down from the local estimate.
+  if(clockState.manualSyncUntil && Date.now() < clockState.manualSyncUntil){
+    const elapsed = (Date.now() - clockState.lastRefreshTime) / 1000;
+    const localEstimate = Math.max(0, clockState.secsLeft - elapsed);
+    if(homeTO !== undefined) clockState.homeTimeouts = homeTO;
+    if(awayTO !== undefined) clockState.awayTimeouts = awayTO;
+    clockState.secsLeft = localEstimate;
+    clockState.lastRefreshTime = Date.now();
+    startClockTick();
+    renderGameClock();
+    return;
+  }
+
   // ── OT FIX: overtime periods in basketball are always 5 minutes
   // (300s), regardless of regulation quarter length. ESPN sometimes
   // reports clock values that exceed this for OT — clamp them.
