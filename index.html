@@ -670,7 +670,6 @@ header{position:sticky;top:0;z-index:100;background:var(--brand-d);padding:0 1.5
 .oas-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
 .oas-dot.live{background:var(--green);animation:blink 1s ease-in-out infinite}
 .oas-dot.off{background:var(--ink4)}
-.oas-dot.demo{background:var(--amber);animation:blink 1s ease-in-out infinite}
 .oas-txt{font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:var(--ink4);letter-spacing:0.08em}
 #odds-api-card{flex:1 1 100%}
 
@@ -1116,11 +1115,6 @@ header{position:sticky;top:0;z-index:100;background:var(--brand-d);padding:0 1.5
       <span style="font-family:'Noto Sans',sans-serif;font-size:0.52rem;color:rgba(255,255,255,0.25);letter-spacing:0.1em;padding:0 4px;align-self:center">⚽</span>
       <button class="ltab"        id="lt-fifa_world"  onclick="switchLeague('fifa_world')" style="background:rgba(212,175,55,0.15);color:#d4af37">Mundial</button>
       <button class="ltab"        id="lt-mls"         onclick="switchLeague('mls')">MLS</button>
-      <button class="ltab"        id="lt-epl"        onclick="switchLeague('epl')">Premier</button>
-      <button class="ltab"        id="lt-laliga"     onclick="switchLeague('laliga')">La Liga</button>
-      <button class="ltab"        id="lt-seriea"     onclick="switchLeague('seriea')">Serie A</button>
-      <button class="ltab"        id="lt-bundesliga" onclick="switchLeague('bundesliga')">Bundesliga</button>
-      <button class="ltab"        id="lt-ucl"        onclick="switchLeague('ucl')" style="background:rgba(14,30,91,0.15);color:#3a5cff">Champions</button>
     </div>
     <div class="hclock" id="hclock">—</div>
     <button class="hbtn hbtn-ghost" onclick="loadGames()">↻</button>
@@ -1811,11 +1805,6 @@ const LEAGUES={
   // ── SOCCER ──
   fifa_world:{ base:'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world',                 label:'Mundial 2026',color:'#d4af37',qSecs:2700, toMax:0, leagueAvg:2.6, sport:'soccer' },
   mls:      { base:'https://site.api.espn.com/apis/site/v2/sports/soccer/usa.1',                       label:'MLS',        color:'#e51837', qSecs:2700, toMax:0, leagueAvg:2.8, sport:'soccer' },
-  epl:       { base:'https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1',              label:'Premier League', color:'#3d195b', qSecs:2700, toMax:0, leagueAvg:2.8, sport:'soccer' },
-  laliga:    { base:'https://site.api.espn.com/apis/site/v2/sports/soccer/esp.1',              label:'La Liga',        color:'#ee8707', qSecs:2700, toMax:0, leagueAvg:2.6, sport:'soccer' },
-  seriea:    { base:'https://site.api.espn.com/apis/site/v2/sports/soccer/ita.1',              label:'Serie A',        color:'#024494', qSecs:2700, toMax:0, leagueAvg:2.7, sport:'soccer' },
-  bundesliga:{ base:'https://site.api.espn.com/apis/site/v2/sports/soccer/ger.1',              label:'Bundesliga',     color:'#d20515', qSecs:2700, toMax:0, leagueAvg:3.1, sport:'soccer' },
-  ucl:       { base:'https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.champions',     label:'Champions League',color:'#0e1e5b',qSecs:2700, toMax:0, leagueAvg:2.9, sport:'soccer' },
 };
 let currentLeague='nba';
 let ESPN=LEAGUES.nba.base;
@@ -1850,11 +1839,6 @@ function switchLeague(league){
     nbl:       {home:'#00843d', away:'#1a3a6b'},
     fifa_world:{home:'#1a5276', away:'#7d6608'},
     mls:       {home:'#e51837', away:'#1a3a6b'},
-    epl:       {home:'#3d195b', away:'#00ff85'},
-    laliga:    {home:'#ee8707', away:'#1a3a6b'},
-    seriea:    {home:'#024494', away:'#008c45'},
-    bundesliga:{home:'#d20515', away:'#1a1a1a'},
-    ucl:       {home:'#0e1e5b', away:'#3a5cff'},
   };
   const c = colors[league] || colors.nba;
   document.documentElement.style.setProperty('--home', c.home);
@@ -1994,10 +1978,8 @@ function showUpcoming(g){
   const timeStr=gameDate.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
   const dateStr=gameDate.toLocaleDateString('es-PE',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
 
-  setText('home-abbr',hA);setText('away-abbr',aA);
+  setText('home-abbr',hA); setText('away-abbr',aA);
   setText('home-full',home.team.displayName||'');
-  oddsHomeFullName = home.team.displayName || '';
-  oddsAwayFullName = away.team.displayName || '';
   setText('away-full',away.team.displayName||'');
   setText('home-rec',(home.record?.[0]?.summary||'—')+' · Casa');
   setText('away-rec',(away.record?.[0]?.summary||'—')+' · Visita');
@@ -2038,9 +2020,7 @@ function parseGame(d){
   const status=comp.status,state=status.type.state,period=status.period||0;
 
   setText('home-abbr',hA);setText('away-abbr',aA);
-  oddsHomeFullName = home.team.displayName || '';
-  oddsAwayFullName = away.team.displayName || '';
-  setText('away-full',away.team.displayName||'');
+  setText('home-full',home.team.displayName||'');setText('away-full',away.team.displayName||'');
   setText('home-rec',(home.record?.[0]?.summary||'—')+' · Casa');
   setText('away-rec',(away.record?.[0]?.summary||'—')+' · Visita');
   if(home.team.logo){document.getElementById('home-logo').src=home.team.logo;document.getElementById('home-logo').style.display='';}
@@ -4069,6 +4049,40 @@ let clockState = {
 };
 
 function updateGameClock(quarter, secsLeft, state, desc, homeTO, awayTO){
+  // ── GUARD: prevent clock from jumping backward due to flaky/cached
+  // ESPN responses. The clock only counts DOWN within a quarter.
+  // Allow updates only if: quarter advanced, state changed to a
+  // "stopped" state (post/halftime/end-of-quarter), or new time
+  // is <= previous time (normal countdown) with small tolerance.
+  const prevQ = clockState.quarter;
+  const prevSecs = clockState.secsLeft;
+  const prevState = clockState.gameState;
+  const TOLERANCE = 3; // seconds — allow tiny upward jitter from polling drift
+
+  const descLowCheck = (desc || '').toLowerCase();
+  const isStoppedNow = state === 'post' ||
+    descLowCheck.includes('end of') || descLowCheck.includes('final del') ||
+    descLowCheck.includes('halftime') || descLowCheck.includes('medio tiempo') ||
+    descLowCheck.includes('half') || descLowCheck.includes('timeout') ||
+    descLowCheck.includes('tiempo') || descLowCheck.includes('t.o.');
+
+  if(prevQ > 0 && quarter === prevQ && state === 'in' && prevState === 'running'){
+    // Same quarter, both "in progress" — reject backward jumps
+    if(secsLeft > prevSecs + TOLERANCE){
+      // Stale/duplicate response showing more time than before — ignore
+      quarter  = prevQ;
+      secsLeft = prevSecs;
+      state    = 'in';
+      desc     = clockState.lastDesc;
+    }
+  } else if(quarter < prevQ && !isStoppedNow){
+    // Quarter went backward without a legit reason — ignore entirely
+    quarter  = prevQ;
+    secsLeft = prevSecs;
+    state    = prevState === 'running' ? 'in' : prevState;
+    desc     = clockState.lastDesc;
+  }
+
   clockState.quarter   = quarter;
   clockState.secsLeft  = secsLeft;
   clockState.gameState = state;
@@ -4798,161 +4812,59 @@ function sbCalcTriangle(){
 // ═══════════════════════════════════════════════════════
 // A — THE ODDS API INTEGRATION
 // ═══════════════════════════════════════════════════════
+const ODDS_API_KEY = 'b73aa8ac1b74b35c9a14c7f27bf2df8f';
 const ODDS_SPORTS = {
-  nba:        'basketball_nba',
-  wnba:       'basketball_wnba',
-  euroleague: 'basketball_euroleague',
-  ncaamb:     'basketball_ncaab',
-  ncaawb:     'basketball_ncaawb',
-  acb:        'basketball_spain_acb',
-  nbl:        'basketball_australia',
+  nba:       'basketball_nba',
+  wnba:      'basketball_wnba',
+  euroleague:'basketball_euroleague',
+  ncaamb:    'basketball_ncaab',
+  ncaawb:    'basketball_ncaawb',
+  acb:       'basketball_spain_acb',
+  nbl:       'basketball_australia',
 };
 
-let oddsHomeFullName = '';
-let oddsAwayFullName = '';
-
-const ABV_TO_ODDS_NAME = {
-  ATL:'Atlanta Hawks', BOS:'Boston Celtics', BKN:'Brooklyn Nets',
-  CHA:'Charlotte Hornets', CHI:'Chicago Bulls', CLE:'Cleveland Cavaliers',
-  DAL:'Dallas Mavericks', DEN:'Denver Nuggets', DET:'Detroit Pistons',
-  GSW:'Golden State Warriors', HOU:'Houston Rockets', IND:'Indiana Pacers',
-  LAC:'LA Clippers', LAL:'Los Angeles Lakers', MEM:'Memphis Grizzlies',
-  MIA:'Miami Heat', MIL:'Milwaukee Bucks', MIN:'Minnesota Timberwolves',
-  NOP:'New Orleans Pelicans', NYK:'New York Knicks', OKC:'Oklahoma City Thunder',
-  ORL:'Orlando Magic', PHI:'Philadelphia 76ers', PHX:'Phoenix Suns',
-  POR:'Portland Trail Blazers', SAC:'Sacramento Kings', SAS:'San Antonio Spurs',
-  TOR:'Toronto Raptors', UTA:'Utah Jazz', WAS:'Washington Wizards',
-  NY:'New York Liberty', LVA:'Las Vegas Aces', SEA:'Seattle Storm',
-  CON:'Connecticut Sun', CHI:'Chicago Sky', LA:'Los Angeles Sparks',
-  MIN:'Minnesota Lynx', PHX:'Phoenix Mercury', DAL:'Dallas Wings',
-  IND:'Indiana Fever', WAS:'Washington Mystics',
-};
-
-function findGameInOdds(data, hAbv, aAbv) {
-  const hFull = (oddsHomeFullName || '').toLowerCase();
-  const aFull = (oddsAwayFullName || '').toLowerCase();
-  const hMap  = (ABV_TO_ODDS_NAME[hAbv] || hAbv).toLowerCase();
-  const aMap  = (ABV_TO_ODDS_NAME[aAbv] || aAbv).toLowerCase();
-
-  function score(g) {
-    const ht = g.home_team.toLowerCase();
-    const at = g.away_team.toLowerCase();
-    let pts = 0;
-    if (hFull && ht.includes(hFull)) pts += 4;
-    if (hFull && at.includes(hFull)) pts += 4;
-    if (aFull && at.includes(aFull)) pts += 4;
-    if (aFull && ht.includes(aFull)) pts += 4;
-    const hLast = hFull.split(' ').pop();
-    const aLast = aFull.split(' ').pop();
-    if (hLast && hLast.length > 2 && (ht.includes(hLast) || at.includes(hLast))) pts += 2;
-    if (aLast && aLast.length > 2 && (at.includes(aLast) || ht.includes(aLast))) pts += 2;
-    if (ht.includes(hMap) || at.includes(hMap)) pts += 2;
-    if (at.includes(aMap) || ht.includes(aMap)) pts += 2;
-    return pts;
-  }
-
-  return data.map(g => ({ g, s: score(g) }))
-             .filter(x => x.s > 0)
-             .sort((a, b) => b.s - a.s)[0]?.g || null;
-}
-
-async function fetchOddsAPI() {
-  const dot       = document.getElementById('oas-dot');
-  const txt       = document.getElementById('oas-txt');
+async function fetchOddsAPI(){
+  const dot = document.getElementById('oas-dot');
+  const txt = document.getElementById('oas-txt');
   const container = document.getElementById('odds-api-lines');
-  if (!dot || !txt || !container) return;
+  if(!dot||!txt||!container) return;
 
-  const hAbv = document.getElementById('home-abbr')?.textContent?.trim() || '';
-  const aAbv = document.getElementById('away-abbr')?.textContent?.trim() || '';
+  const hAbv = document.getElementById('home-abbr')?.textContent || '';
+  const aAbv = document.getElementById('away-abbr')?.textContent || '';
 
   txt.textContent = 'Conectando con The Odds API…';
-  dot.className   = 'oas-dot';
+  dot.className = 'oas-dot';
 
-  try {
+  try{
     const sport = ODDS_SPORTS[currentLeague] || 'basketball_nba';
-    const url   = `/api/odds?sport=${sport}&regions=us&markets=h2h,totals,spreads&oddsFormat=decimal`;
-    const r     = await fetch(url);
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const url = `https://api.the-odds-api.com/v4/sports/${sport}/odds/?apiKey=${ODDS_API_KEY}&regions=us&markets=totals,spreads&oddsFormat=decimal`;
+    const r = await fetch(url);
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
     const data = await r.json();
-    if (data.error) throw new Error(data.error);
 
-    const game = findGameInOdds(data, hAbv, aAbv);
+    // Find matching game
+    const game = data.find(g => {
+      const teams = (g.home_team + ' ' + g.away_team).toLowerCase();
+      return teams.includes(hAbv.toLowerCase()) || teams.includes(aAbv.toLowerCase());
+    });
 
-    if (!game) {
-      showDemoOdds(dot, txt, container, hAbv, aAbv, `Sin odds para ${hAbv} vs ${aAbv} (${data.length} partidos en API)`);
+    if(!game){
+      txt.textContent = `Sin odds disponibles para ${hAbv} vs ${aAbv}`;
+      container.innerHTML = `<div style="font-family:'Noto Sans',sans-serif;font-size:0.65rem;color:var(--ink4);text-align:center;padding:1rem 0">No se encontró el partido en las odds disponibles. El partido puede no tener líneas activas.</div>`;
       return;
     }
 
-    dot.className   = 'oas-dot live';
-    txt.textContent = `${data.length} partidos · ${game.bookmakers?.length || 0} casas · ${game.home_team} vs ${game.away_team}`;
+    dot.className = 'oas-dot live';
+    txt.textContent = `${data.length} partidos encontrados · ${game.bookmakers?.length||0} casas para este juego`;
+
+    // Render comparison
     renderOddsAPILines(game);
 
-  } catch (err) {
-    showDemoOdds(dot, txt, container, hAbv, aAbv, err.message);
+  }catch(err){
+    dot.className = 'oas-dot off';
+    txt.textContent = 'Error al conectar — verifica la key o la red';
+    container.innerHTML = `<div style="font-family:'Noto Sans',sans-serif;font-size:0.65rem;color:var(--red);text-align:center;padding:1rem 0">Error: ${err.message}</div>`;
   }
-}
-
-
-function showDemoOdds(dot, txt, container, hAbv, aAbv, reason){
-  dot.className   = 'oas-dot demo';
-  txt.textContent = `🎮 DEMO — ${reason}`;
-  const game = getDemoOddsGame(hAbv, aAbv);
-  renderOddsAPILines(game);
-}
-
-function getDemoOddsGame(hAbv, aAbv){
-  const homeName = oddsHomeFullName || ABV_TO_ODDS_NAME[hAbv] || hAbv || 'Local';
-  const awayName = oddsAwayFullName || ABV_TO_ODDS_NAME[aAbv] || aAbv || 'Visitante';
-
-  const proj = (typeof projectTotal === 'function') ? projectTotal() : null;
-  const baseTotal = proj ? (proj.find(t=>t.pct===50)||proj[proj.length-1])?.pts : 224.5;
-  const total = Math.round((baseTotal || 224.5) * 2) / 2;
-
-  const spreadHome = Math.round((Math.random()*7 - 3.5) * 2) / 2;
-
-  function mlFromSpread(s){
-    const fav = -110 - Math.round(Math.abs(s)*22);
-    const dog =  100 + Math.round(Math.abs(s)*24);
-    return s <= 0 ? [fav, dog] : [dog, fav];
-  }
-  const [mlHome, mlAway] = mlFromSpread(spreadHome);
-  function jitter(v, amt){ return Math.round((v + (Math.random()*amt - amt/2))*2)/2; }
-
-  const now = new Date().toISOString();
-  const bookDefs = [
-    {key:'draftkings', title:'DraftKings'},
-    {key:'fanduel',    title:'FanDuel'},
-    {key:'betmgm',     title:'BetMGM'},
-    {key:'caesars',    title:'Caesars'},
-  ];
-
-  const bookmakers = bookDefs.map(b => ({
-    key: b.key,
-    title: b.title,
-    last_update: now,
-    markets: [
-      { key:'h2h', last_update: now, outcomes: [
-        { name: homeName, price: mlHome + Math.round(Math.random()*10-5) },
-        { name: awayName, price: mlAway + Math.round(Math.random()*10-5) },
-      ]},
-      { key:'spreads', last_update: now, outcomes: [
-        { name: homeName, price:-110, point: jitter(spreadHome, 1) },
-        { name: awayName, price:-110, point: jitter(-spreadHome, 1) },
-      ]},
-      { key:'totals', last_update: now, outcomes: [
-        { name:'Over',  price:-110, point: jitter(total, 1) },
-        { name:'Under', price:-110, point: jitter(total, 1) },
-      ]},
-    ]
-  }));
-
-  return {
-    id: 'demo-game',
-    sport_key: ODDS_SPORTS[currentLeague] || 'basketball_nba',
-    home_team: homeName,
-    away_team: awayName,
-    bookmakers,
-  };
 }
 
 function renderOddsAPILines(game){
