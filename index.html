@@ -4056,15 +4056,23 @@ function updateGameClock(quarter, secsLeft, state, desc, homeTO, awayTO){
     secsLeft = 300;
   }
 
-  // ── GUARD: prevent clock from jumping backward due to flaky/cached
-  // ESPN responses. The clock only counts DOWN within a quarter.
-  // Allow updates only if: quarter advanced, state changed to a
-  // "stopped" state (post/halftime/end-of-quarter), or new time
-  // is <= previous time (normal countdown) with small tolerance.
+  // ── SMOOTH SYNC: ESPN's free API frequently lags 30-90s behind the
+  // real broadcast clock and often repeats the same "stale" clock
+  // value across several refreshes. If we naively overwrite our
+  // local countdown with that stale value every refresh, the
+  // displayed clock appears to freeze/jump back ("tiempo desigual").
+  //
+  // Strategy: compute what our LOCAL countdown currently shows
+  // (prevSecs - elapsed since last refresh). Only adopt the new
+  // ESPN value if it's genuinely LOWER than our local estimate
+  // (i.e. ESPN finally caught up / sent a real update) or the
+  // quarter/state changed. Otherwise keep counting down smoothly
+  // from our local estimate.
   const prevQ = clockState.quarter;
   const prevSecs = clockState.secsLeft;
   const prevState = clockState.gameState;
-  const TOLERANCE = 3; // seconds — allow tiny upward jitter from polling drift
+  const elapsedSinceRefresh = (Date.now() - clockState.lastRefreshTime) / 1000;
+  const localEstimate = Math.max(0, prevSecs - elapsedSinceRefresh);
 
   const descLowCheck = (desc || '').toLowerCase();
   const isStoppedNow = state === 'post' ||
@@ -4073,19 +4081,17 @@ function updateGameClock(quarter, secsLeft, state, desc, homeTO, awayTO){
     descLowCheck.includes('half') || descLowCheck.includes('timeout') ||
     descLowCheck.includes('tiempo') || descLowCheck.includes('t.o.');
 
-  if(prevQ > 0 && quarter === prevQ && state === 'in' && prevState === 'running'){
-    // Same quarter, both "in progress" — reject backward jumps
-    if(secsLeft > prevSecs + TOLERANCE){
-      // Stale/duplicate response showing more time than before — ignore
-      quarter  = prevQ;
-      secsLeft = prevSecs;
-      state    = 'in';
-      desc     = clockState.lastDesc;
+  if(prevQ > 0 && quarter === prevQ && state === 'in' && prevState === 'running' && !isStoppedNow){
+    // Same quarter, still running — adopt whichever is lower
+    // (genuinely fresher data from ESPN, or our smooth local estimate)
+    if(secsLeft >= localEstimate){
+      secsLeft = localEstimate;
     }
+    // else: ESPN sent a lower value than our estimate — trust it (real update)
   } else if(quarter < prevQ && !isStoppedNow){
     // Quarter went backward without a legit reason — ignore entirely
     quarter  = prevQ;
-    secsLeft = prevSecs;
+    secsLeft = localEstimate;
     state    = prevState === 'running' ? 'in' : prevState;
     desc     = clockState.lastDesc;
   }
