@@ -5107,13 +5107,24 @@ function renderOddsAPILines(game){
 
 // ═══════════════════════════════════════════════════════
 // PINNACLE / ODDSPAPI — comparación puntual (free tier 250/mes)
-// Solo se consulta manualmente, una vez por partido, para no
-// agotar la cuota gratuita de OddsPapi.
+// Flujo: sports -> tournaments -> odds-by-tournaments
+// Cachea sportId/tournamentId por liga para minimizar consultas.
 // ═══════════════════════════════════════════════════════
-const ODDSPAPI_SPORT_IDS = {
-  nba: 1, wnba: 1, ncaamb: 1, ncaawb: 1, euroleague: 1, acb: 1, nbl: 1, // basketball
-  fifa_world: 10, mls: 10, // soccer
+const ODDSPAPI_LEAGUE_NAMES = {
+  nba: 'NBA', wnba: 'WNBA', ncaamb: 'NCAA', ncaawb: 'NCAA',
+  euroleague: 'Euroleague', acb: 'ACB', nbl: 'NBL',
+  fifa_world: 'World Cup', mls: 'MLS',
 };
+
+async function oddspapiGet(path, apiKey, params={}){
+  const qs = new URLSearchParams({apiKey, ...params}).toString();
+  const r = await fetch(`https://api.oddspapi.io/v4/${path}?${qs}`);
+  if(!r.ok){
+    const txt = await r.text().catch(()=>'');
+    throw new Error(`HTTP ${r.status}${txt ? ' — ' + txt.slice(0,120) : ''}`);
+  }
+  return r.json();
+}
 
 async function fetchPinnacleOdds(){
   const result = document.getElementById('pinnacle-result');
@@ -5126,14 +5137,12 @@ async function fetchPinnacleOdds(){
     </div>`;
     return;
   }
-
-  // Save key for next time
   localStorage.setItem('thalamus_oddspapi_key', apiKey);
 
   const hAbv = document.getElementById('home-abbr')?.textContent || '';
   const aAbv = document.getElementById('away-abbr')?.textContent || '';
-  const hFull = document.getElementById('home-full')?.textContent || hAbv;
-  const aFull = document.getElementById('away-full')?.textContent || aAbv;
+  const hFull = (document.getElementById('home-full')?.textContent || hAbv).toLowerCase();
+  const aFull = (document.getElementById('away-full')?.textContent || aAbv).toLowerCase();
 
   if(!hAbv || hAbv === '—'){
     result.innerHTML = `<div style="font-family:'Noto Sans',sans-serif;font-size:0.7rem;color:var(--ink4);text-align:center;padding:0.5rem 0">Selecciona un partido primero</div>`;
@@ -5143,69 +5152,104 @@ async function fetchPinnacleOdds(){
   result.innerHTML = `<div style="font-family:'Noto Sans',sans-serif;font-size:0.7rem;color:var(--ink4);text-align:center;padding:0.5rem 0">Consultando Pinnacle vía OddsPapi…</div>`;
 
   try{
-    const sportId = ODDSPAPI_SPORT_IDS[currentLeague] || 1;
-    const url = `https://api.oddspapi.io/v4/odds?apiKey=${encodeURIComponent(apiKey)}&sportId=${sportId}&bookmaker=pinnacle`;
-    const r = await fetch(url);
-    if(!r.ok) throw new Error(`HTTP ${r.status}`);
-    const data = await r.json();
+    // ── Step 1: sportId (cached) ──
+    const sportLabel = isSoccer() ? 'soccer' : 'basketball';
+    const cacheKeySport = `oddspapi_sportid_${sportLabel}`;
+    let sportId = localStorage.getItem(cacheKeySport);
+    if(!sportId){
+      const sports = await oddspapiGet('sports', apiKey);
+      const list = Array.isArray(sports) ? sports : (sports.sports || sports.data || []);
+      const match = list.find(s => (s.sportName||s.name||'').toLowerCase().includes(sportLabel));
+      if(!match) throw new Error(`No se encontró el deporte "${sportLabel}" en OddsPapi`);
+      sportId = match.sportId ?? match.id;
+      localStorage.setItem(cacheKeySport, sportId);
+    }
 
-    // Find the matching fixture
-    const fixtures = Array.isArray(data) ? data : (data.fixtures || data.data || []);
-    const match = fixtures.find(f => {
-      const names = `${f.homeTeam||f.home||''} ${f.awayTeam||f.away||''}`.toLowerCase();
-      return names.includes(hAbv.toLowerCase()) || names.includes(hFull.toLowerCase().split(' ')[0]) ||
-             names.includes(aAbv.toLowerCase()) || names.includes(aFull.toLowerCase().split(' ')[0]);
+    // ── Step 2: tournamentId (cached per league) ──
+    const cacheKeyTourn = `oddspapi_tournid_${currentLeague}`;
+    let tournamentId = localStorage.getItem(cacheKeyTourn);
+    if(!tournamentId){
+      const tournaments = await oddspapiGet('tournaments', apiKey, {sportId});
+      const list = Array.isArray(tournaments) ? tournaments : (tournaments.tournaments || tournaments.data || []);
+      const wantName = (ODDSPAPI_LEAGUE_NAMES[currentLeague] || LEAGUES[currentLeague]?.label || '').toLowerCase();
+      const match = list.find(t => (t.tournamentName||t.name||'').toLowerCase().includes(wantName.toLowerCase()));
+      if(!match){
+        result.innerHTML = `<div style="font-family:'Noto Sans',sans-serif;font-size:0.7rem;color:var(--amber);text-align:center;padding:0.5rem 0">
+          OddsPapi no tiene un torneo llamado "${wantName}" para este deporte (${list.length} torneos disponibles).
+        </div>`;
+        return;
+      }
+      tournamentId = match.tournamentId ?? match.id;
+      localStorage.setItem(cacheKeyTourn, tournamentId);
+    }
+
+    // ── Step 3: odds-by-tournaments with Pinnacle ──
+    const fixtures = await oddspapiGet('odds-by-tournaments', apiKey, {bookmaker:'pinnacle', tournamentIds: tournamentId});
+    const list = Array.isArray(fixtures) ? fixtures : (fixtures.fixtures || fixtures.data || []);
+
+    const match = list.find(f => {
+      const p1 = (f.participant1Name||'').toLowerCase();
+      const p2 = (f.participant2Name||'').toLowerCase();
+      const names = `${p1} ${p2}`;
+      return names.includes(hAbv.toLowerCase()) || names.includes(aAbv.toLowerCase()) ||
+             (hFull && (p1.includes(hFull.split(' ').pop()) || p2.includes(hFull.split(' ').pop()))) ||
+             (aFull && (p1.includes(aFull.split(' ').pop()) || p2.includes(aFull.split(' ').pop())));
     });
 
     if(!match){
       result.innerHTML = `<div style="font-family:'Noto Sans',sans-serif;font-size:0.7rem;color:var(--amber);text-align:center;padding:0.5rem 0">
-        Pinnacle no tiene línea abierta para ${hAbv} vs ${aAbv} en este momento.
+        Pinnacle no tiene línea abierta para ${hAbv} vs ${aAbv} ahora mismo (${list.length} partidos en este torneo).
       </div>`;
       return;
     }
 
-    // Extract Pinnacle odds for moneyline + totals
-    const pinnacleOdds = match.bookmakerOdds?.pinnacle || match.odds?.pinnacle || {};
-    const markets = pinnacleOdds.markets || {};
+    // Determine which participant is home/away in OddsPapi's data
+    const p1IsHome = (match.participant1Name||'').toLowerCase().includes(hAbv.toLowerCase()) ||
+                     (hFull && (match.participant1Name||'').toLowerCase().includes(hFull.split(' ').pop()));
 
-    // Try to find moneyline (1x2 / h2h) and totals
-    let mlHome = null, mlAway = null, mlDraw = null, totalLine = null, totalOver = null, totalUnder = null;
+    const pinnacle = match.bookmakerOdds?.pinnacle || {};
+    const markets = pinnacle.markets || {};
+
+    // Extract moneyline (2-way: "home"/"away") and totals (over/under with point/line)
+    let mlHomePrice = null, mlAwayPrice = null;
+    let totalLine = null, totalOverPrice = null, totalUnderPrice = null;
+
     Object.values(markets).forEach(m => {
-      const mName = (m.name || m.marketName || '').toLowerCase();
       const outcomes = m.outcomes || {};
-      if(mName.includes('moneyline') || mName.includes('h2h') || mName.includes('1x2') || mName.includes('match winner')){
-        Object.values(outcomes).forEach(o => {
-          const oName = (o.name || '').toLowerCase();
-          if(oName.includes(hAbv.toLowerCase()) || oName.includes('home') || oName === '1') mlHome = o.price || o.odds;
-          else if(oName.includes(aAbv.toLowerCase()) || oName.includes('away') || oName === '2') mlAway = o.price || o.odds;
-          else if(oName.includes('draw') || oName === 'x') mlDraw = o.price || o.odds;
-        });
-      }
-      if(mName.includes('total') && totalLine === null){
-        Object.values(outcomes).forEach(o => {
-          const oName = (o.name || '').toLowerCase();
-          if(oName.includes('over')){ totalOver = o.price || o.odds; totalLine = o.point ?? o.line; }
-          if(oName.includes('under')){ totalUnder = o.price || o.odds; }
-        });
-      }
+      Object.values(outcomes).forEach(o => {
+        const p0 = o.players?.['0'];
+        if(!p0) return;
+        const oid = (p0.bookmakerOutcomeId || '').toLowerCase();
+        const price = p0.price;
+        const line = o.line ?? o.point ?? m.line ?? m.handicap;
+
+        if(oid === 'home' || oid === '1') mlHomePrice = mlHomePrice ?? price;
+        else if(oid === 'away' || oid === '2') mlAwayPrice = mlAwayPrice ?? price;
+        else if(oid.includes('over') && line !== undefined){ totalOverPrice = totalOverPrice ?? price; totalLine = totalLine ?? line; }
+        else if(oid.includes('under') && line !== undefined){ totalUnderPrice = totalUnderPrice ?? price; totalLine = totalLine ?? line; }
+      });
     });
 
-    // Compare with our model's win probabilities
+    // If participant order is reversed vs our home/away, swap
+    if(!p1IsHome && (mlHomePrice !== null || mlAwayPrice !== null)){
+      [mlHomePrice, mlAwayPrice] = [mlAwayPrice, mlHomePrice];
+    }
+
     const pbHome = parseFloat(document.getElementById('pn-home')?.textContent) || null;
     const pbAway = parseFloat(document.getElementById('pn-away')?.textContent) || null;
 
-    let html = `<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.6rem">
+    let html = `<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.6rem;flex-wrap:wrap">
       <span style="font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:var(--green);background:var(--green-bg);padding:0.15rem 0.5rem;border-radius:4px;font-weight:600">✓ PINNACLE</span>
-      <span style="font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:var(--ink4)">${hAbv} vs ${aAbv}</span>
+      <span style="font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:var(--ink4)">${match.participant1Name} vs ${match.participant2Name}</span>
     </div>`;
 
-    if(mlHome || mlAway){
-      const impliedHome = mlHome ? (1/mlHome*100) : null;
-      const impliedAway = mlAway ? (1/mlAway*100) : null;
+    if(mlHomePrice || mlAwayPrice){
+      const impliedHome = mlHomePrice ? (1/mlHomePrice*100) : null;
+      const impliedAway = mlAwayPrice ? (1/mlAwayPrice*100) : null;
       html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.6rem">
         ${[
-          {abv:hAbv, odd:mlHome, implied:impliedHome, modelP:pbHome, color:'var(--home)'},
-          {abv:aAbv, odd:mlAway, implied:impliedAway, modelP:pbAway, color:'var(--away)'}
+          {abv:hAbv, odd:mlHomePrice, implied:impliedHome, modelP:pbHome},
+          {abv:aAbv, odd:mlAwayPrice, implied:impliedAway, modelP:pbAway}
         ].map(t=>{
           const diff = (t.modelP!==null && t.implied!==null) ? (t.modelP - t.implied) : null;
           const diffColor = diff===null?'var(--ink4)':Math.abs(diff)>5?(diff>0?'var(--green)':'var(--red)'):'var(--ink4)';
@@ -5213,36 +5257,34 @@ async function fetchPinnacleOdds(){
             <div style="font-family:'Noto Sans',sans-serif;font-size:0.55rem;color:var(--ink4);letter-spacing:0.06em">${t.abv} · PINNACLE</div>
             <div style="font-family:'Poppins',sans-serif;font-size:1.2rem;font-weight:900;color:var(--ink)">${t.odd?.toFixed(2)||'—'}</div>
             <div style="font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:var(--ink3)">implícita: ${t.implied?.toFixed(1)||'—'}%</div>
-            ${t.modelP!==null ? `<div style="font-family:'Noto Sans',sans-serif;font-size:0.6rem;font-weight:700;color:${diffColor};margin-top:0.2rem">
-              tu modelo: ${t.modelP}% ${diff!==null?`(${diff>0?'+':''}${diff.toFixed(1)}pp)`:''}
-            </div>` : ''}
+            ${t.modelP!==null && t.implied!==null ? `<div style="font-family:'Noto Sans',sans-serif;font-size:0.6rem;font-weight:700;color:${diffColor};margin-top:0.2rem">
+              tu modelo: ${t.modelP}% (${diff>0?'+':''}${diff.toFixed(1)}pp)
+            </div>` : t.modelP!==null ? `<div style="font-family:'Noto Sans',sans-serif;font-size:0.6rem;color:var(--ink4);margin-top:0.2rem">tu modelo: ${t.modelP}%</div>` : ''}
           </div>`;
         }).join('')}
       </div>`;
 
-      // Edge alert if significant divergence
-      const maxDiff = Math.max(
-        Math.abs((pbHome??0) - (impliedHome??pbHome??0)),
-        Math.abs((pbAway??0) - (impliedAway??pbAway??0))
-      );
-      if(maxDiff > 5){
-        html += `<div style="background:var(--green-bg);border:1.5px solid var(--green);border-radius:8px;padding:0.6rem 0.75rem;margin-bottom:0.6rem">
-          <span style="font-family:'Poppins',sans-serif;font-size:0.7rem;font-weight:700;color:var(--brand-d)">⚡ Divergencia de ${maxDiff.toFixed(1)}pp vs Pinnacle — posible valor</span>
-        </div>`;
+      if(impliedHome!==null && pbHome!==null){
+        const maxDiff = Math.max(Math.abs(pbHome-impliedHome), Math.abs((pbAway??0)-(impliedAway??0)));
+        if(maxDiff > 5){
+          html += `<div style="background:var(--green-bg);border:1.5px solid var(--green);border-radius:8px;padding:0.6rem 0.75rem;margin-bottom:0.6rem">
+            <span style="font-family:'Poppins',sans-serif;font-size:0.7rem;font-weight:700;color:var(--brand-d)">⚡ Divergencia de ${maxDiff.toFixed(1)}pp vs Pinnacle — posible valor</span>
+          </div>`;
+        }
       }
     }
 
-    if(totalLine !== null){
+    if(totalLine !== null && totalLine !== undefined){
       html += `<div style="background:var(--card2);border:1.5px solid var(--border);border-radius:8px;padding:0.6rem 0.75rem;margin-bottom:0.6rem">
         <div style="font-family:'Noto Sans',sans-serif;font-size:0.55rem;color:var(--ink4);letter-spacing:0.06em;margin-bottom:0.3rem">TOTAL — PINNACLE</div>
         <div style="display:flex;align-items:center;gap:0.75rem">
           <span style="font-family:'Poppins',sans-serif;font-size:1.1rem;font-weight:900">${totalLine}</span>
-          <span style="font-family:'Noto Sans',sans-serif;font-size:0.7rem;color:var(--ink3)">Over ${totalOver?.toFixed(2)||'—'} · Under ${totalUnder?.toFixed(2)||'—'}</span>
+          <span style="font-family:'Noto Sans',sans-serif;font-size:0.7rem;color:var(--ink3)">Over ${totalOverPrice?.toFixed(2)||'—'} · Under ${totalUnderPrice?.toFixed(2)||'—'}</span>
         </div>
       </div>`;
     }
 
-    if(!mlHome && !mlAway && totalLine === null){
+    if(!mlHomePrice && !mlAwayPrice && (totalLine === null || totalLine === undefined)){
       html += `<div style="font-family:'Noto Sans',sans-serif;font-size:0.7rem;color:var(--ink4);text-align:center;padding:0.5rem 0">Pinnacle tiene el partido pero sin mercados de moneyline/totales abiertos aún.</div>`;
     }
 
@@ -5250,9 +5292,15 @@ async function fetchPinnacleOdds(){
 
   }catch(err){
     result.innerHTML = `<div style="font-family:'Noto Sans',sans-serif;font-size:0.7rem;color:var(--red);text-align:center;padding:0.5rem 0">
-      Error: ${err.message}. Verifica tu API key en oddspapi.io
+      Error: ${err.message}<br>
+      <button onclick="oddspapiClearCache()" style="margin-top:6px;font-size:0.6rem;padding:2px 8px;border-radius:4px;border:1px solid var(--border2);background:transparent;cursor:pointer;color:var(--ink4)">Reintentar (limpiar caché)</button>
     </div>`;
   }
+}
+
+function oddspapiClearCache(){
+  Object.keys(localStorage).filter(k=>k.startsWith('oddspapi_')).forEach(k=>localStorage.removeItem(k));
+  fetchPinnacleOdds();
 }
 
 // Restore saved OddsPapi key on load
