@@ -4049,6 +4049,13 @@ let clockState = {
 };
 
 function updateGameClock(quarter, secsLeft, state, desc, homeTO, awayTO){
+  // ── OT FIX: overtime periods in basketball are always 5 minutes
+  // (300s), regardless of regulation quarter length. ESPN sometimes
+  // reports clock values that exceed this for OT — clamp them.
+  if(!isSoccer() && quarter > 4 && secsLeft > 300){
+    secsLeft = 300;
+  }
+
   // ── GUARD: prevent clock from jumping backward due to flaky/cached
   // ESPN responses. The clock only counts DOWN within a quarter.
   // Allow updates only if: quarter advanced, state changed to a
