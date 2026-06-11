@@ -5183,25 +5183,34 @@ async function fetchPinnacleOdds(){
       localStorage.setItem(cacheKeyTourn, tournamentId);
     }
 
-    // ── Step 3: odds-by-tournaments with Pinnacle ──
-    const fixtures = await oddspapiGet('odds-by-tournaments', apiKey, {bookmaker:'pinnacle', tournamentIds: tournamentId});
-    const list = Array.isArray(fixtures) ? fixtures : (fixtures.fixtures || fixtures.data || []);
+    // ── Step 3: fixtures with team names (only this endpoint has names) ──
+    const fixturesList = await oddspapiGet('fixtures', apiKey, {tournamentId, hasOdds: true, bookmakers: 'pinnacle'});
+    const fxList = Array.isArray(fixturesList) ? fixturesList : (fixturesList.fixtures || fixturesList.data || []);
 
-    const match = list.find(f => {
+    const fxMatch = fxList.find(f => {
       const p1 = (f.participant1Name||'').toLowerCase();
       const p2 = (f.participant2Name||'').toLowerCase();
-      const names = `${p1} ${p2}`;
+      const p1a = (f.participant1Abbr||'').toLowerCase();
+      const p2a = (f.participant2Abbr||'').toLowerCase();
+      const names = `${p1} ${p2} ${p1a} ${p2a}`;
       return names.includes(hAbv.toLowerCase()) || names.includes(aAbv.toLowerCase()) ||
              (hFull && (p1.includes(hFull.split(' ').pop()) || p2.includes(hFull.split(' ').pop()))) ||
              (aFull && (p1.includes(aFull.split(' ').pop()) || p2.includes(aFull.split(' ').pop())));
     });
 
-    if(!match){
+    if(!fxMatch){
       result.innerHTML = `<div style="font-family:'Noto Sans',sans-serif;font-size:0.7rem;color:var(--amber);text-align:center;padding:0.5rem 0">
-        Pinnacle no tiene línea abierta para ${hAbv} vs ${aAbv} ahora mismo (${list.length} partidos en este torneo).
+        Pinnacle no tiene línea abierta para ${hAbv} vs ${aAbv} ahora mismo (${fxList.length} partidos con cuotas en este torneo).
       </div>`;
       return;
     }
+
+    // ── Step 4: odds for the whole tournament (find our fixtureId in it) ──
+    const oddsList = await oddspapiGet('odds-by-tournaments', apiKey, {tournamentIds: tournamentId, bookmakers: 'pinnacle'});
+    const oddsArr = Array.isArray(oddsList) ? oddsList : (oddsList.fixtures || oddsList.data || [oddsList]);
+    const match = oddsArr.find(f => f.fixtureId === fxMatch.fixtureId) || {};
+    match.participant1Name = fxMatch.participant1Name;
+    match.participant2Name = fxMatch.participant2Name;
 
     // Determine which participant is home/away in OddsPapi's data
     const p1IsHome = (match.participant1Name||'').toLowerCase().includes(hAbv.toLowerCase()) ||
