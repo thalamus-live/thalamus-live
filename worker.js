@@ -68,6 +68,23 @@ export default {
         });
       }
     }
+    // ── Sirve esquina-radar.html desde GitHub (página independiente) ────────
+    if (url.pathname === '/esquina-radar') {
+      const erUrl = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/esquina-radar.html';
+      const erResponse = await fetch(erUrl, {
+        cf: { cacheEverything: false },
+        headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
+      });
+      const erHtml = await erResponse.text();
+      return new Response(erHtml, {
+        headers: {
+          'Content-Type':  'text/html; charset=utf-8',
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'X-Deploy':      Date.now().toString(),
+        },
+      });
+    }
+
     // ── Sirve index.html desde GitHub (comportamiento original) ────────────
     const htmlUrl  = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/index.html';
     const response = await fetch(htmlUrl, {
