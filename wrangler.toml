@@ -1,3 +1,7 @@
 name = "thalamus-live"
 main = "worker.js"
 compatibility_date = "2024-01-01"
+
+[[kv_namespaces]]
+binding = "TIKTOK_KV"
+id = "170a4ed5700e47f6ba86ce7919159681"
