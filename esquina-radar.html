@@ -1691,15 +1691,82 @@ function getLeagueAnchor(league){
 // based on 1-2 events.
 const SHRINKAGE_WEIGHT_MINUTES = 30;
 
-// Blends the observed pace (total so far / elapsed) with a league-average anchor,
-// weighted by elapsed minutes vs SHRINKAGE_WEIGHT_MINUTES. Returns the projected
-// total over 90 minutes (λ for the Poisson model).
+// ── Curva de distribución acumulada de eventos (corners/goles) por minuto ──
+// En fútbol, los eventos NO ocurren a ritmo constante: el primer tercio suele
+// ser más lento (equipos tanteándose) y el último tercio se acelera (partidos
+// se abren, cambios ofensivos, presión por el resultado). Esta tabla aproxima
+// qué fracción ACUMULADA del total de un partido de 90' ya ha ocurrido a cada
+// minuto. Se usa para distribuir la proyección de forma no lineal: el modelo
+// ya no asume que "lo que falta" ocurre al mismo ritmo que "lo que ya pasó".
+//
+// Ejemplo de lectura: al minuto 60 ya suele haber ocurrido ~58% de los eventos
+// totales del partido (no 60/90 = 66.7%, porque el tramo final es más intenso).
+const EVENT_CURVE = [
+  { min: 0,   frac: 0.000 },
+  { min: 15,  frac: 0.130 },
+  { min: 30,  frac: 0.280 },
+  { min: 45,  frac: 0.430 },
+  { min: 60,  frac: 0.580 },
+  { min: 75,  frac: 0.760 },
+  { min: 90,  frac: 1.000 },
+];
+
+// Devuelve la fracción acumulada esperada de eventos hasta el minuto `min`,
+// interpolando linealmente entre los puntos de EVENT_CURVE. Para min > 90
+// (tiempo añadido), se extrapola asumiendo que el ritmo del último tramo
+// continúa.
+function eventCurveFraction(min){
+  const m = Math.max(0, min);
+  if(m >= 90){
+    // Tiempo añadido: extender con el ritmo del tramo 75-90.
+    const lastSegRate = (1.000 - 0.760) / (90 - 75);
+    return 1.000 + lastSegRate * (m - 90);
+  }
+  for(let i = 0; i < EVENT_CURVE.length - 1; i++){
+    const a = EVENT_CURVE[i], b = EVENT_CURVE[i+1];
+    if(m >= a.min && m <= b.min){
+      const t = (m - a.min) / (b.min - a.min);
+      return a.frac + t * (b.frac - a.frac);
+    }
+  }
+  return 1.000;
+}
+
+// Proyecta el total a 90' combinando:
+//  1) Lo ya observado (observedTotal).
+//  2) Lo que se espera en el tiempo RESTANTE, según la curva de eventos
+//     (no un ritmo plano) aplicada al anchor de liga.
+//  3) Un shrinkage hacia el anchor cuando hay pocos minutos jugados, para
+//     evitar proyecciones inestables basadas en 1-2 eventos tempranos.
+//
+// anchorPer90 = promedio histórico de la liga para corners o goles.
 function shrinkProjection(observedTotal, elapsed, anchorPer90){
   const e = elapsed ?? 0;
   if(e <= 0) return anchorPer90;
-  const numerator = observedTotal * 90 + anchorPer90 * SHRINKAGE_WEIGHT_MINUTES;
-  const denominator = e + SHRINKAGE_WEIGHT_MINUTES;
-  return numerator / denominator;
+
+  const fracSoFar = eventCurveFraction(e);
+  const fracRemaining = Math.max(0, 1 - fracSoFar);
+
+  // Ritmo "esperado" según la curva para lo ya jugado (referencia de liga).
+  const expectedSoFar = anchorPer90 * fracSoFar;
+  // Eventos esperados en el tramo restante, según la curva (no ritmo plano).
+  const expectedRemaining = anchorPer90 * fracRemaining;
+
+  // Proyección "pura por curva": lo observado + lo esperado en el resto del partido.
+  const curveProjection = observedTotal + expectedRemaining;
+
+  // Proyección "ritmo plano" (la que había antes), usada solo como referencia
+  // para el shrinkage temprano — partidos con pocos minutos jugados aún se
+  // apoyan más en el anchor que en 1-2 eventos puntuales.
+  const flatProjection = (observedTotal * 90 + anchorPer90 * SHRINKAGE_WEIGHT_MINUTES) / (e + SHRINKAGE_WEIGHT_MINUTES);
+
+  // Shrinkage: para partidos muy tempranos (pocos minutos), el "expectedSoFar"
+  // según la curva es muy bajo y un solo evento temprano dispararía la
+  // proyección por curva de forma exagerada. Mezclamos hacia flatProjection
+  // con el mismo peso SHRINKAGE_WEIGHT_MINUTES usado antes.
+  const shrinkWeight = SHRINKAGE_WEIGHT_MINUTES / (e + SHRINKAGE_WEIGHT_MINUTES);
+
+  return curveProjection * (1 - shrinkWeight) + flatProjection * shrinkWeight;
 }
 
 
