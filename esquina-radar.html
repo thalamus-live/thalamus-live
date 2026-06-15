@@ -742,6 +742,10 @@
         <div id="breakdownMarket"></div>
       </div>
       <div class="breakdown-card">
+        <h3>POR VERSIÓN DE MODELO</h3>
+        <div id="breakdownModelVersion"></div>
+      </div>
+      <div class="breakdown-card">
         <h3>POR TIPO DE SEÑAL</h3>
         <div id="breakdownDirection"></div>
       </div>
@@ -2792,12 +2796,26 @@ function limpiarGoles() {
 /* ============ TRACKING (localStorage) ============ */
 const TRACK_KEY = 'esquina_tracked_signals';
 
+// ── Versionado del modelo de proyección ────────────────────────────────
+// Cada vez que cambia significativamente el modelo de proyección/probabilidad
+// (curva de eventos, ajuste por marcador, distribución estadística, etc.),
+// se incrementa esta etiqueta. Las señales guardadas registran qué versión
+// las generó, para poder comparar win rate ANTES/DESPUÉS de cada cambio en
+// "Seguimiento & Stats" sin mezclar datos de modelos distintos.
+//
+// Historial:
+//  v1-flat-poisson      : modelo original (ritmo plano + Poisson puro)
+//  v2-curve-nb-score     : + curva de eventos por tramo, + Binomial Negativa
+//                          (overdispersion φ=1.2), + ajuste de anchor por marcador
+const MODEL_VERSION = 'v2-curve-nb-score';
+
 function encodeSignalPayload(s){
   const json = JSON.stringify({
     matchId: s.matchId, league: s.league, matchTitle: s.matchTitle,
     direction: s.direction, line: s.line, prob: s.prob,
     totalAtSignal: s.total, projectionAtSignal: s.projection, clockAtSignal: s.clock,
     source: s.source || 'espn', market: s.market || 'corners',
+    modelVersion: s.modelVersion || MODEL_VERSION,
   });
   return btoa(unescape(encodeURIComponent(json)));
 }
@@ -2827,6 +2845,7 @@ function saveSignal(sig){
     totalAtSignal: sig.totalAtSignal, projectionAtSignal: sig.projectionAtSignal, clockAtSignal: sig.clockAtSignal,
     source: sig.source || 'espn',
     market: sig.market || 'corners',
+    modelVersion: sig.modelVersion || MODEL_VERSION,
     afLeagueId: sig.afLeagueId || null,
     savedAt: Date.now(),
     status: 'pending',
@@ -3899,6 +3918,17 @@ function renderTracking(tracked){
     byMarket[key][t.status]++;
   });
   renderBreakdown('breakdownMarket', Object.values(byMarket));
+
+  // Breakdown by model version — permite comparar win rate ANTES/DESPUÉS
+  // de cambios en el modelo de proyección (curva de eventos, NB, etc.)
+  const byModelVersion = {};
+  tracked.forEach(t => {
+    const key = t.modelVersion || 'v1-flat-poisson'; // señales antiguas sin etiqueta
+    if(!byModelVersion[key]) byModelVersion[key] = { label: key, won:0, lost:0, pending:0 };
+    byModelVersion[key][t.status]++;
+  });
+  const modelVersionGroups = Object.values(byModelVersion).sort((a,b) => a.label.localeCompare(b.label));
+  renderBreakdown('breakdownModelVersion', modelVersionGroups);
 
   // Breakdown by direction (MÁS / MENOS)
   const byDirection = {};
