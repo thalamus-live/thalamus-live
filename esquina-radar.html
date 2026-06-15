@@ -1685,6 +1685,41 @@ function getLeagueAnchor(league){
   return LEAGUE_ANCHORS[league] || DEFAULT_ANCHOR;
 }
 
+// ── Ajuste dinámico del anchor según el marcador actual ──────────────────
+// El anchor de liga (promedio histórico) es un punto de partida razonable,
+// pero el marcador ACTUAL del partido también influye en el ritmo esperado
+// del resto del encuentro:
+//  - Partidos APRETADOS (diferencia 0 o 1) suelen mantener intensidad.
+//  - Partidos con diferencia AMPLIA (≥2) tienden a "enfriarse": el equipo
+//    que pierde por mucho a veces deja de presionar tanto, y el que gana
+//    se replantea. Esto afecta más a GOLES (menos urgencia ofensiva) que
+//    a CORNERS (el equipo que pierde suele seguir atacando por bandas).
+// Solo se aplica a partir de cierto minuto, porque un marcador 2-0 al
+// minuto 10 no predice mucho sobre cómo seguirá el partido.
+//
+// Devuelve un factor multiplicativo a aplicar sobre el anchor (1.0 = sin cambio).
+const SCORE_ADJUST_MIN_ELAPSED = 20;
+function scoreAdjustmentFactor(homeScore, awayScore, elapsed, stat){
+  if(elapsed == null || elapsed < SCORE_ADJUST_MIN_ELAPSED) return 1.0;
+  if(homeScore == null || awayScore == null || isNaN(homeScore) || isNaN(awayScore)) return 1.0;
+
+  const diff = Math.abs(homeScore - awayScore);
+  if(diff <= 1) return 1.0; // partido apretado: sin ajuste
+
+  // diff >= 2: partido con resultado más definido.
+  // Por cada gol de diferencia por encima de 1, aplicamos una reducción,
+  // con un tope para no exagerar en goleadas (4-0, 5-0...).
+  const extraDiff = Math.min(diff - 1, 3); // tope: hasta 3 niveles de ajuste
+
+  if(stat === 'goals'){
+    // Goles: cada nivel reduce el anchor ~12%, hasta un máximo de ~30%.
+    return 1 - Math.min(0.12 * extraDiff, 0.30);
+  } else {
+    // Corners: efecto más débil y menos consistente (~5% por nivel, tope ~12%).
+    return 1 - Math.min(0.05 * extraDiff, 0.12);
+  }
+}
+
 // "Virtual minutes" of weight given to the league anchor. With this value, the
 // anchor and the observed pace contribute roughly equally around minute 30 —
 // a conservative blend that keeps early-match projections from swinging wildly
@@ -1780,11 +1815,47 @@ function poissonCDF(k, lambda){
   return sum;
 }
 
+// ── Binomial Negativa: modela overdispersion (varianza > media) ──────────
+// Poisson asume varianza == media, pero en datos reales de fútbol la
+// varianza de goles/corners por partido suele ser MAYOR que la media
+// (partidos "explosivos" o "cerrados" ocurren más de lo que Poisson predice).
+// Esto hace que Poisson infle la confianza cuando λ está cerca de una línea
+// de apuesta: dice "85% probable" cuando la realidad (con más varianza)
+// es más cercana a "75-78%".
+//
+// Parametrizamos por media (mu) y un factor de overdispersion (phi >= 1):
+//   varianza = mu * phi
+// phi = 1   → equivale exactamente a Poisson (sin cambio).
+// phi > 1   → cola más ancha, probabilidades extremas menos confiadas.
+//
+// De varianza = mu + mu^2/r  =>  r = mu / (phi - 1)  (tamaño/dispersión NB).
+const OVERDISPERSION_PHI = 1.2; // ≈20% más varianza que Poisson; valor conservador
+
+function negBinomCDF(k, mu, phi){
+  phi = phi ?? OVERDISPERSION_PHI;
+  if(mu <= 0) return 1;
+  if(phi <= 1.0001) return poissonCDF(k, mu); // sin overdispersion ≈ Poisson
+
+  const r = mu / (phi - 1);
+  const p = r / (r + mu); // prob. de "éxito" en la parametrización NB
+
+  // P(X=0) = p^r
+  let pmf = Math.pow(p, r);
+  let sum = pmf;
+  for(let i = 1; i <= k; i++){
+    // Recurrencia: P(X=i) = P(X=i-1) * (r+i-1)/i * (1-p)
+    pmf *= ((r + i - 1) / i) * (1 - p);
+    sum += pmf;
+  }
+  return Math.min(1, Math.max(0, sum));
+}
+
+
 function computeSignalsForLines(lambda, threshold, lines){
   lines = lines || SIGNAL_LINES;
   let bestOver = null, bestUnder = null;
   lines.forEach(line => {
-    const probOver = 1 - poissonCDF(Math.floor(line), lambda);
+    const probOver = 1 - negBinomCDF(Math.floor(line), lambda);
     const probUnder = 1 - probOver;
     if(probOver >= threshold){
       if(!bestOver || line > bestOver.line) bestOver = { line, prob: probOver };
@@ -1801,7 +1872,10 @@ function computeSignalsForLines(lambda, threshold, lines){
 
 function computeMatchSignals(m, threshold){
   if(m.totalCorners == null || m.elapsed == null) return [];
-  const anchor = getLeagueAnchor(m.league).corners;
+  const homeScore = m.home ? parseInt(m.home.score, 10) : NaN;
+  const awayScore = m.away ? parseInt(m.away.score, 10) : NaN;
+  const scoreAdj = scoreAdjustmentFactor(homeScore, awayScore, m.elapsed, 'corners');
+  const anchor = getLeagueAnchor(m.league).corners * scoreAdj;
   const lambda = shrinkProjection(m.totalCorners, m.elapsed, anchor);
   if(lambda <= 0) return [];
 
@@ -1823,7 +1897,10 @@ function computeMatchSignals(m, threshold){
 
 function computeMatchGoalSignals(m, threshold){
   if(m.totalGoals == null || m.elapsed == null) return [];
-  const anchor = getLeagueAnchor(m.league).goals;
+  const homeScore = m.home ? parseInt(m.home.score, 10) : NaN;
+  const awayScore = m.away ? parseInt(m.away.score, 10) : NaN;
+  const scoreAdj = scoreAdjustmentFactor(homeScore, awayScore, m.elapsed, 'goals');
+  const anchor = getLeagueAnchor(m.league).goals * scoreAdj;
   const lambda = shrinkProjection(m.totalGoals, m.elapsed, anchor);
   if(lambda <= 0) return [];
 
@@ -4462,7 +4539,9 @@ function renderAfSignal(fixtureId, cornerVals){
     const total = cornerVals.reduce((a,b) => a+b, 0);
     const pace = total / elapsed;
     const rawProjection = pace * 90;
-    const anchor = DEFAULT_ANCHOR.corners;
+    const homeGoalsForAdj = f.goals && f.goals.home, awayGoalsForAdj = f.goals && f.goals.away;
+    const scoreAdjCorners = scoreAdjustmentFactor(homeGoalsForAdj, awayGoalsForAdj, elapsed, 'corners');
+    const anchor = DEFAULT_ANCHOR.corners * scoreAdjCorners;
     const projection = shrinkProjection(total, elapsed, anchor);
     if(elapsed < minElapsed){
       html += `<div style="font-size:11px;color:var(--muted-2)">Corners — faltan minutos para el mínimo configurado (${minElapsed}'). Total CK: ${total} · Proy. ${projection.toFixed(1)}</div>`;
@@ -4492,7 +4571,8 @@ function renderAfSignal(fixtureId, cornerVals){
     const totalG = homeGoals + awayGoals;
     const paceG = totalG / elapsed;
     const rawProjectionG = paceG * 90;
-    const anchorG = DEFAULT_ANCHOR.goals;
+    const scoreAdjGoals = scoreAdjustmentFactor(homeGoals, awayGoals, elapsed, 'goals');
+    const anchorG = DEFAULT_ANCHOR.goals * scoreAdjGoals;
     const projectionG = shrinkProjection(totalG, elapsed, anchorG);
     if(elapsed < minElapsed){
       html += `<div style="font-size:11px;color:var(--muted-2)">Goles — faltan minutos para el mínimo configurado (${minElapsed}'). Total goles: ${totalG} · Proy. ${projectionG.toFixed(1)}</div>`;
@@ -4875,7 +4955,7 @@ function renderCornersOdds(eventId, target, data){
     const lambda = match.projection;
     const edgeRows = points.map(p => {
       const o = totals[p].over, u = totals[p].under;
-      const probOver = 1 - poissonCDF(Math.floor(p), lambda);
+      const probOver = 1 - negBinomCDF(Math.floor(p), lambda);
       const probUnder = 1 - probOver;
       const parts = [];
       if(o){
