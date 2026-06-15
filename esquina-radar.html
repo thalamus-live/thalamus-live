@@ -1889,48 +1889,21 @@ function renderSignalsList(listId, allSignals, threshold, unitLabel, statLabel){
       const type = this.dataset.type || 'corners';
       
       if (type === 'goles') {
-        // Para GOLES: obtener datos directamente del card
-        const card = this.closest('.signal-card');
-        let title = card.querySelector('.signal-title')?.textContent || '?';
-        // NORMALIZAR NOMBRE DEL PARTIDO
-        title = normalizarNombrePartido(title);
+        // Para GOLES: usar el mismo sistema de tracking que CORNERS (TRACK_KEY),
+        // así aparecen en "Seguimiento & Stats" con won/lost/pending.
+        const payloadStr = this.dataset.signal;
+        if (!payloadStr) return;
         
-        const meta = card.querySelector('.signal-meta')?.textContent || '';
-        const pick = card.querySelector('.signal-pick')?.textContent || '';
-        
-        // Parsear los datos del meta y pick
-        const metaParts = meta.split(' · ');
-        const liga = metaParts[0] || '?';
-        const tiempo = metaParts[1] || '?';
-        const actuales = parseInt(metaParts[2]) || 0;
-        
-        const pickParts = pick.split(' ');
-        const apuesta = pickParts[0] || '?';
-        const línea = parseFloat(pickParts[1]) || 0;
-        
-        // Buscar la proyección en el texto
-        const proyMatch = meta.match(/proy\.\s+([\d.]+)/);
-        const proyección = proyMatch ? parseFloat(proyMatch[1]) : 0;
-        
-        // Buscar probabilidad en el pick
-        const probMatch = pick.match(/(\d+)%/);
-        const probabilidad = probMatch ? parseInt(probMatch[1]) : 0;
-        
-        guardarGoalDirect({
-          fecha: new Date().toLocaleString('es-ES'),
-          tipo: 'GOLES',
-          liga: liga,
-          partido: title,
-          apuesta: apuesta,
-          línea: línea,
-          actuales: actuales,
-          proyección: proyección.toFixed(2),
-          probabilidad: probabilidad,
-        });
-        
-        this.textContent = '✓ Guardado';
-        this.disabled = true;
-        this.style.opacity = '0.5';
+        try {
+          const sig = decodeSignalPayload(payloadStr);
+          const added = saveSignal(sig);
+          this.textContent = added ? '✓ Guardado' : 'Ya guardado';
+          this.disabled = true;
+          this.style.opacity = '0.5';
+          renderTracking();
+        } catch(err) {
+          console.error('Error guardando gol:', err);
+        }
         
       } else {
         // Para CORNERS: usar sistema original
