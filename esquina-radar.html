@@ -3976,7 +3976,18 @@ function renderTracking(tracked){
     return;
   }
 
-  list.innerHTML = tracked.map(t => {
+  // Ordenar: pendientes primero (más recientes arriba), luego resueltas (más recientes arriba)
+  const pendingItems = tracked.filter(t => t.status === 'pending').sort((a,b) => b.savedAt - a.savedAt);
+  const resolvedItems = tracked.filter(t => t.status !== 'pending').sort((a,b) => b.savedAt - a.savedAt);
+  const sorted = [...pendingItems, ...resolvedItems];
+
+  list.innerHTML = sorted.map((t, idx) => {
+    // Separador visual entre pendientes y resueltas
+    const separator = (idx === pendingItems.length && resolvedItems.length > 0 && pendingItems.length > 0)
+      ? `<div style="font-size:11px;color:var(--muted-2);padding:6px 0 2px;letter-spacing:0.08em;text-transform:uppercase;border-top:1px solid var(--border);margin-top:4px;">── Historial resuelto (${resolvedItems.length}) ──</div>`
+      : (idx === 0 && pendingItems.length === 0 && resolvedItems.length > 0)
+      ? `<div style="font-size:11px;color:var(--muted-2);padding:6px 0 2px;letter-spacing:0.08em;text-transform:uppercase;">── Historial resuelto (${resolvedItems.length}) ──</div>`
+      : '';
     const pickLabel = t.direction === 'over' ? 'MÁS' : 'MENOS';
     const date = new Date(t.savedAt).toLocaleString('es-PE', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit' });
     const matchMinuteLabel = t.clockAtSignal ? `min. ${t.clockAtSignal} del partido` : 'minuto del partido no disponible';
@@ -3990,7 +4001,7 @@ function renderTracking(tracked){
     const sourceLabel = t.source === 'af' ? 'API-Football' : 'ESPN';
     const leagueLabel = t.source === 'af' ? t.league : leagueShort(t.league);
 
-    return `
+    return separator + `
       <div class="signal-card">
         <div class="track-status ${t.status}">${t.status === 'pending' ? 'PENDIENTE' : t.status === 'won' ? 'ACIERTO' : 'FALLO'}</div>
         <div class="signal-body">
