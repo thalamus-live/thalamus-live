@@ -128,6 +128,9 @@ export default {
 
 const TIKTOK_TOKENS_KEY = 'tiktok_tokens';
 const TIKTOK_API = 'https://open.tiktokapis.com';
+// Para Sandbox: https://open-sandbox.tiktokapis.com
+// El token exchange del Sandbox usa un endpoint diferente
+const TIKTOK_TOKEN_API = 'https://open-sandbox.tiktokapis.com';
 
 function tiktokBase64url(buffer) {
   return btoa(String.fromCharCode(...new Uint8Array(buffer)))
@@ -184,7 +187,7 @@ async function tiktokGetValidTokens(env) {
     refresh_token: tokens.refresh_token,
   });
 
-  const resp = await fetch(`${TIKTOK_API}/v2/oauth/token/`, {
+  const resp = await fetch(`${TIKTOK_TOKEN_API}/v2/oauth/token/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Cache-Control': 'no-cache' },
     body,
@@ -249,14 +252,12 @@ async function tiktokHandleCallback(request, env) {
     code_verifier: codeVerifier,
   });
 
-  const resp = await fetch(`${TIKTOK_API}/v2/oauth/token/`, {
+  const resp = await fetch(`${TIKTOK_TOKEN_API}/v2/oauth/token/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Cache-Control': 'no-cache' },
     body,
   });
   const data = await resp.json();
-  // DEBUG: guardar la respuesta en KV para diagnóstico
-  await env.TIKTOK_KV.put('debug_token_response', JSON.stringify({status: resp.status, data}), {expirationTtl: 300});
   if (!data.access_token) return redirectError(`token_exchange_failed:${JSON.stringify(data)}`);
 
   await tiktokSaveTokens(env, {
