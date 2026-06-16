@@ -255,7 +255,9 @@ async function tiktokHandleCallback(request, env) {
     body,
   });
   const data = await resp.json();
-  if (!data.access_token) return redirectError('token_exchange_failed');
+  // DEBUG: guardar la respuesta en KV para diagnóstico
+  await env.TIKTOK_KV.put('debug_token_response', JSON.stringify({status: resp.status, data}), {expirationTtl: 300});
+  if (!data.access_token) return redirectError(`token_exchange_failed:${JSON.stringify(data)}`);
 
   await tiktokSaveTokens(env, {
     access_token: data.access_token,
