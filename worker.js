@@ -228,8 +228,11 @@ async function tiktokHandleCallback(request, env) {
   const state = url.searchParams.get('state');
   const error = url.searchParams.get('error');
 
+  const appBase = (env.APP_URL || 'https://thalamus-live.panfernan5.workers.dev').replace(/\/+$/, '');
   const redirectError = (reason) =>
-    Response.redirect(`${env.APP_URL}/?tiktok=error&reason=${encodeURIComponent(reason)}`, 302);
+    Response.redirect(`${appBase}/esquina-radar?tiktok=error&reason=${encodeURIComponent(reason)}`, 302);
+  const redirectOk = () =>
+    Response.redirect(`${appBase}/esquina-radar?tiktok=connected`, 302);
 
   if (error) return redirectError(error);
 
@@ -262,7 +265,7 @@ async function tiktokHandleCallback(request, env) {
     refresh_expires_at: Date.now() + data.refresh_expires_in * 1000,
   });
 
-  return Response.redirect(`${env.APP_URL}/?tiktok=connected`, 302);
+  return redirectOk();
 }
 
 async function tiktokHandleStatus(env) {
