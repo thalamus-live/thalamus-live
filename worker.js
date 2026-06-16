@@ -212,7 +212,7 @@ async function tiktokHandleLogin(env) {
 
   const authUrl = new URL('https://www.tiktok.com/v2/auth/authorize/');
   authUrl.searchParams.set('client_key', env.TIKTOK_CLIENT_KEY);
-  authUrl.searchParams.set('scope', 'user.info.basic,video.publish');
+  authUrl.searchParams.set('scope', 'user.info.basic,video.upload');
   authUrl.searchParams.set('response_type', 'code');
   authUrl.searchParams.set('redirect_uri', env.TIKTOK_REDIRECT_URI);
   authUrl.searchParams.set('state', state);
