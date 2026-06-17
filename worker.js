@@ -208,7 +208,9 @@ async function tiktokGetValidTokens(env) {
 
 async function tiktokHandleLogin(env) {
   const codeVerifier = tiktokRandomString(64);
-  const codeChallenge = tiktokBase64url(await tiktokSha256(codeVerifier));
+  // TikTok requires hex encoding of SHA256 for code_challenge (not base64url)
+  const hashBuf = await tiktokSha256(codeVerifier);
+  const codeChallenge = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2,'0')).join('');
   const state = tiktokRandomString(24);
 
   await env.TIKTOK_KV.put(`oauth_state:${state}`, codeVerifier, { expirationTtl: 600 });
