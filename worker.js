@@ -257,8 +257,10 @@ async function tiktokHandleCallback(request, env) {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Cache-Control': 'no-cache' },
     body,
   });
-  const data = await resp.json();
-  if (!data.access_token) return redirectError(`token_exchange_failed:${JSON.stringify(data)}`);
+  const rawText = await resp.text();
+  let data;
+  try { data = JSON.parse(rawText); } catch(e) { return redirectError('tpf:' + rawText.slice(0,200)); }
+  if (!data.access_token) return redirectError('tef:' + JSON.stringify(data));
 
   await tiktokSaveTokens(env, {
     access_token: data.access_token,
@@ -408,3 +410,4 @@ async function handleTikTok(request, env, url) {
 
   return new Response('Not found', { status: 404 });
 }
+
