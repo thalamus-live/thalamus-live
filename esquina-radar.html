@@ -3779,7 +3779,9 @@ async function shareSignalVideo(trackId, btn){
 const TIKTOK_API_BASE_KEY = 'esquinaRadarTiktokApiBase';
 
 function getTiktokApiBase(){
-  return (document.getElementById('tiktokApiBase').value || '').trim().replace(/\/+$/, '');
+  const stored = localStorage.getItem(TIKTOK_API_BASE_KEY);
+  const inputVal = (document.getElementById('tiktokApiBase').value || '').trim().replace(/\/+$/, '');
+  return inputVal || stored || window.location.origin;
 }
 
 async function checkTikTokStatus(){
@@ -5727,6 +5729,11 @@ function init(){
     localStorage.setItem(TIKTOK_API_BASE_KEY, getTiktokApiBase());
     checkTikTokStatus();
   });
+  // Pre-fill tiktokApiBase with stored value or current origin
+  const savedBase = localStorage.getItem(TIKTOK_API_BASE_KEY) || window.location.origin;
+  const inputEl = document.getElementById('tiktokApiBase');
+  if (!inputEl.value) inputEl.value = savedBase;
+
   document.getElementById('tiktokConnectBtn').addEventListener('click', () => {
     const base = getTiktokApiBase();
     if(!base){ alert('Primero ingresa la URL de tu Worker de TikTok.'); return; }
