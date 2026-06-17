@@ -208,12 +208,9 @@ async function tiktokGetValidTokens(env) {
 
 async function tiktokHandleLogin(env) {
   const codeVerifier = tiktokRandomString(64);
-  // TikTok requires hex encoding of SHA256 for code_challenge (not base64url)
-  const hashBuf = await tiktokSha256(codeVerifier);
-  const codeChallenge = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2,'0')).join('');
   const state = tiktokRandomString(24);
-
-  await env.TIKTOK_KV.put(`oauth_state:${state}`, codeVerifier, { expirationTtl: 600 });
+  // No PKCE - TikTok Sandbox does not support code_verifier in token exchange
+  await env.TIKTOK_KV.put(`oauth_state:${state}`, 'ok', { expirationTtl: 600 });
 
   const authUrl = new URL('https://www.tiktok.com/v2/auth/authorize/');
   authUrl.searchParams.set('client_key', env.TIKTOK_CLIENT_KEY);
@@ -221,8 +218,6 @@ async function tiktokHandleLogin(env) {
   authUrl.searchParams.set('response_type', 'code');
   authUrl.searchParams.set('redirect_uri', env.TIKTOK_REDIRECT_URI);
   authUrl.searchParams.set('state', state);
-  authUrl.searchParams.set('code_challenge', codeChallenge);
-  authUrl.searchParams.set('code_challenge_method', 'S256');
 
   return Response.redirect(authUrl.toString(), 302);
 }
@@ -241,8 +236,8 @@ async function tiktokHandleCallback(request, env) {
 
   if (error) return redirectError(error);
 
-  const codeVerifier = state ? await env.TIKTOK_KV.get(`oauth_state:${state}`) : null;
-  if (!code || !codeVerifier) return redirectError('invalid_state');
+  const stateOk = state ? await env.TIKTOK_KV.get(`oauth_state:${state}`) : null;
+  if (!code || !stateOk) return redirectError('invalid_state');
   await env.TIKTOK_KV.delete(`oauth_state:${state}`);
 
   const body = new URLSearchParams({
@@ -251,7 +246,6 @@ async function tiktokHandleCallback(request, env) {
     code,
     grant_type: 'authorization_code',
     redirect_uri: env.TIKTOK_REDIRECT_URI,
-    code_verifier: codeVerifier,
   });
 
   const resp = await fetch(`${TIKTOK_TOKEN_API}/v2/oauth/token/`, {
