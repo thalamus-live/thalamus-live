@@ -9,6 +9,11 @@ export default {
       });
     }
 
+    // ── Signals KV sync (Esquina Radar cloud history) ────────────────────────
+    if (url.pathname.startsWith('/signals/')) {
+      return handleSignals(request, env, url);
+    }
+
     // ── TikTok publishing (Esquina Radar "Publicación en TikTok") ───────────
     if (url.pathname.startsWith('/tiktok/')) {
       return handleTikTok(request, env, url);
@@ -125,6 +130,66 @@ export default {
  *  POST /tiktok/publish          -> sube y publica un video (FormData: video, title)
  *  GET  /tiktok/publish-status   -> ?id=<publish_id> — estado de publicación
  * ========================================================================= */
+
+// ── Signals KV Handler ─────────────────────────────────────────────────────
+const SIGNALS_KEY = 'esquina_signals_v1';
+
+async function handleSignals(request, env, url) {
+  const cors = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  };
+  if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
+
+  const json = (data, status = 200) => new Response(JSON.stringify(data), {
+    status, headers: { 'Content-Type': 'application/json', ...cors }
+  });
+
+  try {
+    // GET /signals/list → return all signals
+    if (url.pathname === '/signals/list' && request.method === 'GET') {
+      const raw = await env.TIKTOK_KV.get(SIGNALS_KEY);
+      const signals = raw ? JSON.parse(raw) : [];
+      return json({ ok: true, signals });
+    }
+
+    // POST /signals/save → save full signals array
+    if (url.pathname === '/signals/save' && request.method === 'POST') {
+      const body = await request.json();
+      const signals = body.signals || [];
+      await env.TIKTOK_KV.put(SIGNALS_KEY, JSON.stringify(signals));
+      return json({ ok: true, count: signals.length });
+    }
+
+    // POST /signals/update → update one signal by id (status, finalTotal)
+    if (url.pathname === '/signals/update' && request.method === 'POST') {
+      const body = await request.json();
+      const { id, status, finalTotal, currentTotal } = body;
+      const raw = await env.TIKTOK_KV.get(SIGNALS_KEY);
+      const signals = raw ? JSON.parse(raw) : [];
+      const idx = signals.findIndex(s => s.id === id);
+      if (idx >= 0) {
+        if (status != null) signals[idx].status = status;
+        if (finalTotal != null) signals[idx].finalTotal = finalTotal;
+        if (currentTotal != null) signals[idx].currentTotal = currentTotal;
+        await env.TIKTOK_KV.put(SIGNALS_KEY, JSON.stringify(signals));
+        return json({ ok: true });
+      }
+      return json({ ok: false, error: 'not found' }, 404);
+    }
+
+    // DELETE /signals/clear → wipe all signals
+    if (url.pathname === '/signals/clear' && request.method === 'POST') {
+      await env.TIKTOK_KV.put(SIGNALS_KEY, '[]');
+      return json({ ok: true });
+    }
+
+  } catch (e) {
+    return json({ ok: false, error: String(e) }, 500);
+  }
+  return new Response('Not found', { status: 404 });
+}
 
 const TIKTOK_TOKENS_KEY = 'tiktok_tokens';
 const TIKTOK_API = 'https://open.tiktokapis.com';
