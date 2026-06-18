@@ -550,8 +550,8 @@
   <div class="tabs">
     <div class="tab-btn active" data-tab="scanner">Scanner en vivo</div>
     <div class="tab-btn" data-tab="tracking">Seguimiento &amp; Stats</div>
-    <div class="tab-btn" data-tab="nba">NBA / WNBA</div>
-    <div class="tab-btn" data-tab="fbodds">Cuotas Fútbol</div>
+    <div class="tab-btn" data-tab="nba" style="display:none">NBA / WNBA</div>
+    <div class="tab-btn" data-tab="fbodds" style="display:none">Cuotas Fútbol</div>
   </div>
 
   <div class="tab-content active" id="tab-scanner">
@@ -599,7 +599,7 @@
   </div>
 
   <div class="section-title">Señales de goles</div>
-  <div class="controls" style="padding:0; margin: 0 0 14px;">
+  <div class="controls" style="padding:0; margin: 0 0 14px; display:none">
     <div class="field">
       The Odds API key (opcional)
       <input type="password" id="goalsOddsKey" placeholder="Para ver casas de apuestas en señales de goles" style="width:230px" />
@@ -611,7 +611,7 @@
       min
     </div>
   </div>
-  <div class="note" style="margin-top:0">
+  <div class="note" style="margin-top:0; display:none">
     Si ingresas tu key gratis de <b style="color:var(--text)">The Odds API</b> (región EU), las señales de goles
     mostrarán las cuotas de Más/Menos de casas como <b style="color:var(--text)">Betsson, 1xBet, Pinnacle, Betclic
     y Unibet</b> (si cubren ese partido), más un promedio entre ellas. No aplica a corners — esa API casi no tiene
@@ -643,6 +643,7 @@
     <div class="empty">Cargando partidos del día…</div>
   </div>
 
+  <div style="display:none">
   <div class="section-title">Cuotas de corners <span style="opacity:.5">(The Odds API)</span></div>
   <div class="af-panel">
     <div class="af-head">
@@ -705,6 +706,7 @@
       Si tu acceso es vía <code>api-sports.io</code> directo, algunos navegadores pueden bloquear la llamada por CORS —
       si ves un error de red, prueba cambiando a "RapidAPI" o usa esta página desde Netlify (no en local <code>file://</code>).
     </div>
+  </div>
   </div>
   </div>
 
