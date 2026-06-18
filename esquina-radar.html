@@ -3004,11 +3004,52 @@ function decodeSignalPayload(payload){
   return JSON.parse(decodeURIComponent(escape(atob(payload))));
 }
 
+// ── Cloud KV sync for signals ────────────────────────────────────────────────
+let _signalsSyncing = false;
+let _signalsSyncPending = false;
+
+// Load signals: try KV first, fall back to localStorage
+async function loadSignalsFromCloud(){
+  try{
+    const res = await fetch('/signals/list');
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if(data.ok && Array.isArray(data.signals) && data.signals.length > 0){
+      // Merge with any local signals that aren't in cloud yet
+      const local = JSON.parse(localStorage.getItem(TRACK_KEY) || '[]');
+      const cloudIds = new Set(data.signals.map(s => s.id));
+      const localOnly = local.filter(s => !cloudIds.has(s.id));
+      const merged = [...data.signals, ...localOnly];
+      localStorage.setItem(TRACK_KEY, JSON.stringify(merged));
+      if(localOnly.length > 0) await saveTrackedSignals(merged); // push merged to cloud
+      return merged;
+    }
+  }catch(e){ console.warn('KV load failed, using localStorage:', e); }
+  try{ return JSON.parse(localStorage.getItem(TRACK_KEY)) || []; }catch(e){ return []; }
+}
+
 function getTrackedSignals(){
   try{ return JSON.parse(localStorage.getItem(TRACK_KEY)) || []; }catch(e){ return []; }
 }
-function saveTrackedSignals(arr){
+
+async function saveTrackedSignals(arr){
+  // Always save locally first (instant)
   localStorage.setItem(TRACK_KEY, JSON.stringify(arr));
+  // Then sync to cloud (debounced)
+  if(_signalsSyncing){ _signalsSyncPending = true; return; }
+  _signalsSyncing = true;
+  try{
+    await fetch('/signals/save', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ signals: arr })
+    });
+  }catch(e){ console.warn('KV save failed:', e); }
+  _signalsSyncing = false;
+  if(_signalsSyncPending){
+    _signalsSyncPending = false;
+    await saveTrackedSignals(getTrackedSignals());
+  }
 }
 
 function saveSignal(sig){
@@ -3033,7 +3074,7 @@ function saveSignal(sig){
     finalTotal: null,
     currentTotal: sig.totalAtSignal,
   });
-  saveTrackedSignals(tracked);
+  saveTrackedSignals(tracked); // async, fire-and-forget
   return true;
 }
 
