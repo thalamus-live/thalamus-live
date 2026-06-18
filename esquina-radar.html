@@ -2179,11 +2179,24 @@ function renderSignalsList(listId, allSignals, threshold, unitLabel, statLabel){
     return;
   }
 
+  // Auto-guardar todas las señales nuevas al renderizar
+  let autoSaved = false;
+  allSignals.forEach(s => {
+    const added = saveSignal(s);
+    if(added) autoSaved = true;
+  });
+  if(autoSaved) renderTracking();
+
+  const trackedNow = getTrackedSignals();
   list.innerHTML = allSignals.map(s => {
     const pickLabel = s.direction === 'over' ? 'MÁS' : 'MENOS';
     const probClass = s.direction === 'over' ? '' : 'under';
     const payload = encodeSignalPayload(s);
     const isGoals = unitLabel === 'GOLES';
+    const alreadySaved = trackedNow.some(t =>
+      t.matchId === s.matchId && t.direction === s.direction &&
+      t.line === s.line && (t.market || 'corners') === (s.market || 'corners')
+    );
     return `
       <div class="signal-card">
         <div class="signal-prob ${probClass}">${(s.prob*100).toFixed(0)}%</div>
@@ -2197,7 +2210,9 @@ function renderSignalsList(listId, allSignals, threshold, unitLabel, statLabel){
           <small>Probabilidad ${(s.prob*100).toFixed(0)}%</small>
         </div>
         <div class="signal-actions">
-          <button class="btn secondary save-signal-btn" data-signal="${payload}" data-type="${isGoals ? 'goles' : 'corners'}" data-stat="${statLabel}">Guardar</button>
+          <button class="btn secondary save-signal-btn" data-signal="${payload}" data-type="${isGoals ? 'goles' : 'corners'}" data-stat="${statLabel}" ${alreadySaved ? 'disabled style="opacity:.5"' : ''}>
+            ${alreadySaved ? '✓ Guardado' : 'Guardar'}
+          </button>
         </div>
         ${buildLiveOddsHtml(s)}
         ${buildBookmakerOddsRow(s)}
@@ -4768,6 +4783,13 @@ function buildSignalCardHtml(sig, s, statLine){
   const pickLabel = s.direction === 'over' ? 'MÁS' : 'MENOS';
   const probClass = s.direction === 'over' ? '' : 'under';
   const unitLabel = sig.market === 'goals' ? 'GOLES' : 'CORNERS';
+  // Auto-guardar al construir la card
+  saveSignal(sig);
+  const tracked = getTrackedSignals();
+  const alreadySaved = tracked.some(t =>
+    t.matchId === sig.matchId && t.direction === sig.direction &&
+    t.line === sig.line && (t.market || 'corners') === (sig.market || 'corners')
+  );
   return `
     <div class="signal-card" style="padding:10px 12px;">
       <div class="signal-prob ${probClass}" style="font-size:13px;padding:6px 10px;min-width:48px;">${(s.prob*100).toFixed(0)}%</div>
@@ -4777,7 +4799,9 @@ function buildSignalCardHtml(sig, s, statLine){
       </div>
       <div class="signal-pick">${pickLabel} ${s.line} ${unitLabel}</div>
       <div class="signal-actions">
-        <button class="btn secondary save-signal-btn" data-signal="${payload}">Guardar</button>
+        <button class="btn secondary save-signal-btn" data-signal="${payload}" ${alreadySaved ? 'disabled style="opacity:.5"' : ''}>
+          ${alreadySaved ? '✓ Guardado' : 'Guardar'}
+        </button>
       </div>
       ${buildLiveOddsHtml(sig)}
       ${buildReasoningHtml(sig)}
@@ -6231,4 +6255,5 @@ document.addEventListener('click', (e) => {
   transition: all 0.2s;
 }
 </style>
+
 
