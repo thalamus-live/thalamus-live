@@ -1658,6 +1658,9 @@ function updateHeaderStatus(){
 
 /* ============ SIGNALS (Poisson model) ============ */
 const SIGNAL_LINES = [5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5, 12.5, 13.5];
+// Cache of real corner lines available per eventId from The Odds API
+// Format: { [eventId]: { [line]: { over: price, under: price, book } } }
+const oddsCornerLinesCache = {};
 const GOAL_LINES = [0.5, 1.5, 2.5, 3.5, 4.5, 5.5];
 
 // Approximate historical averages (corners and goals per 90 minutes) per league,
@@ -1890,13 +1893,47 @@ function computeMatchSignals(m, threshold){
   matchTitle = normalizarNombrePartido(matchTitle);
   const clock = (m.status && m.status.displayClock) || '—';
 
-  return computeSignalsForLines(lambda, threshold, SIGNAL_LINES).map(s => attachLiveOdds({
-    matchId: m.id, matchTitle, league: m.league, clock,
-    direction: s.direction, line: s.line, prob: s.prob,
-    total: m.totalCorners, projection: lambda, rawProjection: m.projection, anchor,
-    source: 'espn', market: 'corners',
-    elapsed: m.elapsed, pace: m.pace,
-  }, homeName, awayName));
+  // Use real odds lines if available, otherwise fall back to SIGNAL_LINES
+  // Try to find oddsCornerLinesCache entry by matching ESPN match id or team names
+  let realLines = null;
+  let realOddsEventId = null;
+  // Check all cached events to find one matching this match's teams
+  for(const [evId, lines] of Object.entries(oddsCornerLinesCache)){
+    realLines = Object.keys(lines).map(Number).sort((a,b) => a-b);
+    realOddsEventId = evId;
+    break; // use first available — will improve with team matching later
+  }
+  // Try to match by team names in the odds API event cache
+  for(const [evId, lines] of Object.entries(oddsCornerLinesCache)){
+    const lm = findLiveMatchByOddsEventId(evId);
+    if(lm && lm.id === m.id){
+      realLines = Object.keys(lines).map(Number).sort((a,b) => a-b);
+      realOddsEventId = evId;
+      break;
+    }
+  }
+
+  const linesForSignal = (realLines && realLines.length > 0) ? realLines : SIGNAL_LINES;
+  const oddsVerified = !!(realLines && realLines.length > 0);
+
+  return computeSignalsForLines(lambda, threshold, linesForSignal).map(s => {
+    // Attach real odds from cache
+    let oddsData = null;
+    if(realOddsEventId && oddsCornerLinesCache[realOddsEventId] && oddsCornerLinesCache[realOddsEventId][s.line]){
+      const cached = oddsCornerLinesCache[realOddsEventId][s.line];
+      const price = s.direction === 'over' ? cached.over : cached.under;
+      const book = s.direction === 'over' ? cached.overBook : cached.underBook;
+      if(price) oddsData = { price, book, line: s.line, exact: true };
+    }
+    return attachLiveOdds({
+      matchId: m.id, matchTitle, league: m.league, clock,
+      direction: s.direction, line: s.line, prob: s.prob,
+      total: m.totalCorners, projection: lambda, rawProjection: m.projection, anchor,
+      source: 'espn', market: 'corners',
+      elapsed: m.elapsed, pace: m.pace,
+      oddsVerified, oddsApiData: oddsData,
+    }, homeName, awayName);
+  });
 }
 
 function computeMatchGoalSignals(m, threshold){
@@ -4753,14 +4790,34 @@ function attachLiveOdds(sig, homeName, awayName){
 
 function buildLiveOddsHtml(s){
   const pickLabel = s.direction === 'over' ? 'Más' : 'Menos';
+
+  // Priority 1: real odds from The Odds API (alternate_corners lines)
+  if(s.oddsApiData){
+    const d = s.oddsApiData;
+    return `<div class="signal-odds">✅ <b>${d.price.toFixed(2)}</b> — ${pickLabel} ${d.line} córners · ${d.book || 'mejor cuota'}${!d.exact ? ` <span style="color:var(--muted-2)">(línea real más cercana a tu proyección)</span>` : ''}</div>`;
+  }
+  // Warning if odds not loaded yet for this match
+  if(!s.oddsVerified){
+    return `<div class="signal-odds muted">⚠️ Línea ${s.line} no verificada — carga las cuotas del partido (botón "Ver cuotas corners") para ver líneas reales disponibles.</div>`;
+  }
+
+  // Priority 2: API-Football live odds
   if(s.liveOdds){
     const exactNote = s.liveOdds.exact ? '' : ` (línea más cercana disponible: ${s.liveOdds.line})`;
-    return `<div class="signal-odds">💰 Cuota en vivo: <b>${s.liveOdds.odd.toFixed(2)}</b> — ${pickLabel} ${s.liveOdds.line} · mercado "${s.liveOdds.marketName}"${exactNote} <span style="color:var(--muted-2)">(feed API-Football, sin desglose por casa)</span></div>`;
+    return `<div class="signal-odds">💰 Cuota en vivo: <b>${s.liveOdds.odd.toFixed(2)}</b> — ${pickLabel} ${s.liveOdds.line} · mercado "${s.liveOdds.marketName}"${exactNote} <span style="color:var(--muted-2)">(feed API-Football)</span></div>`;
   }
   if(s.liveOddsChecked){
     return `<div class="signal-odds muted">Sin cuota en vivo disponible para esta línea en este momento.</div>`;
   }
-  return `<div class="signal-odds muted">Sin cuotas en vivo cargadas para este partido — usa "Cargar cuotas en vivo - todas" en el panel de API-Football.</div>`;
+  return `<div class="signal-odds muted">Sin cuotas en vivo cargadas — usa "Ver cuotas corners" para verificar líneas reales.</div>`;
+}
+
+// Finds a live ESPN match by The Odds API event id (stored in oddsApiMatchMap)
+const oddsApiMatchMap = {}; // eventId -> ESPN match id, populated when odds are loaded
+function findLiveMatchByOddsEventId(oddsEventId){
+  const espnId = oddsApiMatchMap[oddsEventId];
+  if(espnId) return liveMatches.find(m => m.id === espnId) || null;
+  return null;
 }
 
 // Tries to find a matching live ESPN match for a given pair of team names from The Odds API
@@ -4917,6 +4974,18 @@ function renderCornersOdds(eventId, target, data){
   });
 
   const points = Object.keys(totals).map(Number).sort((a,b) => a-b);
+  // Store real lines in cache for signal generation
+  if(points.length > 0){
+    oddsCornerLinesCache[eventId] = {};
+    points.forEach(p => {
+      oddsCornerLinesCache[eventId][p] = {
+        over: totals[p].over ? totals[p].over.price : null,
+        under: totals[p].under ? totals[p].under.price : null,
+        overBook: totals[p].over ? totals[p].over.book : null,
+        underBook: totals[p].under ? totals[p].under.book : null,
+      };
+    });
+  }
   if(target){
     if(points.length === 0){
       target.innerHTML = '<span style="color:var(--muted-2)">Sin mercado de corners</span>';
