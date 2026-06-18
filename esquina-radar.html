@@ -809,6 +809,7 @@
       </div>
     </div>
 
+    <div style="display:none">
     <div class="section-title">Publicación en TikTok</div>
     <div class="af-config" id="tiktokConfig">
       <input type="text" id="tiktokApiBase" placeholder="URL de tu Worker (ej: https://tu-app.pages.dev)" style="width:320px" />
@@ -820,6 +821,7 @@
       Requiere desplegar el Worker <code>tiktok-worker.js</code> (con sus secretos <code>TIKTOK_CLIENT_KEY</code>/<code>TIKTOK_CLIENT_SECRET</code> y un KV namespace) en la misma URL configurada arriba.
       Una vez conectado, cada pronóstico en el historial tendrá un botón "TikTok 🎵" que genera el video animado y lo publica directo en tu cuenta
       — mientras la app no pase la auditoría de TikTok, los videos se publican en modo privado (solo visible para ti).
+    </div>
     </div>
 
     <div class="section-title">Historial de pronósticos</div>
@@ -948,11 +950,6 @@
         <div class="fb-name">ESQUINA <span>RADAR</span></div>
       </div>
       <p>Scanner de señales en vivo para corners y goles, con datos de ESPN y verificación on-demand vía API-Football. Construido por Thalamus.</p>
-      <div class="footer-social">
-        <a class="footer-link" data-goto-tab="tracking" data-scroll-to="tiktokConfig" title="TikTok" aria-label="TikTok" style="width:32px;height:32px;border-radius:50%;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--muted);margin:0">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16.6 5.82c-1.01-.88-1.6-2.15-1.6-3.55h-3.07v13.6a3.07 3.07 0 1 1-2.17-2.94v-3.13a6.12 6.12 0 1 0 5.24 6.06V9.34a6.95 6.95 0 0 0 4.07 1.3V7.57c-.91 0-1.76-.27-2.47-.75z"/></svg>
-        </a>
-      </div>
     </div>
 
     <div class="footer-col">
@@ -968,7 +965,6 @@
       <a class="footer-link" data-goto-tab="scanner" data-scroll-to="debugSummary">Modelo de proyección</a>
       <a class="footer-link" data-goto-tab="tracking" data-scroll-to="statTotal">Efectividad del scanner</a>
       <a class="footer-link" data-goto-tab="tracking" data-scroll-to="trackingList">Historial de pronósticos</a>
-      <a class="footer-link" data-goto-tab="tracking" data-scroll-to="tiktokConfig">Publicación en TikTok</a>
     </div>
 
     <div class="footer-col">
@@ -6366,5 +6362,6 @@ document.addEventListener('click', (e) => {
   transition: all 0.2s;
 }
 </style>
+
 
 
