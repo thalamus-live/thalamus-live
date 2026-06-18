@@ -2098,13 +2098,41 @@ function buildReasoningHtml(s){
   const rawProjTxt = (s.rawProjection != null && isFinite(s.rawProjection)) ? s.rawProjection.toFixed(1) : '—';
   const anchorTxt = (s.anchor != null) ? s.anchor.toFixed(1) : '—';
 
-  const blendExplanation = (s.anchor != null) ? `
-      <br><br><b style="color:var(--accent)">📊 Ajuste por seguridad (cuando el partido es muy joven):</b>
-      Si solo llevamos pocos minutos, calcular el ritmo puede ser engañoso (una racha de corners no significa que siga igual toda la tanda).
-      Por eso el modelo se apoya en <b>la historia promedio de esta competición</b> (histórico: <b>≈${anchorTxt} ${unit}/partido</b>).
-      <br>Conforme avanza el partido, confia cada vez más en lo que está pasando en <i>este</i> partido, menos en el promedio.
-      El resultado es una proyección más realista: <b>λ ≈ ${s.projection.toFixed(2)} ${unit}</b>.
-  ` : '';
+  // shrinkage weight: how much the anchor still influences vs observed data
+  // At minute 0: 100% anchor. At minute 30: 50/50. At minute 60: ~33% anchor. At minute 90: ~25%.
+  const shrinkWeight = (s.elapsed != null && s.anchor != null)
+    ? Math.round(100 * 30 / (s.elapsed + 30))
+    : null;
+  const observedWeight = shrinkWeight != null ? (100 - shrinkWeight) : null;
+
+  let blendExplanation = '';
+  if(s.anchor != null && s.elapsed != null){
+    if(shrinkWeight > 60){
+      // Early match: anchor dominates heavily — explain shrinkage
+      blendExplanation = `
+        <br><br><b style="color:var(--accent)">📊 Partido joven (${s.elapsed}') — alta influencia del histórico:</b>
+        Con tan pocos minutos, el ritmo observado aún no es fiable.
+        El modelo usa <b>${shrinkWeight}% histórico</b> (≈${anchorTxt} ${unit}/partido en esta liga) y <b>${observedWeight}% lo observado</b> hasta ahora.
+        Conforme avance el partido, confiará más en lo que está pasando aquí.
+        Proyección resultante: <b>λ ≈ ${s.projection.toFixed(2)} ${unit}</b>.
+      `;
+    } else if(shrinkWeight > 30){
+      // Mid match: balanced blend
+      blendExplanation = `
+        <br><br><b style="color:var(--accent)">📊 Blend histórico/observado (${s.elapsed}'):</b>
+        El modelo combina <b>${shrinkWeight}% histórico de liga</b> (≈${anchorTxt} ${unit}/partido) con <b>${observedWeight}% del ritmo actual</b> de este partido.
+        Proyección: <b>λ ≈ ${s.projection.toFixed(2)} ${unit}</b>.
+      `;
+    } else {
+      // Late match: data dominates, anchor is minor
+      blendExplanation = `
+        <br><br><b style="color:var(--accent)">📊 Proyección basada principalmente en este partido (${s.elapsed}'):</b>
+        A estas alturas el modelo confía <b>${observedWeight}% en el ritmo real</b> de este partido.
+        El histórico de liga (≈${anchorTxt} ${unit}/partido) ya pesa solo un <b>${shrinkWeight}%</b>.
+        Proyección: <b>λ ≈ ${s.projection.toFixed(2)} ${unit}</b>.
+      `;
+    }
+  }
 
   return `
     <div class="signal-reasoning">
