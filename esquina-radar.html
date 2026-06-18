@@ -196,6 +196,9 @@
     text-transform: uppercase;
   }
   .signal-pick small{ display:block; font-size:10px; color: var(--muted); font-weight:600; letter-spacing:0.08em; }
+  .odds-inline-badge{ display:inline-block; margin-left:6px; padding:2px 7px; border-radius:6px; font-size:13px; font-weight:700; background:rgba(110,189,145,0.18); color:var(--lime); border:1px solid var(--lime-dim); vertical-align:middle; }
+  .odds-inline-badge.af{ background:rgba(110,189,145,0.10); color:var(--green-deep); border-color:#a8c9b8; }
+  .odds-inline-badge.unverified{ background:transparent; color:var(--muted); border:1px dashed var(--line); font-size:11px; cursor:help; }
 
   .signal-actions{ display:flex; flex-direction:column; align-items:flex-end; gap:8px; flex:none; }
   .save-signal-btn{ font-size: 10px; padding: 6px 10px; }
@@ -2050,7 +2053,7 @@ function renderSignalsList(listId, allSignals, threshold, unitLabel, statLabel){
           <button class="reasoning-toggle">¿Por qué esta proyección?</button>
         </div>
         <div class="signal-pick">
-          ${pickLabel} ${s.line} ${unitLabel}
+          ${pickLabel} ${s.line} ${unitLabel} ${getInlineOddsBadge(s)}
           <small>Probabilidad ${(s.prob*100).toFixed(0)}%</small>
         </div>
         <div class="signal-actions">
@@ -4788,28 +4791,46 @@ function attachLiveOdds(sig, homeName, awayName){
   return sig;
 }
 
+// Returns a compact odds badge for inline display next to the pick
+function getInlineOddsBadge(s){
+  const pickLabel = s.direction === 'over' ? 'Más' : 'Menos';
+  if(s.oddsApiData){
+    const d = s.oddsApiData;
+    const exactNote = d.exact ? '' : '~';
+    return `<span class="odds-inline-badge" title="${d.book || ''}">${exactNote}${d.price.toFixed(2)}</span>`;
+  }
+  if(s.liveOdds){
+    const exactNote = s.liveOdds.exact ? '' : '~';
+    return `<span class="odds-inline-badge af" title="${s.liveOdds.marketName}">${exactNote}${s.liveOdds.odd.toFixed(2)}</span>`;
+  }
+  if(!s.oddsVerified){
+    return `<span class="odds-inline-badge unverified" title="Carga cuotas para ver líneas reales">⚠️</span>`;
+  }
+  return '';
+}
+
 function buildLiveOddsHtml(s){
   const pickLabel = s.direction === 'over' ? 'Más' : 'Menos';
 
-  // Priority 1: real odds from The Odds API (alternate_corners lines)
+  // Priority 1: real odds from The Odds API
   if(s.oddsApiData){
     const d = s.oddsApiData;
-    return `<div class="signal-odds">✅ <b>${d.price.toFixed(2)}</b> — ${pickLabel} ${d.line} córners · ${d.book || 'mejor cuota'}${!d.exact ? ` <span style="color:var(--muted-2)">(línea real más cercana a tu proyección)</span>` : ''}</div>`;
+    const exactNote = d.exact ? '' : ` <span style="color:var(--muted-2);font-size:11px">(línea más cercana a proyección)</span>`;
+    return `<div class="signal-odds">✅ <b>${d.price.toFixed(2)}</b> · ${pickLabel} ${d.line} · ${d.book || 'mejor cuota'}${exactNote}</div>`;
   }
-  // Warning if odds not loaded yet for this match
+  // Warning: odds not loaded
   if(!s.oddsVerified){
-    return `<div class="signal-odds muted">⚠️ Línea ${s.line} no verificada — carga las cuotas del partido (botón "Ver cuotas corners") para ver líneas reales disponibles.</div>`;
+    return `<div class="signal-odds muted">⚠️ Carga cuotas del partido para ver líneas reales disponibles.</div>`;
   }
-
-  // Priority 2: API-Football live odds
+  // Priority 2: API-Football
   if(s.liveOdds){
-    const exactNote = s.liveOdds.exact ? '' : ` (línea más cercana disponible: ${s.liveOdds.line})`;
-    return `<div class="signal-odds">💰 Cuota en vivo: <b>${s.liveOdds.odd.toFixed(2)}</b> — ${pickLabel} ${s.liveOdds.line} · mercado "${s.liveOdds.marketName}"${exactNote} <span style="color:var(--muted-2)">(feed API-Football)</span></div>`;
+    const exactNote = s.liveOdds.exact ? '' : ` (línea: ${s.liveOdds.line})`;
+    return `<div class="signal-odds">💰 <b>${s.liveOdds.odd.toFixed(2)}</b> · ${pickLabel} ${s.liveOdds.line} · ${s.liveOdds.marketName}${exactNote}</div>`;
   }
   if(s.liveOddsChecked){
-    return `<div class="signal-odds muted">Sin cuota en vivo disponible para esta línea en este momento.</div>`;
+    return `<div class="signal-odds muted">Sin cuota disponible para esta línea.</div>`;
   }
-  return `<div class="signal-odds muted">Sin cuotas en vivo cargadas — usa "Ver cuotas corners" para verificar líneas reales.</div>`;
+  return '';
 }
 
 // Finds a live ESPN match by The Odds API event id (stored in oddsApiMatchMap)
