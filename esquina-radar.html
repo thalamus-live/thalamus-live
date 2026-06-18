@@ -199,6 +199,12 @@
   .odds-inline-badge{ display:inline-block; margin-left:6px; padding:2px 7px; border-radius:6px; font-size:13px; font-weight:700; background:rgba(110,189,145,0.18); color:var(--lime); border:1px solid var(--lime-dim); vertical-align:middle; }
   .odds-inline-badge.af{ background:rgba(110,189,145,0.10); color:var(--green-deep); border-color:#a8c9b8; }
   .odds-inline-badge.unverified{ background:transparent; color:var(--muted); border:1px dashed var(--line); font-size:11px; cursor:help; }
+  .odds-books-row{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; padding:6px 8px; background:rgba(31,42,36,0.04); border-radius:7px; border:1px solid var(--line-soft); }
+  .odds-book-item{ display:flex; align-items:center; gap:4px; font-size:12px; }
+  .odds-book-name{ color:var(--muted); font-size:11px; }
+  .odds-book-price{ font-weight:700; color:var(--lime); font-size:13px; }
+  .odds-book-price.best{ color:#fff; background:var(--green-deep); padding:1px 5px; border-radius:4px; }
+  .odds-book-sep{ color:var(--line); }
 
   .signal-actions{ display:flex; flex-direction:column; align-items:flex-end; gap:8px; flex:none; }
   .save-signal-btn{ font-size: 10px; padding: 6px 10px; }
@@ -1664,6 +1670,70 @@ const SIGNAL_LINES = [5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5, 12.5, 13.5];
 // Cache of real corner lines available per eventId from The Odds API
 // Format: { [eventId]: { [line]: { over: price, under: price, book } } }
 const oddsCornerLinesCache = {};
+
+// Cache of per-bookmaker odds for each eventId + line
+// Format: { [eventId]: { [line]: { over: [{book, price}], under: [{book, price}] } } }
+const oddsBookmakerCache = {};
+
+// Set of eventIds already auto-fetched (to avoid duplicate requests)
+const oddsAutoFetched = new Set();
+
+// Auto-fetch corners odds for a live match (called when signal is generated)
+// Uses The Odds API key from the input field
+async function autoFetchCornersOdds(oddsEventId, sportKey){
+  if(!oddsEventId || oddsAutoFetched.has(oddsEventId)) return;
+  const key = (document.getElementById('oddsApiKey') || {}).value || '';
+  if(!key) return;
+  oddsAutoFetched.add(oddsEventId);
+  try{
+    const region = (document.getElementById('oddsRegion') || {}).value || 'eu';
+    const url = \`https://api.the-odds-api.com/v4/sports/\${sportKey}/events/\${oddsEventId}/odds?apiKey=\${encodeURIComponent(key)}&regions=\${region}&markets=alternate_totals_corners&oddsFormat=decimal\`;
+    const res = await fetch(url);
+    if(!res.ok) return;
+    const data = await res.json();
+    bumpOddsCounter(1);
+
+    // Build per-bookmaker cache
+    const byLine = {};
+    (data.bookmakers || []).forEach(bk => {
+      (bk.markets || []).forEach(m => {
+        if(m.key !== 'alternate_totals_corners') return;
+        (m.outcomes || []).forEach(o => {
+          const p = o.point;
+          if(p == null) return;
+          if(!byLine[p]) byLine[p] = { over: [], under: [] };
+          const side = (o.name||'').toLowerCase().includes('over') ? 'over' : 'under';
+          byLine[p][side].push({ book: bk.title, price: o.price });
+        });
+      });
+    });
+
+    // Sort by best price
+    Object.values(byLine).forEach(sides => {
+      sides.over.sort((a,b) => b.price - a.price);
+      sides.under.sort((a,b) => b.price - a.price);
+    });
+
+    oddsBookmakerCache[oddsEventId] = byLine;
+
+    // Also populate oddsCornerLinesCache (best price per line)
+    const totals = {};
+    Object.entries(byLine).forEach(([p, sides]) => {
+      totals[p] = {
+        over: sides.over[0] ? sides.over[0].price : null,
+        under: sides.under[0] ? sides.under[0].price : null,
+        overBook: sides.over[0] ? sides.over[0].book : null,
+        underBook: sides.under[0] ? sides.under[0].book : null,
+      };
+    });
+    oddsCornerLinesCache[oddsEventId] = totals;
+
+    // Re-render signals to show new odds
+    renderSignals();
+  }catch(e){
+    oddsAutoFetched.delete(oddsEventId); // allow retry
+  }
+}
 const GOAL_LINES = [0.5, 1.5, 2.5, 3.5, 4.5, 5.5];
 
 // Approximate historical averages (corners and goals per 90 minutes) per league,
@@ -1919,6 +1989,20 @@ function computeMatchSignals(m, threshold){
   const linesForSignal = (realLines && realLines.length > 0) ? realLines : SIGNAL_LINES;
   const oddsVerified = !!(realLines && realLines.length > 0);
 
+  // Auto-fetch odds for this match if not done yet and API key is present
+  if(m._oddsEventId && !oddsAutoFetched.has(m._oddsEventId)){
+    const sportKey = m.league === 'fifa.world' ? 'soccer_fifa_world_cup'
+      : m.league === 'eng.1' ? 'soccer_epl'
+      : m.league === 'esp.1' ? 'soccer_spain_la_liga'
+      : m.league === 'ita.1' ? 'soccer_italy_serie_a'
+      : m.league === 'ger.1' ? 'soccer_germany_bundesliga'
+      : m.league === 'fra.1' ? 'soccer_france_ligue_one'
+      : m.league === 'uefa.champions' ? 'soccer_uefa_champs_league'
+      : m.league === 'usa.1' ? 'soccer_usa_mls'
+      : 'soccer_fifa_world_cup';
+    autoFetchCornersOdds(m._oddsEventId, sportKey);
+  }
+
   return computeSignalsForLines(lambda, threshold, linesForSignal).map(s => {
     // Attach real odds from cache
     let oddsData = null;
@@ -1935,6 +2019,7 @@ function computeMatchSignals(m, threshold){
       source: 'espn', market: 'corners',
       elapsed: m.elapsed, pace: m.pace,
       oddsVerified, oddsApiData: oddsData,
+      _oddsEventId: realOddsEventId || null,
     }, homeName, awayName);
   });
 }
@@ -2060,6 +2145,7 @@ function renderSignalsList(listId, allSignals, threshold, unitLabel, statLabel){
           <button class="btn secondary save-signal-btn" data-signal="${payload}" data-type="${isGoals ? 'goles' : 'corners'}" data-stat="${statLabel}">Guardar</button>
         </div>
         ${buildLiveOddsHtml(s)}
+        ${buildBookmakerOddsRow(s)}
         ${buildBookmakerOddsHtml(s)}
         ${buildReasoningHtml(s)}
       </div>
@@ -4791,17 +4877,48 @@ function attachLiveOdds(sig, homeName, awayName){
   return sig;
 }
 
+// Builds a row of bookmaker prices for a signal
+function buildBookmakerOddsRow(s){
+  const evId = s._oddsEventId;
+  if(!evId || !oddsBookmakerCache[evId]) return '';
+  const lineData = oddsBookmakerCache[evId][s.line];
+  if(!lineData) return '';
+  const side = s.direction === 'over' ? 'over' : 'under';
+  const books = lineData[side];
+  if(!books || books.length === 0) return '';
+
+  // Show top 4 bookmakers max
+  const top = books.slice(0, 4);
+  const bestPrice = top[0].price;
+  const items = top.map((b, i) => {
+    const isBest = b.price === bestPrice && i === 0;
+    return \`<span class="odds-book-item">
+      <span class="odds-book-name">\${b.book}</span>
+      <span class="odds-book-price\${isBest ? ' best' : ''}">\${b.price.toFixed(2)}</span>
+    </span>\`;
+  }).join('<span class="odds-book-sep">·</span>');
+
+  return \`<div class="odds-books-row">\${items}</div>\`;
+}
+
 // Returns a compact odds badge for inline display next to the pick
 function getInlineOddsBadge(s){
-  const pickLabel = s.direction === 'over' ? 'Más' : 'Menos';
+  // Best price from bookmaker cache
+  const evId = s._oddsEventId;
+  if(evId && oddsBookmakerCache[evId]){
+    const lineData = oddsBookmakerCache[evId][s.line];
+    if(lineData){
+      const side = s.direction === 'over' ? 'over' : 'under';
+      const best = lineData[side] && lineData[side][0];
+      if(best) return `<span class="odds-inline-badge" title="Mejor cuota: ${best.book}">${best.price.toFixed(2)}</span>`;
+    }
+  }
   if(s.oddsApiData){
     const d = s.oddsApiData;
-    const exactNote = d.exact ? '' : '~';
-    return `<span class="odds-inline-badge" title="${d.book || ''}">${exactNote}${d.price.toFixed(2)}</span>`;
+    return `<span class="odds-inline-badge" title="${d.book || ''}">${d.exact?'':'~'}${d.price.toFixed(2)}</span>`;
   }
   if(s.liveOdds){
-    const exactNote = s.liveOdds.exact ? '' : '~';
-    return `<span class="odds-inline-badge af" title="${s.liveOdds.marketName}">${exactNote}${s.liveOdds.odd.toFixed(2)}</span>`;
+    return `<span class="odds-inline-badge af" title="${s.liveOdds.marketName}">${s.liveOdds.exact?'':'~'}${s.liveOdds.odd.toFixed(2)}</span>`;
   }
   if(!s.oddsVerified){
     return `<span class="odds-inline-badge unverified" title="Carga cuotas para ver líneas reales">⚠️</span>`;
