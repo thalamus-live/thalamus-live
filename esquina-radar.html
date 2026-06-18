@@ -5902,6 +5902,10 @@ function renderFbOdds(eventId, target, data, period){
 
 /* ============ INIT ============ */
 function init(){
+  // Load signal history from cloud KV on startup
+  loadSignalsFromCloud().then(() => {
+    renderSeguimiento();
+  }).catch(() => {});
   buildLeagueChips();
 
   document.querySelectorAll('.tab-btn').forEach(btn => {
