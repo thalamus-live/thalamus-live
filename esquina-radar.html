@@ -1687,7 +1687,7 @@ async function autoFetchCornersOdds(oddsEventId, sportKey){
   oddsAutoFetched.add(oddsEventId);
   try{
     const region = (document.getElementById('oddsRegion') || {}).value || 'eu';
-    const url = `https://api.the-odds-api.com/v4/sports/\${sportKey}/events/\${oddsEventId}/odds?apiKey=\${encodeURIComponent(key)}&regions=\${region}&markets=alternate_totals_corners&oddsFormat=decimal`;
+    const url = `https://api.the-odds-api.com/v4/sports/${sportKey}/events/${oddsEventId}/odds?apiKey=${encodeURIComponent(key)}&regions=${region}&markets=alternate_totals_corners&oddsFormat=decimal`;
     const res = await fetch(url);
     if(!res.ok) return;
     const data = await res.json();
@@ -4948,12 +4948,12 @@ function buildBookmakerOddsRow(s){
   const items = top.map((b, i) => {
     const isBest = b.price === bestPrice && i === 0;
     return `<span class="odds-book-item">
-      <span class="odds-book-name">\${b.book}</span>
-      <span class="odds-book-price\${isBest ? ' best' : ''}">\${b.price.toFixed(2)}</span>
+      <span class="odds-book-name">${b.book}</span>
+      <span class="odds-book-price${isBest ? ' best' : ''}">${b.price.toFixed(2)}</span>
     </span>`;
   }).join('<span class="odds-book-sep">·</span>');
 
-  return `<div class="odds-books-row">\${items}</div>`;
+  return `<div class="odds-books-row">${items}</div>`;
 }
 
 // Returns a compact odds badge for inline display next to the pick
