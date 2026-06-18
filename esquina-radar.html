@@ -828,7 +828,7 @@
     <div class="controls" style="padding:0; margin: 0 0 14px;">
       <div class="pill" id="trackSummary">0 pronósticos · 0 aciertos · 0 fallos · — % acierto</div>
       <button class="btn secondary" id="refreshTracking">Actualizar resultados (ESPN)</button>
-      <button class="btn secondary" id="refreshTrackingAf">Actualizar pendientes API-Football (gasta requests)</button>
+      <button class="btn secondary" id="refreshTrackingAf" style="display:none">Actualizar pendientes API-Football (gasta requests)</button>
       <button class="btn secondary" id="clearTracking">Limpiar todo</button>
     </div>
     <div class="signals-list" id="trackingList">
@@ -2267,10 +2267,11 @@ function renderSignalsList(listId, allSignals, threshold, unitLabel, statLabel){
     return;
   }
 
-  // Auto-guardar todas las señales nuevas al renderizar
+  // Auto-guardar todas las señales nuevas al renderizar (usa el mismo mapeo que el guardado manual)
   let autoSaved = false;
   allSignals.forEach(s => {
-    const added = saveSignal(s);
+    const sigForSave = decodeSignalPayload(encodeSignalPayload(s));
+    const added = saveSignal(sigForSave);
     if(added) autoSaved = true;
   });
   if(autoSaved) renderTracking();
@@ -4333,7 +4334,7 @@ function renderTracking(tracked){
         <div class="track-status ${t.status}">${t.status === 'pending' ? 'PENDIENTE' : t.status === 'won' ? 'ACIERTO' : 'FALLO'}</div>
         <div class="signal-body">
           <div class="signal-title">${t.matchTitle}</div>
-          <div class="signal-meta">${leagueLabel} · ${sourceLabel} · generada en ${matchMinuteLabel}, a las ${date} · al guardar: ${t.totalAtSignal} ${statLabel} / proy. ${t.projectionAtSignal.toFixed(1)} · ${resultText}</div>
+          <div class="signal-meta">${leagueLabel} · ${sourceLabel} · generada en ${matchMinuteLabel}, a las ${date} · al guardar: ${t.totalAtSignal} ${statLabel} / proy. ${(t.projectionAtSignal != null ? t.projectionAtSignal.toFixed(1) : '—')} · ${resultText}</div>
         </div>
         <div class="signal-pick">
           ${pickLabel} ${t.line} ${unitLabel}
@@ -4871,8 +4872,8 @@ function buildSignalCardHtml(sig, s, statLine){
   const pickLabel = s.direction === 'over' ? 'MÁS' : 'MENOS';
   const probClass = s.direction === 'over' ? '' : 'under';
   const unitLabel = sig.market === 'goals' ? 'GOLES' : 'CORNERS';
-  // Auto-guardar al construir la card
-  saveSignal(sig);
+  // Auto-guardar al construir la card (usa el mismo mapeo que el guardado manual)
+  saveSignal(decodeSignalPayload(payload));
   const tracked = getTrackedSignals();
   const alreadySaved = tracked.some(t =>
     t.matchId === sig.matchId && t.direction === sig.direction &&
@@ -6362,6 +6363,7 @@ document.addEventListener('click', (e) => {
   transition: all 0.2s;
 }
 </style>
+
 
 
 
