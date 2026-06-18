@@ -506,8 +506,47 @@
   }
 
   footer{
-    max-width:1400px; margin: 30px auto 0; padding: 16px 24px; color: var(--muted-2);
-    font-size: 11px; border-top:1px solid var(--line); text-align:center;
+    max-width:1400px; margin: 30px auto 0; padding: 40px 24px 20px; color: var(--muted-2);
+    font-size: 12px;
+  }
+  .footer-grid{
+    display:grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 28px;
+    padding-bottom: 28px; border-bottom: 1px solid var(--line);
+  }
+  .footer-col h4{
+    font-family:'Poppins',sans-serif; font-size:11px; font-weight:700; letter-spacing:.04em;
+    text-transform:uppercase; color: var(--green-deep); margin: 0 0 14px;
+  }
+  .footer-col a, .footer-col .footer-link{
+    display:block; color: var(--muted); text-decoration:none; font-size:13px;
+    margin-bottom:10px; cursor:pointer; transition: color .15s ease;
+  }
+  .footer-col a:hover, .footer-col .footer-link:hover{ color: var(--green-deep); }
+  .footer-brand-block{ display:flex; flex-direction:column; gap:10px; }
+  .footer-brand-block .fb-row{ display:flex; align-items:center; gap:8px; }
+  .footer-brand-block .fb-row svg{ width:26px; height:26px; flex-shrink:0; }
+  .footer-brand-block .fb-name{ font-family:'Poppins',sans-serif; font-weight:800; font-size:15px; color: var(--text); }
+  .footer-brand-block .fb-name span{ color: var(--lime); }
+  .footer-brand-block p{ font-size:12px; line-height:1.6; color: var(--muted); max-width:280px; margin:0; }
+  .footer-social{ display:flex; gap:10px; margin-top:4px; }
+  .footer-social a{
+    width:32px; height:32px; border-radius:50%; border:1px solid var(--line); display:flex;
+    align-items:center; justify-content:center; color: var(--muted); margin:0; transition: all .15s ease;
+  }
+  .footer-social a:hover{ border-color: var(--lime); color: var(--green-deep); background: var(--line-soft); }
+  .footer-disclaimer{
+    margin-top: 18px; padding: 14px 16px; background: var(--line-soft); border-radius:10px;
+    font-size:11px; line-height:1.6; color: var(--muted);
+  }
+  .footer-bottom{
+    margin-top:18px; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center;
+    gap:10px; font-size:11px; color: var(--muted-2);
+  }
+  @media (max-width: 760px){
+    .footer-grid{ grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 480px){
+    .footer-grid{ grid-template-columns: 1fr; }
   }
 
   @media (max-width: 640px){
@@ -898,7 +937,58 @@
 </main>
 
 <footer>
-  ESQUINA RADAR · Datos en vivo vía ESPN (gratis, refresco automático) + API-Football (verificación on-demand, 100 req/día)
+  <div class="footer-grid">
+    <div class="footer-col footer-brand-block">
+      <div class="fb-row">
+        <svg viewBox="0 0 46 46" fill="none">
+          <path d="M23 5 L38 14 L23 23 L8 14 Z" fill="#6ebd91"/>
+          <path d="M23 16 L38 25 L23 34 L8 25 Z" fill="#6ebd91" opacity="0.65"/>
+          <path d="M23 27 L33 33 L23 39 L13 33 Z" fill="#3f7a5c" opacity="0.5"/>
+        </svg>
+        <div class="fb-name">ESQUINA <span>RADAR</span></div>
+      </div>
+      <p>Scanner de señales en vivo para corners y goles, con datos de ESPN y verificación on-demand vía API-Football. Construido por Thalamus.</p>
+      <div class="footer-social">
+        <a class="footer-link" data-goto-tab="tracking" data-scroll-to="tiktokConfig" title="TikTok" aria-label="TikTok" style="width:32px;height:32px;border-radius:50%;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--muted);margin:0">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16.6 5.82c-1.01-.88-1.6-2.15-1.6-3.55h-3.07v13.6a3.07 3.07 0 1 1-2.17-2.94v-3.13a6.12 6.12 0 1 0 5.24 6.06V9.34a6.95 6.95 0 0 0 4.07 1.3V7.57c-.91 0-1.76-.27-2.47-.75z"/></svg>
+        </a>
+      </div>
+    </div>
+
+    <div class="footer-col">
+      <h4>Producto</h4>
+      <a class="footer-link" data-goto-tab="scanner">Scanner en vivo</a>
+      <a class="footer-link" data-goto-tab="tracking">Seguimiento &amp; Stats</a>
+      <a class="footer-link" data-goto-tab="scanner" data-scroll-to="signalsList">Señales de corners</a>
+      <a class="footer-link" data-goto-tab="scanner" data-scroll-to="goalSignalsList">Señales de goles</a>
+    </div>
+
+    <div class="footer-col">
+      <h4>Cómo funciona</h4>
+      <a class="footer-link" data-goto-tab="scanner" data-scroll-to="debugSummary">Modelo de proyección</a>
+      <a class="footer-link" data-goto-tab="tracking" data-scroll-to="statTotal">Efectividad del scanner</a>
+      <a class="footer-link" data-goto-tab="tracking" data-scroll-to="trackingList">Historial de pronósticos</a>
+      <a class="footer-link" data-goto-tab="tracking" data-scroll-to="tiktokConfig">Publicación en TikTok</a>
+    </div>
+
+    <div class="footer-col">
+      <h4>Fuentes de datos</h4>
+      <span class="footer-link" style="cursor:default">ESPN (en vivo, gratis)</span>
+      <span class="footer-link" style="cursor:default">API-Football (verificación)</span>
+      <span class="footer-link" style="cursor:default">The Odds API (cuotas)</span>
+    </div>
+  </div>
+
+  <div class="footer-disclaimer">
+    Esquina Radar es una herramienta de análisis estadístico y no constituye asesoría de apuestas ni garantiza resultados.
+    Las proyecciones se basan en datos en vivo y modelos probabilísticos; úsalas como referencia, no como certeza.
+    Si las apuestas dejan de ser un entretenimiento para ti, busca ayuda profesional.
+  </div>
+
+  <div class="footer-bottom">
+    <span>© 2026 Thalamus · Esquina Radar</span>
+    <span id="footerVersion">Live corner &amp; goals scanner · fútbol</span>
+  </div>
 </footer>
 
 <script>
@@ -5940,6 +6030,25 @@ function init(){
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  // Footer navigation links: switch tab and optionally scroll to a section
+  document.querySelectorAll('.footer-link[data-goto-tab]').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const tabName = link.dataset.gotoTab;
+      const targetBtn = document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
+      if(targetBtn) targetBtn.click();
+      const scrollId = link.dataset.scrollTo;
+      if(scrollId){
+        setTimeout(() => {
+          const el = document.getElementById(scrollId);
+          if(el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 50);
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     });
   });
 
