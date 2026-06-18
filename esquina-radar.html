@@ -1989,9 +1989,36 @@ function computeMatchSignals(m, threshold){
   const linesForSignal = (realLines && realLines.length > 0) ? realLines : SIGNAL_LINES;
   const oddsVerified = !!(realLines && realLines.length > 0);
 
-  // Auto-fetch odds for this match if not done yet and API key is present
+  // Resolve The Odds API sport key from ESPN league
+  const leagueToSportKey = {
+    'fifa.world': 'soccer_fifa_world_cup',
+    'eng.1': 'soccer_epl',
+    'esp.1': 'soccer_spain_la_liga',
+    'ita.1': 'soccer_italy_serie_a',
+    'ger.1': 'soccer_germany_bundesliga',
+    'fra.1': 'soccer_france_ligue_one',
+    'ned.1': 'soccer_netherlands_eredivisie',
+    'por.1': 'soccer_portugal_primeira_liga',
+    'uefa.champions': 'soccer_uefa_champs_league',
+    'uefa.europa': 'soccer_uefa_europa_league',
+    'conmebol.libertadores': 'soccer_conmebol_copa_libertadores',
+    'usa.1': 'soccer_usa_mls',
+    'mex.1': 'soccer_mexico_ligamx',
+    'arg.1': 'soccer_argentina_primera_division',
+    'bra.1': 'soccer_brazil_campeonato',
+  };
+  const matchSportKey = leagueToSportKey[m.league] || 'soccer_fifa_world_cup';
+
+  // Try to resolve oddsEventId from team names if not already set
+  if(!m._oddsEventId){
+    const oddsEv = findOddsApiEventForTeams(matchSportKey, homeName, awayName);
+    if(oddsEv) m._oddsEventId = oddsEv.id;
+  }
+
+  // Auto-fetch corners odds for this match if not done yet and API key is present
   if(m._oddsEventId && !oddsAutoFetched.has(m._oddsEventId)){
-    const sportKey = m.league === 'fifa.world' ? 'soccer_fifa_world_cup'
+    const sportKey = matchSportKey;
+    const sportKeyUnused = m.league === 'fifa.world' ? 'soccer_fifa_world_cup'
       : m.league === 'eng.1' ? 'soccer_epl'
       : m.league === 'esp.1' ? 'soccer_spain_la_liga'
       : m.league === 'ita.1' ? 'soccer_italy_serie_a'
