@@ -239,6 +239,7 @@
   .track-status.pending{ background: rgba(31,42,36,0.04); color: var(--muted); border:1px solid var(--line); }
   .track-status.won{ background: rgba(110,189,145,0.16); color: var(--green-deep); border:1px solid var(--lime-dim); }
   .track-status.lost{ background: rgba(182,84,63,0.10); color:#b6543f; border:1px solid #e3c2bb; }
+  .track-status.expired{ background: rgba(31,42,36,0.04); color: var(--muted-2); border:1px dashed var(--line); font-style:italic; }
   .delete-track-btn{
     background:none; border:none; color: var(--muted-2); cursor:pointer; font-size: 14px;
     padding: 0 0 0 4px; line-height:1;
@@ -851,7 +852,7 @@
       <div class="pill" id="trackSummary">0 pronósticos · 0 aciertos · 0 fallos · — % acierto</div>
       <button class="btn secondary" id="refreshTracking">Actualizar resultados (ESPN)</button>
       <button class="btn secondary" id="refreshTrackingAf" style="display:none">Actualizar pendientes API-Football (gasta requests)</button>
-      <button class="btn secondary" id="clearTracking">Limpiar todo</button>
+      <button class="btn secondary" id="clearTracking" style="display:none">Limpiar todo</button>
     </div>
     <div class="signals-list" id="trackingList">
       <div class="empty">Aún no has guardado pronósticos. Usa "Guardar" en una señal para hacerle seguimiento.</div>
@@ -3172,6 +3173,22 @@ async function fetchMatchSummary(eventId, league){
 
 async function checkPendingSignals(){
   const tracked = getTrackedSignals();
+  const now = Date.now();
+  const MS_24H = 24 * 60 * 60 * 1000;
+
+  // Auto-expire signals that have been pending for more than 24h — ESPN no longer
+  // has live data for those matches so they will never resolve via the normal flow.
+  let expiredAny = false;
+  tracked.forEach(sig => {
+    if(sig.status === 'pending' && sig.savedAt && (now - sig.savedAt) > MS_24H){
+      sig.status = 'expired';
+      sig.finalTotal = sig.currentTotal ?? null;
+      sig.resolvedAt = now;
+      expiredAny = true;
+    }
+  });
+  if(expiredAny) saveTrackedSignals(tracked);
+
   const pending = tracked.filter(t => t.status === 'pending' && (t.source || 'espn') === 'espn');
   if(pending.length === 0) return tracked;
 
@@ -3817,7 +3834,7 @@ function drawRibbon(ctx, t, ribbon, progress){
   const alpha = clamp01(progress * 3);
   if(alpha <= 0) return;
 
-  const ribbonText = t.status === 'pending' ? 'PENDIENTE' : (t.status === 'won' ? '¡ACIERTO!' : 'FALLO');
+  const ribbonText = t.status === 'pending' ? 'PENDIENTE' : t.status === 'won' ? '¡ACIERTO!' : t.status === 'expired' ? 'EXPIRADO' : 'FALLO';
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.translate(ribbon.cx, ribbon.cy + dropOffset);
@@ -4286,6 +4303,8 @@ function renderTracking(tracked){
     const statLabel = market === 'goals' ? 'goles' : 'CORNERS';
     const resultText = t.status === 'pending'
       ? `Actual: ${t.currentTotal ?? t.totalAtSignal} ${statLabel}`
+      : t.status === 'expired'
+      ? `Expirado sin datos finales`
       : `Final: ${t.finalTotal} ${statLabel}`;
 
     const sourceLabel = t.source === 'af' ? 'API-Football' : 'ESPN';
@@ -4293,7 +4312,7 @@ function renderTracking(tracked){
 
     return separator + `
       <div class="signal-card">
-        <div class="track-status ${t.status}">${t.status === 'pending' ? 'PENDIENTE' : t.status === 'won' ? 'ACIERTO' : 'FALLO'}</div>
+        <div class="track-status ${t.status}">${t.status === 'pending' ? 'PENDIENTE' : t.status === 'won' ? 'ACIERTO' : t.status === 'expired' ? 'EXPIRADO' : 'FALLO'}</div>
         <div class="signal-body">
           <div class="signal-title">${t.matchTitle}</div>
           <div class="signal-meta">${leagueLabel} · ${sourceLabel} · generada en ${matchMinuteLabel}, a las ${date} · al guardar: ${t.totalAtSignal} ${statLabel} / proy. ${(t.projectionAtSignal != null ? t.projectionAtSignal.toFixed(1) : '—')} · ${resultText}</div>
