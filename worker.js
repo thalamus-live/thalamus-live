@@ -47,9 +47,10 @@ export default {
       }
 
       // 2. No está en cache → llamar a The Odds API
+      const ODDS_KEY = env.ODDS_API_KEY || 'aefdb7968b5b74e09753c07860ad0f14';
       const apiUrl =
         `https://api.the-odds-api.com/v4/sports/${sport}/odds/` +
-        `?apiKey=${env.ODDS_API_KEY}` +
+        `?apiKey=${ODDS_KEY}` +
         `&regions=${regions}&markets=${markets}&oddsFormat=${format}`;
 
       try {
@@ -125,7 +126,7 @@ export default {
 
 
     if (url.pathname === '/esquina-radar') {
-      const erUrl = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/esquina-radar.html?bust=1781832767';
+      const erUrl = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/esquina-radar.html?bust=1781899536';
       const erResponse = await fetch(erUrl, {
         cf: { cacheEverything: false },
         headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
