@@ -1067,6 +1067,7 @@ const ODDS_SPORT_MAP = {
   'usa.1':                  { key: 'soccer_usa_mls',                         short: 'MLS' },
   'mex.1':                  { key: 'soccer_mexico_ligamx',                   short: 'LIGA MX' },
   'arg.1':                  { key: 'soccer_argentina_primera_division',      short: 'ARGENTINA' },
+  'arg.copa_lpf':           { key: 'soccer_argentina_primera_division',      short: 'COPA ARG' },
   'bra.1':                  { key: 'soccer_brazil_campeonato',               short: 'BRASILEIRAO' },
   'col.1':                  { key: 'soccer_colombia_primera_a',              short: 'COLOMBIA' },
   'chi.1':                  { key: 'soccer_chile_primera_division',          short: 'CHILE' },
@@ -1156,26 +1157,6 @@ function findBookmakerOddsForLine(event, direction, line){
   const avg = results.reduce((sum, r) => sum + r.price, 0) / results.length;
   return { results, avg };
 }
-
-function buildBookmakerOddsHtml(s){
-  if(s.market !== 'goals') return '';
-  if(!s.bookmakerOddsAttempted) return '';
-  if(!s.bookmakerOdds){
-    return `<div class="signal-odds muted">Sin cuotas de casas de apuestas (The Odds API) para este partido/línea por ahora.</div>`;
-  }
-  const pickLabel = s.direction === 'over' ? 'Más' : 'Menos';
-  const rows = s.bookmakerOdds.results.map(r =>
-    `${r.bookmaker}: <b>${r.price.toFixed(2)}</b>${r.point !== s.line ? ` (línea ${r.point})` : ''}`
-  ).join(' · ');
-  return `
-    <div class="signal-odds">
-      🏦 ${pickLabel} ${s.line} goles — ${rows}
-      <br><span style="color:var(--muted-2)">Promedio entre ${s.bookmakerOdds.results.length} casa(s): ${s.bookmakerOdds.avg.toFixed(2)} (The Odds API, región EU)</span>
-    </div>
-  `;
-}
-
-
 /* ============ LEAGUE DROPDOWN (ACORDEÓN) ============ */
 function buildLeagueChips(){
   const wrap = document.getElementById('leagueChips');
@@ -1512,9 +1493,9 @@ async function loadAll(){
   // TRADUCCIÓN RADICAL: procesar todos los datos INMEDIATAMENTE
   liveMatches = procesarYTraducirMatches(enriched);
 
-  const goalsOddsKey = (document.getElementById('goalsOddsKey').value.trim()) || DEFAULT_ODDS_API_KEY;
+  const goalsOddsKey = DEFAULT_ODDS_API_KEY;
   if(goalsOddsKey){
-    const refreshMin = parseFloat(document.getElementById('goalsOddsRefresh').value) || 10;
+    const refreshMin = 10;
     const sportKeys = [...new Set(
       enriched.map(m => ODDS_SPORT_MAP[m.league] && ODDS_SPORT_MAP[m.league].key).filter(Boolean)
     )];
@@ -1836,11 +1817,11 @@ const oddsAvgPrevSnapshot = {};
 // so the feature works even though the manual input panel is hidden in the UI.
 async function autoFetchCornersOdds(oddsEventId, sportKey){
   if(!oddsEventId || oddsAutoFetched.has(oddsEventId)) return;
-  const key = (document.getElementById('oddsKey') || {}).value || DEFAULT_ODDS_API_KEY;
+  const key = DEFAULT_ODDS_API_KEY;
   if(!key) return;
   oddsAutoFetched.add(oddsEventId);
   try{
-    const region = (document.getElementById('oddsRegion') || {}).value || 'eu';
+    const region = 'eu';
     const url = `https://api.the-odds-api.com/v4/sports/${sportKey}/events/${oddsEventId}/odds?apiKey=${encodeURIComponent(key)}&regions=${region}&markets=alternate_totals_corners&oddsFormat=decimal`;
     const res = await fetch(url);
     if(!res.ok) return;
@@ -2202,7 +2183,7 @@ function computeMatchGoalSignals(m, threshold){
   const clock = (m.status && m.status.displayClock) || '—';
 
   const oddsInfo = ODDS_SPORT_MAP[m.league];
-  const oddsApiKey = (document.getElementById('goalsOddsKey').value.trim()) || DEFAULT_ODDS_API_KEY;
+  const oddsApiKey = DEFAULT_ODDS_API_KEY;
   const oddsEvent = (oddsInfo && oddsApiKey) ? findOddsApiEventForTeams(oddsInfo.key, homeName, awayName) : null;
   const oddsAttempted = !!oddsApiKey;
 
@@ -2898,34 +2879,6 @@ function mostrarHistorialFinalizados() {
   
   alert(resumen);
 }
-
-function descargarCSVFinalizados() {
-  let finalizados = JSON.parse(localStorage.getItem(PARTIDOS_FINALIZADOS_KEY) || '[]');
-  
-  if (finalizados.length === 0) {
-    alert('Sin datos para descargar');
-    return;
-  }
-  
-  let csv = 'Fecha,Liga,Partido,Apuesta,Línea,Goles Finales,Resultado,Acierto\n';
-  
-  finalizados.forEach(f => {
-    const acierto = f.acierto ? 'SÍ' : 'NO';
-    csv += `"${f.fecha}","${f.liga}","${f.partido}","${f.apuesta}",${f.línea},${f.golesTotales},"${f.resultado}",${acierto}\n`;
-  });
-  
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  const url = URL.createObjectURL(blob);
-  link.href = url;
-  link.download = `finalizados-${new Date().toISOString().split('T')[0]}.csv`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  
-  alert(`✅ Descargado: ${finalizados.length} partidos finalizados\n\nAbre en Excel.`);
-}
-
 // Toast Notification System
 function mostrarToast(config) {
   const { tipo, partido, apuesta, línea, probabilidad, liga } = config;
@@ -3020,36 +2973,6 @@ style.textContent = `
   }
 `;
 document.head.appendChild(style);
-
-function guardarGoalDirect(datos) {
-  console.log('💾 Guardando GOL:', datos);
-  
-  let goles = JSON.parse(localStorage.getItem(GOLES_KEY) || '[]');
-  
-  const nuevoGol = {
-    id: Date.now(),
-    ...datos
-  };
-  
-  goles.push(nuevoGol);
-  localStorage.setItem(GOLES_KEY, JSON.stringify(goles));
-  
-  console.log('✅ Total goles guardados:', goles.length);
-  
-  // **INICIAR MONITOREO DEL PARTIDO**
-  iniciarMonitoreoPartido(nuevoGol);
-  
-  // Mostrar toast notification estético
-  mostrarToast({
-    tipo: 'gol',
-    partido: datos.partido,
-    apuesta: datos.apuesta,
-    línea: datos.línea,
-    probabilidad: datos.probabilidad,
-    liga: datos.liga
-  });
-}
-
 function mostrarEstadísticasGoles() {
   let goles = JSON.parse(localStorage.getItem(GOLES_KEY) || '[]');
   
@@ -3118,14 +3041,6 @@ function descargarCSVGoles() {
   
   alert(`✅ Descargado: ${goles.length} goles\n\nAbre en Excel.`);
 }
-
-function limpiarGoles() {
-  if (confirm('⚠️ ¿Borrar TODOS los goles?\n\nNo se puede deshacer.')) {
-    localStorage.removeItem(GOLES_KEY);
-    alert('🗑️ Goles eliminados.');
-  }
-}
-
 // Botones flotantes - REMOVIDOS (ocultos en estadísticas internas)
 // window.addEventListener('load', () => { ... });
 
@@ -5137,31 +5052,6 @@ function attachLiveOdds(sig, homeName, awayName){
   sig.liveOddsChecked = !!entry;
   return sig;
 }
-
-// Builds a row of bookmaker prices for a signal
-function buildBookmakerOddsRow(s){
-  const evId = s._oddsEventId;
-  if(!evId || !oddsBookmakerCache[evId]) return '';
-  const lineData = oddsBookmakerCache[evId][s.line];
-  if(!lineData) return '';
-  const side = s.direction === 'over' ? 'over' : 'under';
-  const books = lineData[side];
-  if(!books || books.length === 0) return '';
-
-  // Show top 4 bookmakers max
-  const top = books.slice(0, 4);
-  const bestPrice = top[0].price;
-  const items = top.map((b, i) => {
-    const isBest = b.price === bestPrice && i === 0;
-    return `<span class="odds-book-item">
-      <span class="odds-book-name">${b.book}</span>
-      <span class="odds-book-price${isBest ? ' best' : ''}">${b.price.toFixed(2)}</span>
-    </span>`;
-  }).join('<span class="odds-book-sep">·</span>');
-
-  return `<div class="odds-books-row">${items}</div>`;
-}
-
 // Builds a Pinnacle-style average odds header: pick + average price + trend arrow,
 // shown above the individual bookmaker breakdown. Falls back to a muted "no data" pill
 // when there's no bookmaker data yet for this line/direction.
@@ -5332,7 +5222,7 @@ function findLiveMatchByTeams(homeTeam, awayTeam){
 }
 
 async function oddsLoadEvents(){
-  const key = document.getElementById('oddsKey').value.trim();
+  const key = DEFAULT_ODDS_API_KEY;
   const sportKey = document.getElementById('oddsLeague').value;
   const list = document.getElementById('oddsEventsList');
   if(!key){
@@ -5426,9 +5316,9 @@ function toggleOddsTracking(eventId){
 }
 
 async function oddsLoadCorners(eventId){
-  const key = document.getElementById('oddsKey').value.trim();
+  const key = DEFAULT_ODDS_API_KEY;
   const sportKey = document.getElementById('oddsLeague').value;
-  const region = document.getElementById('oddsRegion').value;
+  const region = 'eu';
   const target = document.getElementById(`odds-corners-${eventId}`);
   if(target) target.textContent = '...';
   try{
@@ -6453,15 +6343,6 @@ function descargarCSV() {
   
   alert(`✅ Descargado: ${partidos.length} partidos\n\nAbre en Excel para análisis.`);
 }
-
-// Limpiar datos
-function limpiarDatos() {
-  if (confirm('⚠️ ¿Seguro? Se borrará TODO.\n\nEsto no se puede deshacer.')) {
-    localStorage.removeItem(STATS_KEY);
-    alert('🗑️ Datos eliminados.');
-  }
-}
-
 // Agregar botones a la interfaz (cuando la página cargue)
 window.addEventListener('load', () => {
   const botoneraStats = document.createElement('div');
