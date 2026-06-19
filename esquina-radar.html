@@ -1083,6 +1083,8 @@ let liveMatches = []; // cached enriched match objects
 // Fallback The Odds API key, used when the manual input fields are empty/hidden,
 // so auto-fetched bookmaker odds work without requiring the user to paste a key.
 const DEFAULT_ODDS_API_KEY = 'aefdb7968b5b74e09753c07860ad0f14';
+// Built after TRADUCCIONES_PAISES is declared (see below); avoids temporal dead zone
+let TRADUCCIONES_PAISES_INVERSO = {};
 let oddsApiTotalsCache = {};
 
 async function ensureOddsApiTotals(sportKeys, key, refreshMinutes){
@@ -2626,9 +2628,8 @@ const TRADUCCIONES_PAISES = {
   'Eswatini': 'Esuatini',
 };
 
-// Reverse map (Spanish -> English) built from TRADUCCIONES_PAISES, used to match
-// ESPN team names (already translated to Spanish) against The Odds API (English names).
-const TRADUCCIONES_PAISES_INVERSO = Object.fromEntries(
+// Populate the reverse map now that TRADUCCIONES_PAISES is available
+TRADUCCIONES_PAISES_INVERSO = Object.fromEntries(
   Object.entries(TRADUCCIONES_PAISES).map(([en, es]) => [es.toLowerCase(), en])
 );
 
@@ -2688,7 +2689,6 @@ function iniciarMonitoreoPartido(golesData) {
   const matchId = golesData.id || Date.now();
   const horaGuardado = new Date();
   
-  console.log('📍 Iniciando monitoreo para:', golesData.partido);
   
   // Monitorear cada 30 segundos
   monitoringIntervals[matchId] = setInterval(async () => {
@@ -2696,7 +2696,6 @@ function iniciarMonitoreoPartido(golesData) {
     
     // Si pasaron 90+ minutos, capturar datos finales
     if (tiempoTranscurrido >= 90) {
-      console.log('⏱️ FINALIZADO: ' + golesData.partido);
       clearInterval(monitoringIntervals[matchId]);
       
       // Capturar datos finales
@@ -2741,7 +2740,6 @@ async function capturarDatosFinales(golesData) {
       datosFinales.acierto = golesFinales < línea;
     }
     
-    console.log('📊 Datos finales capturados:', datosFinales);
     return datosFinales;
     
   } catch(err) {
@@ -2777,7 +2775,6 @@ function guardarPartidoFinalizado(golesData, datosFinales) {
   goles = goles.filter(g => g.id !== golesData.id);
   localStorage.setItem(GOLES_KEY, JSON.stringify(goles));
   
-  console.log('✅ Partido guardado en historial final');
 }
 
 function mostrarToastPartidoFinalizado(golesData, datosFinales) {
@@ -2976,7 +2973,6 @@ document.head.appendChild(style);
 function mostrarEstadísticasGoles() {
   let goles = JSON.parse(localStorage.getItem(GOLES_KEY) || '[]');
   
-  console.log('📊 GOLES guardados:', goles.length);
   
   if (goles.length === 0) {
     alert('📊 SIN GOLES GUARDADOS\n\nHaz click en "Guardar" en una predicción de goles.');
