@@ -206,6 +206,28 @@
   .odds-book-price.best{ color:#fff; background:var(--green-deep); padding:1px 5px; border-radius:4px; }
   .odds-book-sep{ color:var(--line); }
 
+  .odds-avg-header{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    margin-top:8px; padding:8px 12px; border-radius:8px;
+    background: rgba(110,189,145,0.08); border:1px solid var(--lime-dim);
+  }
+  .odds-avg-header .oah-label{
+    font-family:'Poppins',sans-serif; font-weight:800; font-size:13px;
+    letter-spacing:0.03em; color: var(--text); text-transform:uppercase;
+  }
+  .odds-avg-header .oah-price{
+    display:flex; align-items:center; gap:6px; font-family:'Poppins',sans-serif;
+    font-weight:800; font-size:18px; color: var(--green-deep);
+  }
+  .odds-avg-header .oah-trend{ font-size:14px; }
+  .odds-avg-header .oah-trend.up{ color: var(--lime); }
+  .odds-avg-header .oah-trend.down{ color: #b6543f; }
+  .odds-avg-header .oah-trend.flat{ color: var(--muted-2); }
+  .odds-avg-header.unavailable{
+    background: transparent; border:1px dashed var(--line); opacity:.7;
+  }
+  .odds-avg-header.unavailable .oah-price{ color: var(--muted); font-size:13px; font-weight:600; }
+
   .signal-actions{ display:flex; flex-direction:column; align-items:flex-end; gap:8px; flex:none; }
   .save-signal-btn{ font-size: 10px; padding: 6px 10px; }
   .save-signal-btn:disabled{ opacity:.5; cursor:default; background:transparent; color:var(--muted); }
@@ -1035,6 +1057,9 @@ let refreshTimer = null;
 let liveMatches = []; // cached enriched match objects
 
 // The Odds API "totals" (goals) odds, keyed by sport_key -> { events, fetchedAt, error }
+// Fallback The Odds API key, used when the manual input fields are empty/hidden,
+// so auto-fetched bookmaker odds work without requiring the user to paste a key.
+const DEFAULT_ODDS_API_KEY = 'b73aa8ac1b74b35c9a14c7f27bf2df8f';
 let oddsApiTotalsCache = {};
 
 async function ensureOddsApiTotals(sportKeys, key, refreshMinutes){
@@ -1451,7 +1476,7 @@ async function loadAll(){
   // TRADUCCIÓN RADICAL: procesar todos los datos INMEDIATAMENTE
   liveMatches = procesarYTraducirMatches(enriched);
 
-  const goalsOddsKey = document.getElementById('goalsOddsKey').value.trim();
+  const goalsOddsKey = (document.getElementById('goalsOddsKey').value.trim()) || DEFAULT_ODDS_API_KEY;
   if(goalsOddsKey){
     const refreshMin = parseFloat(document.getElementById('goalsOddsRefresh').value) || 10;
     const sportKeys = [...new Set(
@@ -1766,11 +1791,16 @@ const oddsBookmakerCache = {};
 // Set of eventIds already auto-fetched (to avoid duplicate requests)
 const oddsAutoFetched = new Set();
 
+// Stores the previous average price per (eventId|line|direction) to compute the trend arrow
+// Format: { "eventId|line|direction": price }
+const oddsAvgPrevSnapshot = {};
+
 // Auto-fetch corners odds for a live match (called when signal is generated)
-// Uses The Odds API key from the input field
+// Uses The Odds API key from the input field, falling back to a default project key
+// so the feature works even though the manual input panel is hidden in the UI.
 async function autoFetchCornersOdds(oddsEventId, sportKey){
   if(!oddsEventId || oddsAutoFetched.has(oddsEventId)) return;
-  const key = (document.getElementById('oddsApiKey') || {}).value || '';
+  const key = (document.getElementById('oddsKey') || {}).value || DEFAULT_ODDS_API_KEY;
   if(!key) return;
   oddsAutoFetched.add(oddsEventId);
   try{
@@ -2304,6 +2334,7 @@ function renderSignalsList(listId, allSignals, threshold, unitLabel, statLabel){
           </button>
         </div>
         ${buildLiveOddsHtml(s)}
+        ${(s.market || 'corners') === 'corners' ? buildOddsAverageHeader(s) : ''}
         ${buildBookmakerOddsRow(s)}
         ${buildBookmakerOddsHtml(s)}
         ${buildReasoningHtml(s)}
@@ -4893,6 +4924,7 @@ function buildSignalCardHtml(sig, s, statLine){
         </button>
       </div>
       ${buildLiveOddsHtml(sig)}
+      ${(sig.market || 'corners') === 'corners' ? buildOddsAverageHeader(sig) : ''}
       ${buildReasoningHtml(sig)}
     </div>
   `;
@@ -5108,6 +5140,54 @@ function buildBookmakerOddsRow(s){
   }).join('<span class="odds-book-sep">·</span>');
 
   return `<div class="odds-books-row">${items}</div>`;
+}
+
+// Builds a Pinnacle-style average odds header: pick + average price + trend arrow,
+// shown above the individual bookmaker breakdown. Falls back to a muted "no data" pill
+// when there's no bookmaker data yet for this line/direction.
+function buildOddsAverageHeader(s){
+  const pickLabel = s.direction === 'over' ? 'MÁS' : 'MENOS';
+  const unitLabel = s.market === 'goals' ? 'GOLES' : 'CORNERS';
+  const headerLabel = `${pickLabel} ${s.line} ${unitLabel}`;
+
+  const evId = s._oddsEventId;
+  let books = null;
+  if(evId && oddsBookmakerCache[evId]){
+    const lineData = oddsBookmakerCache[evId][s.line];
+    if(lineData){
+      const side = s.direction === 'over' ? 'over' : 'under';
+      books = lineData[side];
+    }
+  }
+
+  if(!books || books.length === 0){
+    return `
+      <div class="odds-avg-header unavailable">
+        <span class="oah-label">${headerLabel}</span>
+        <span class="oah-price">⚠️ Sin cuotas de casas aún</span>
+      </div>
+    `;
+  }
+
+  const avg = books.reduce((sum, b) => sum + b.price, 0) / books.length;
+  const snapshotKey = `${evId}|${s.line}|${s.direction}`;
+  const prevAvg = oddsAvgPrevSnapshot[snapshotKey];
+  let trendArrow = '→', trendClass = 'flat';
+  if(prevAvg != null && Math.abs(avg - prevAvg) > 0.005){
+    if(avg > prevAvg){ trendArrow = '↑'; trendClass = 'up'; }
+    else { trendArrow = '↓'; trendClass = 'down'; }
+  }
+  oddsAvgPrevSnapshot[snapshotKey] = avg;
+
+  return `
+    <div class="odds-avg-header">
+      <span class="oah-label">${headerLabel}</span>
+      <span class="oah-price">
+        <span class="oah-trend ${trendClass}">${trendArrow}</span>
+        ${avg.toFixed(2)}
+      </span>
+    </div>
+  `;
 }
 
 // Returns a compact odds badge for inline display next to the pick
@@ -6363,6 +6443,7 @@ document.addEventListener('click', (e) => {
   transition: all 0.2s;
 }
 </style>
+
 
 
 
