@@ -80,7 +80,50 @@ export default {
         });
       }
     }
-    // ── Sirve esquina-radar.html desde GitHub (página independiente) ────────
+    // ── /api/af-odds → proxy seguro a API-Football /odds/live ───────────────
+    // Soporta: /api/af-odds?fixture=ID&bet=ID  (cuotas en vivo de un partido)
+    //          /api/af-odds?action=bookmakers    (lista de casas disponibles)
+    //          /api/af-odds?action=bets           (lista de mercados disponibles)
+    //          /api/af-odds?action=live-fixtures  (partidos en vivo con cuotas)
+    if (url.pathname === '/api/af-odds') {
+      const AF_KEY = '60ca2e420b5bfdfdba95028fc079f507';
+      const AF_BASE = 'https://v3.football.api-sports.io';
+      const cors = {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      };
+
+      if (request.method === 'OPTIONS') return new Response(null, { headers: { ...cors } });
+
+      const action = url.searchParams.get('action');
+      const fixtureId = url.searchParams.get('fixture');
+      const betId = url.searchParams.get('bet');
+
+      let afUrl;
+      if (action === 'bookmakers') {
+        afUrl = `${AF_BASE}/odds/bookmakers`;
+      } else if (action === 'bets') {
+        afUrl = `${AF_BASE}/odds/bets`;
+      } else if (action === 'live-fixtures') {
+        afUrl = `${AF_BASE}/odds/live`;
+      } else if (fixtureId) {
+        afUrl = `${AF_BASE}/odds/live?fixture=${fixtureId}${betId ? `&bet=${betId}` : ''}`;
+      } else {
+        return new Response(JSON.stringify({ error: 'Missing fixture or action param' }), { status: 400, headers: cors });
+      }
+
+      try {
+        const resp = await fetch(afUrl, {
+          headers: { 'x-apisports-key': AF_KEY }
+        });
+        const body = await resp.text();
+        return new Response(body, { status: resp.status, headers: cors });
+      } catch (err) {
+        return new Response(JSON.stringify({ error: err.message }), { status: 502, headers: cors });
+      }
+    }
+
+
     if (url.pathname === '/esquina-radar') {
       const erUrl = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/esquina-radar.html?bust=1781832767';
       const erResponse = await fetch(erUrl, {
@@ -471,5 +514,6 @@ async function handleTikTok(request, env, url) {
 
   return new Response('Not found', { status: 404 });
 }
+
 
 
