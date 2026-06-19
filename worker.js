@@ -82,7 +82,7 @@ export default {
     }
     // ── Sirve esquina-radar.html desde GitHub (página independiente) ────────
     if (url.pathname === '/esquina-radar') {
-      const erUrl = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/esquina-radar.html?bust=1781825200';
+      const erUrl = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/esquina-radar.html?bust=1781831702';
       const erResponse = await fetch(erUrl, {
         cf: { cacheEverything: false },
         headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
