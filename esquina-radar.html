@@ -2348,9 +2348,7 @@ function renderSignalsList(listId, allSignals, threshold, unitLabel, statLabel){
           </button>
         </div>
         ${buildLiveOddsHtml(s)}
-        ${(s.market || 'corners') === 'corners' ? buildOddsAverageHeader(s) : ''}
-        ${buildBookmakerOddsRow(s)}
-        ${buildBookmakerOddsHtml(s)}
+        ${buildOddsAverageHeader(s)}
         ${buildReasoningHtml(s)}
       </div>
     `;
@@ -5170,6 +5168,48 @@ function buildOddsAverageHeader(s){
   const unitLabel = s.market === 'goals' ? 'GOLES' : 'CORNERS';
   const headerLabel = `${pickLabel} ${s.line} ${unitLabel}`;
 
+  // --- GOALS: use bookmakerOdds (The Odds API totals, fetched per league) ---
+  if(s.market === 'goals'){
+    if(!s.bookmakerOddsAttempted) return '';
+    if(!s.bookmakerOdds || !s.bookmakerOdds.results || s.bookmakerOdds.results.length === 0){
+      return `
+        <div class="odds-avg-header unavailable">
+          <span class="oah-label">${headerLabel}</span>
+          <span class="oah-price">Sin cuotas aún</span>
+        </div>
+      `;
+    }
+    const avg = s.bookmakerOdds.avg;
+    const snapshotKey = `goals|${s.matchId}|${s.line}|${s.direction}`;
+    const prevAvg = oddsAvgPrevSnapshot[snapshotKey];
+    let trendArrow = '→', trendClass = 'flat';
+    if(prevAvg != null && Math.abs(avg - prevAvg) > 0.005){
+      trendArrow = avg > prevAvg ? '↑' : '↓';
+      trendClass  = avg > prevAvg ? 'up'  : 'down';
+    }
+    oddsAvgPrevSnapshot[snapshotKey] = avg;
+
+    const top = s.bookmakerOdds.results.slice(0, 4);
+    const bestPrice = Math.max(...top.map(r => r.price));
+    const booksRow = top.map(r => `
+      <span class="odds-book-item">
+        <span class="odds-book-name">${r.bookmaker}</span>
+        <span class="odds-book-price${r.price === bestPrice ? ' best' : ''}">${r.price.toFixed(2)}</span>
+      </span>`).join('<span class="odds-book-sep">·</span>');
+
+    return `
+      <div class="odds-avg-header">
+        <span class="oah-label">${headerLabel}</span>
+        <span class="oah-price">
+          <span class="oah-trend ${trendClass}">${trendArrow}</span>
+          ${avg.toFixed(2)}
+        </span>
+      </div>
+      <div class="odds-books-row">${booksRow}</div>
+    `;
+  }
+
+  // --- CORNERS: use oddsBookmakerCache (The Odds API alternate_totals_corners) ---
   const evId = s._oddsEventId;
   let books = null;
   if(evId && oddsBookmakerCache[evId]){
@@ -5184,7 +5224,7 @@ function buildOddsAverageHeader(s){
     return `
       <div class="odds-avg-header unavailable">
         <span class="oah-label">${headerLabel}</span>
-        <span class="oah-price">⚠️ Sin cuotas de casas aún</span>
+        <span class="oah-price">Sin cuotas de casas aún</span>
       </div>
     `;
   }
@@ -5194,10 +5234,18 @@ function buildOddsAverageHeader(s){
   const prevAvg = oddsAvgPrevSnapshot[snapshotKey];
   let trendArrow = '→', trendClass = 'flat';
   if(prevAvg != null && Math.abs(avg - prevAvg) > 0.005){
-    if(avg > prevAvg){ trendArrow = '↑'; trendClass = 'up'; }
-    else { trendArrow = '↓'; trendClass = 'down'; }
+    trendArrow = avg > prevAvg ? '↑' : '↓';
+    trendClass  = avg > prevAvg ? 'up'  : 'down';
   }
   oddsAvgPrevSnapshot[snapshotKey] = avg;
+
+  const top = books.slice(0, 4);
+  const bestPrice = top[0].price;
+  const booksRow = top.map((b, i) => `
+    <span class="odds-book-item">
+      <span class="odds-book-name">${b.book}</span>
+      <span class="odds-book-price${i === 0 ? ' best' : ''}">${b.price.toFixed(2)}</span>
+    </span>`).join('<span class="odds-book-sep">·</span>');
 
   return `
     <div class="odds-avg-header">
@@ -5207,6 +5255,7 @@ function buildOddsAverageHeader(s){
         ${avg.toFixed(2)}
       </span>
     </div>
+    <div class="odds-books-row">${booksRow}</div>
   `;
 }
 
@@ -5229,9 +5278,6 @@ function getInlineOddsBadge(s){
   if(s.liveOdds){
     return `<span class="odds-inline-badge af" title="${s.liveOdds.marketName}">${s.liveOdds.exact?'':'~'}${s.liveOdds.odd.toFixed(2)}</span>`;
   }
-  if(!s.oddsVerified){
-    return `<span class="odds-inline-badge unverified" title="Carga cuotas para ver líneas reales">⚠️</span>`;
-  }
   return '';
 }
 
@@ -5244,9 +5290,9 @@ function buildLiveOddsHtml(s){
     const exactNote = d.exact ? '' : ` <span style="color:var(--muted-2);font-size:11px">(línea más cercana a proyección)</span>`;
     return `<div class="signal-odds">✅ <b>${d.price.toFixed(2)}</b> · ${pickLabel} ${d.line} · ${d.book || 'mejor cuota'}${exactNote}</div>`;
   }
-  // Warning: odds not loaded
+  // Warning: odds not loaded — silently return empty, buildOddsAverageHeader shows the state
   if(!s.oddsVerified){
-    return `<div class="signal-odds muted">⚠️ Carga cuotas del partido para ver líneas reales disponibles.</div>`;
+    return '';
   }
   // Priority 2: API-Football
   if(s.liveOdds){
@@ -6463,6 +6509,7 @@ document.addEventListener('click', (e) => {
   transition: all 0.2s;
 }
 </style>
+
 
 
 
