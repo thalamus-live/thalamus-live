@@ -1088,7 +1088,11 @@ async function ensureOddsApiTotals(sportKeys, key, refreshMinutes){
 function findOddsApiEventForTeams(sportKey, homeName, awayName){
   const cache = oddsApiTotalsCache[sportKey];
   if(!cache || !Array.isArray(cache.events)) return null;
-  const h = normalizeTeamName(homeName), a = normalizeTeamName(awayName);
+  // Team names from ESPN may already be translated to Spanish; try the English
+  // equivalent too, since The Odds API always returns English team names.
+  const homeEn = TRADUCCIONES_PAISES_INVERSO[(homeName || '').toLowerCase()] || homeName;
+  const awayEn = TRADUCCIONES_PAISES_INVERSO[(awayName || '').toLowerCase()] || awayName;
+  const h = normalizeTeamName(homeEn), a = normalizeTeamName(awayEn);
   if(!h || !a) return null;
   return cache.events.find(ev => {
     const eh = normalizeTeamName(ev.home_team), ea = normalizeTeamName(ev.away_team);
@@ -2630,6 +2634,12 @@ const TRADUCCIONES_PAISES = {
   'Lesotho': 'Lesoto',
   'Eswatini': 'Esuatini',
 };
+
+// Reverse map (Spanish -> English) built from TRADUCCIONES_PAISES, used to match
+// ESPN team names (already translated to Spanish) against The Odds API (English names).
+const TRADUCCIONES_PAISES_INVERSO = Object.fromEntries(
+  Object.entries(TRADUCCIONES_PAISES).map(([en, es]) => [es.toLowerCase(), en])
+);
 
 function traducirPais(nombre) {
   // Buscar en el diccionario
