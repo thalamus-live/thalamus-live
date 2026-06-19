@@ -2200,7 +2200,7 @@ function computeMatchGoalSignals(m, threshold){
   const clock = (m.status && m.status.displayClock) || '—';
 
   const oddsInfo = ODDS_SPORT_MAP[m.league];
-  const oddsApiKey = document.getElementById('goalsOddsKey').value.trim();
+  const oddsApiKey = (document.getElementById('goalsOddsKey').value.trim()) || DEFAULT_ODDS_API_KEY;
   const oddsEvent = (oddsInfo && oddsApiKey) ? findOddsApiEventForTeams(oddsInfo.key, homeName, awayName) : null;
   const oddsAttempted = !!oddsApiKey;
 
