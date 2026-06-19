@@ -1088,17 +1088,27 @@ async function ensureOddsApiTotals(sportKeys, key, refreshMinutes){
 function findOddsApiEventForTeams(sportKey, homeName, awayName){
   const cache = oddsApiTotalsCache[sportKey];
   if(!cache || !Array.isArray(cache.events)) return null;
-  // Team names from ESPN may already be translated to Spanish; try the English
-  // equivalent too, since The Odds API always returns English team names.
-  const homeEn = TRADUCCIONES_PAISES_INVERSO[(homeName || '').toLowerCase()] || homeName;
-  const awayEn = TRADUCCIONES_PAISES_INVERSO[(awayName || '').toLowerCase()] || awayName;
-  const h = normalizeTeamName(homeEn), a = normalizeTeamName(awayEn);
-  if(!h || !a) return null;
+
+  // Build a set of candidate normalised names for each side (handles both
+  // Spanish-translated names from ESPN and original-English names).
+  function candidates(name){
+    const orig = normalizeTeamName(name);
+    const enFromEs = TRADUCCIONES_PAISES_INVERSO[(name || '').toLowerCase()];
+    const enNorm = enFromEs ? normalizeTeamName(enFromEs) : null;
+    return [orig, enNorm].filter(Boolean);
+  }
+
+  const hCands = candidates(homeName);
+  const aCands = candidates(awayName);
+  if(!hCands.length || !aCands.length) return null;
+
+  const matches = (cands, str) => cands.some(c => str.includes(c) || c.includes(str));
+
   return cache.events.find(ev => {
     const eh = normalizeTeamName(ev.home_team), ea = normalizeTeamName(ev.away_team);
     if(!eh || !ea) return false;
-    const sameOrder = (eh.includes(h) || h.includes(eh)) && (ea.includes(a) || a.includes(ea));
-    const swapped = (eh.includes(a) || a.includes(eh)) && (ea.includes(h) || h.includes(ea));
+    const sameOrder = matches(hCands, eh) && matches(aCands, ea);
+    const swapped   = matches(aCands, eh) && matches(hCands, ea);
     return sameOrder || swapped;
   }) || null;
 }
