@@ -1059,7 +1059,7 @@ let liveMatches = []; // cached enriched match objects
 // The Odds API "totals" (goals) odds, keyed by sport_key -> { events, fetchedAt, error }
 // Fallback The Odds API key, used when the manual input fields are empty/hidden,
 // so auto-fetched bookmaker odds work without requiring the user to paste a key.
-const DEFAULT_ODDS_API_KEY = 'b73aa8ac1b74b35c9a14c7f27bf2df8f';
+const DEFAULT_ODDS_API_KEY = 'aefdb7968b5b74e09753c07860ad0f14';
 let oddsApiTotalsCache = {};
 
 async function ensureOddsApiTotals(sportKeys, key, refreshMinutes){
@@ -6443,6 +6443,7 @@ document.addEventListener('click', (e) => {
   transition: all 0.2s;
 }
 </style>
+
 
 
 
