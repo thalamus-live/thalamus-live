@@ -150,6 +150,8 @@ export default {
       else if (action === 'leagues')                     pinnUrl = `${PINN_BASE}/sports/${sport}/leagues?all=false`;
       else if (action === 'matchups' && league)          pinnUrl = `${PINN_BASE}/leagues/${league}/matchups?withSpecials=true&brandId=0`;
       else if (action === 'markets'  && matchup)         pinnUrl = `${PINN_BASE}/matchups/${matchup}/markets/straight`;
+      else if (action === 'live-markets' && matchup)     pinnUrl = `${PINN_BASE}/matchups/${matchup}/markets/straight?live=true`;
+      else if (action === 'live-leagues')                pinnUrl = `${PINN_BASE}/sports/${sport}/leagues?all=false&hasLive=true`;
       else return new Response(JSON.stringify({ error: 'Missing or invalid action param' }), { status: 400, headers: cors });
 
       try {
@@ -163,7 +165,7 @@ export default {
 
 
     if (url.pathname === '/esquina-radar') {
-      const erUrl = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/esquina-radar.html?bust=1781977442';
+      const erUrl = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/esquina-radar.html?bust=1781988746';
       const erResponse = await fetch(erUrl, {
         cf: { cacheEverything: false },
         headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
