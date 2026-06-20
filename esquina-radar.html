@@ -1165,18 +1165,34 @@ function findPinnacleSpecials(leagueId, homeName, awayName){
 }
 
 // Fetch markets (odds) for a specific Pinnacle matchup ID
+// Tries live markets first (for in-progress matches), falls back to pre-match
 async function fetchPinnacleMarkets(matchupId){
   if(!matchupId) return null;
   const cached = pinnacleMarketsCache[matchupId];
-  if(cached && (Date.now() - cached.fetchedAt) < 2 * 60 * 1000) return cached.markets; // 2min cache
-  if(pinnacleFetched.has(matchupId)) return pinnacleMarketsCache[matchupId]?.markets || null;
+  const cacheAge = cached ? Date.now() - cached.fetchedAt : Infinity;
+  // Live markets expire faster (2min), pre-match slower (10min)
+  const maxAge = (cached?.isLive) ? 2 * 60 * 1000 : 10 * 60 * 1000;
+  if(cached && cacheAge < maxAge) return cached.markets;
+  // Reset fetch flag when cache expired so we retry
+  if(pinnacleFetched.has(matchupId) && cacheAge >= maxAge) pinnacleFetched.delete(matchupId);
+  if(pinnacleFetched.has(matchupId)) return cached?.markets || null;
   pinnacleFetched.add(matchupId);
   try {
+    // Try live markets first
+    const rLive = await fetch(`/api/pinnacle?action=live-markets&matchup=${matchupId}`);
+    if(rLive.ok){
+      const liveData = await rLive.json();
+      if(Array.isArray(liveData) && liveData.length > 0){
+        pinnacleMarketsCache[matchupId] = { fetchedAt: Date.now(), markets: liveData, isLive: true };
+        return liveData;
+      }
+    }
+    // Fall back to pre-match markets
     const r = await fetch(`/api/pinnacle?action=markets&matchup=${matchupId}`);
     if(!r.ok) return null;
     const data = await r.json();
     const markets = Array.isArray(data) ? data : [];
-    pinnacleMarketsCache[matchupId] = { fetchedAt: Date.now(), markets };
+    pinnacleMarketsCache[matchupId] = { fetchedAt: Date.now(), markets, isLive: false };
     return markets;
   } catch(e) { return null; }
 }
