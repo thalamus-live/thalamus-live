@@ -1156,8 +1156,10 @@ function findPinnacleSpecials(leagueId, homeName, awayName){
 
   // Find specials that have this parent's ID
   const specials = cache.matchups.filter(m => m.parentId === parent.id);
-  const cornerSpecial = specials.find(m => /corner/i.test(m.home?.name || m.away?.name || ''));
-  const cardSpecial   = specials.find(m => /card|yellow/i.test(m.home?.name || m.away?.name || ''));
+  
+  // Specials don't always have home/away names — use the raw JSON to detect corner/card props
+  const cornerSpecial = specials.find(m => /corner/i.test(JSON.stringify(m)));
+  const cardSpecial   = specials.find(m => /card|yellow/i.test(JSON.stringify(m)));
 
   return { parentId: parent.id, cornerSpecial, cardSpecial };
 }
