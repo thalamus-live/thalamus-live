@@ -1084,6 +1084,148 @@ let liveMatches = []; // cached enriched match objects
 // Fallback The Odds API key, used when the manual input fields are empty/hidden,
 // so auto-fetched bookmaker odds work without requiring the user to paste a key.
 const DEFAULT_ODDS_API_KEY = 'aefdb7968b5b74e09753c07860ad0f14';
+
+// ── Pinnacle integration ─────────────────────────────────────────────────────
+// Maps our ESPN league codes to Pinnacle league IDs (Soccer sport id=29)
+const PINNACLE_LEAGUE_MAP = {
+  'fifa.world':             2686,
+  'uefa.champions':         1980,
+  'uefa.europa':            1974,
+  'eng.1':                  1980, // placeholder — update with real ID
+  'esp.1':                  2006,
+  'ita.1':                  2025,
+  'ger.1':                  1999,
+  'fra.1':                  2014,
+  'ned.1':                  2045,
+  'bel.1':                  1978,
+  'por.1':                  2063,
+  'arg.1':                  1969,
+  'bra.1':                  1980,
+  'mex.1':                  2037,
+  'conmebol.libertadores':  2194,
+  'conmebol.sudamericana':  2195,
+  'col.1':                  1991,
+  'chi.1':                  1988,
+};
+
+// Cache: { leagueId: { fetchedAt, matchups: [] } }
+const pinnacleMatchupsCache = {};
+// Cache: { matchupId: { fetchedAt, markets: [] } }
+const pinnacleMarketsCache = {};
+// Set of matchupIds already fetched to avoid duplicates
+const pinnacleFetched = new Set();
+
+// Fetch all matchups+specials for a Pinnacle league (1 req per league)
+async function ensurePinnacleMatchups(leagueId){
+  if(!leagueId) return;
+  const cached = pinnacleMatchupsCache[leagueId];
+  if(cached && (Date.now() - cached.fetchedAt) < 5 * 60 * 1000) return; // 5min cache
+  try {
+    const r = await fetch(`/api/pinnacle?action=matchups&league=${leagueId}`);
+    if(!r.ok) return;
+    const data = await r.json();
+    pinnacleMatchupsCache[leagueId] = { fetchedAt: Date.now(), matchups: Array.isArray(data) ? data : [] };
+  } catch(e) { debugLog('Pinnacle matchups error:', e.message); }
+}
+
+// Find Pinnacle corner/card/goal specials for a given ESPN match
+function findPinnacleSpecials(leagueId, homeName, awayName){
+  const cache = pinnacleMatchupsCache[leagueId];
+  if(!cache || !cache.matchups.length) return null;
+
+  // First find the parent matchup by team name
+  const hNorm = normalizeTeamName(homeName);
+  const aNorm = normalizeTeamName(awayName);
+  const homeEn = TRADUCCIONES_PAISES_INVERSO[homeName.toLowerCase()] || homeName;
+  const awayEn = TRADUCCIONES_PAISES_INVERSO[awayName.toLowerCase()] || awayName;
+  const hEnNorm = normalizeTeamName(homeEn);
+  const aEnNorm = normalizeTeamName(awayEn);
+
+  const parent = cache.matchups.find(m => {
+    if(!m.home || !m.away) return false;
+    const mh = normalizeTeamName(m.home.name);
+    const ma = normalizeTeamName(m.away.name);
+    const match = (mh.includes(hNorm)||hNorm.includes(mh)||mh.includes(hEnNorm)||hEnNorm.includes(mh)) &&
+                  (ma.includes(aNorm)||aNorm.includes(ma)||ma.includes(aEnNorm)||aEnNorm.includes(ma));
+    const swapped = (ma.includes(hNorm)||hNorm.includes(ma)||ma.includes(hEnNorm)||hEnNorm.includes(ma)) &&
+                    (mh.includes(aNorm)||aNorm.includes(mh)||mh.includes(aEnNorm)||aEnNorm.includes(mh));
+    return match || swapped;
+  });
+
+  if(!parent) return null;
+
+  // Find specials that have this parent's ID
+  const specials = cache.matchups.filter(m => m.parentId === parent.id);
+  const cornerSpecial = specials.find(m => /corner/i.test(m.home?.name || m.away?.name || ''));
+  const cardSpecial   = specials.find(m => /card|yellow/i.test(m.home?.name || m.away?.name || ''));
+
+  return { parentId: parent.id, cornerSpecial, cardSpecial };
+}
+
+// Fetch markets (odds) for a specific Pinnacle matchup ID
+async function fetchPinnacleMarkets(matchupId){
+  if(!matchupId) return null;
+  const cached = pinnacleMarketsCache[matchupId];
+  if(cached && (Date.now() - cached.fetchedAt) < 2 * 60 * 1000) return cached.markets; // 2min cache
+  if(pinnacleFetched.has(matchupId)) return pinnacleMarketsCache[matchupId]?.markets || null;
+  pinnacleFetched.add(matchupId);
+  try {
+    const r = await fetch(`/api/pinnacle?action=markets&matchup=${matchupId}`);
+    if(!r.ok) return null;
+    const data = await r.json();
+    const markets = Array.isArray(data) ? data : [];
+    pinnacleMarketsCache[matchupId] = { fetchedAt: Date.now(), markets };
+    return markets;
+  } catch(e) { return null; }
+}
+
+// Convert American odds to decimal
+function americanToDecimal(american){
+  if(!american) return null;
+  return american > 0 ? +(american/100 + 1).toFixed(3) : +(100/Math.abs(american) + 1).toFixed(3);
+}
+
+// Build Pinnacle odds display for a signal (corners or goals)
+async function buildPinnacleOddsForSignal(s, leagueId, homeName, awayName){
+  if(!leagueId) return null;
+  await ensurePinnacleMatchups(leagueId);
+  const specials = findPinnacleSpecials(leagueId, homeName, awayName);
+  if(!specials) return null;
+
+  const isCorners = (s.market || 'corners') === 'corners';
+  const matchupId = isCorners ? specials.cornerSpecial?.id : specials.parentId;
+  if(!matchupId) return null;
+
+  const markets = await fetchPinnacleMarkets(matchupId);
+  if(!markets || !markets.length) return null;
+
+  // For corners: find total market closest to signal line
+  // For goals: find total market closest to signal line
+  const totals = markets.filter(m => m.type === 'total');
+  const best = totals.reduce((prev, curr) =>
+    Math.abs((curr.points || 0) - s.line) < Math.abs((prev?.points || 999) - s.line) ? curr : prev
+  , null);
+
+  if(!best) return null;
+
+  const side = s.direction === 'over' ? 'over' : 'under';
+  const price = best.prices?.find(p => p.designation === side);
+  if(!price) return null;
+
+  return {
+    matchupId,
+    line: best.points,
+    direction: side,
+    american: price.price,
+    decimal: americanToDecimal(price.price),
+    allLines: totals.map(t => ({
+      line: t.points,
+      over: americanToDecimal(t.prices?.find(p=>p.designation==='over')?.price),
+      under: americanToDecimal(t.prices?.find(p=>p.designation==='under')?.price),
+    })).sort((a,b) => a.line - b.line)
+  };
+}
+
 // Built after TRADUCCIONES_PAISES is declared (see below); avoids temporal dead zone
 let TRADUCCIONES_PAISES_INVERSO = {};
 let oddsApiTotalsCache = {};
@@ -2335,6 +2477,7 @@ function renderSignalsList(listId, allSignals, threshold, unitLabel, statLabel){
         </div>
         ${buildLiveOddsHtml(s)}
         ${buildOddsAverageHeader(s)}
+        <div id="pinn-odds-${s.matchId}-${s.line}-${s.direction}-${s.market||'corners'}" class="pinn-odds-placeholder"></div>
         ${buildReasoningHtml(s)}
       </div>
     `;
@@ -2399,8 +2542,56 @@ function renderSignals(){
 
   renderSignalsList('signalsList', cornerSignals, threshold, 'CORNERS', 'CORNERS');
   renderSignalsList('goalSignalsList', goalSignals, threshold, 'GOLES', 'goles');
-  
+
+  // Fetch Pinnacle odds async after render and inject into DOM
+  setTimeout(() => attachPinnacleOddsToSignals([...cornerSignals, ...goalSignals]), 100);
 }
+
+// After signals render, fetch Pinnacle odds per signal and inject into placeholder divs
+async function attachPinnacleOddsToSignals(signals){
+  for(const s of signals){
+    const m = liveMatches.find(m => m.id === s.matchId);
+    if(!m) continue;
+    const leagueId = PINNACLE_LEAGUE_MAP[m.league];
+    if(!leagueId) continue;
+    const homeName = m.home?.team?.displayName || '';
+    const awayName = m.away?.team?.displayName || '';
+    const placeholderId = `pinn-odds-${s.matchId}-${s.line}-${s.direction}-${s.market||'corners'}`;
+    const el = document.getElementById(placeholderId);
+    if(!el) continue;
+    try {
+      const odds = await buildPinnacleOddsForSignal(s, leagueId, homeName, awayName);
+      if(odds){
+        const unitLabel = (s.market || 'corners') === 'corners' ? 'CORNERS' : 'GOLES';
+        const dirLabel = s.direction === 'over' ? 'MÁS' : 'MENOS';
+        el.innerHTML = `
+          <div class="odds-avg-header">
+            <span class="oah-label">${dirLabel} ${odds.line} ${unitLabel}</span>
+            <span class="oah-price">
+              <span class="oah-trend flat">→</span>
+              ${odds.decimal}
+            </span>
+          </div>
+          <div class="odds-books-row">
+            <span class="odds-book-item">
+              <span class="odds-book-name">Pinnacle</span>
+              <span class="odds-book-price best">${odds.decimal}</span>
+            </span>
+            ${odds.allLines.slice(0,4).map(l => `
+              <span class="odds-book-sep">·</span>
+              <span class="odds-book-item" style="opacity:.7">
+                <span class="odds-book-name">${l.line}</span>
+                <span class="odds-book-price">${s.direction==='over'?l.over:l.under}</span>
+              </span>`).join('')}
+          </div>`;
+      } else {
+        el.style.display = 'none';
+      }
+    } catch(e) { el.style.display = 'none'; }
+  }
+}
+
+
 
 
 // ============ INTERCEPTOR RADICAL DE TRADUCCIONES ============
