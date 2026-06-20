@@ -125,6 +125,43 @@ export default {
     }
 
 
+    // ── /api/pinnacle → proxy a Pinnacle API pública ─────────────────────────
+    // /api/pinnacle?action=sports                    → lista deportes
+    // /api/pinnacle?action=leagues&sport=29          → ligas de fútbol
+    // /api/pinnacle?action=matchups&league=ID        → partidos + specials
+    // /api/pinnacle?action=markets&matchup=ID        → cuotas de un partido
+    if (url.pathname === '/api/pinnacle') {
+      const PINN_KEY  = 'CmX2KcMrXuFmNg6YFbmTxE0y9CIrOi0R';
+      const PINN_BASE = 'https://guest.api.arcadia.pinnacle.com/0.1';
+      const cors = {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'public, max-age=60',
+      };
+      if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
+
+      const action  = url.searchParams.get('action');
+      const sport   = url.searchParams.get('sport') || '29';
+      const league  = url.searchParams.get('league');
+      const matchup = url.searchParams.get('matchup');
+
+      let pinnUrl;
+      if      (action === 'sports')                      pinnUrl = `${PINN_BASE}/sports`;
+      else if (action === 'leagues')                     pinnUrl = `${PINN_BASE}/sports/${sport}/leagues?all=false`;
+      else if (action === 'matchups' && league)          pinnUrl = `${PINN_BASE}/leagues/${league}/matchups?withSpecials=true&brandId=0`;
+      else if (action === 'markets'  && matchup)         pinnUrl = `${PINN_BASE}/matchups/${matchup}/markets/straight`;
+      else return new Response(JSON.stringify({ error: 'Missing or invalid action param' }), { status: 400, headers: cors });
+
+      try {
+        const resp = await fetch(pinnUrl, { headers: { 'X-Api-Key': PINN_KEY } });
+        const body = await resp.text();
+        return new Response(body, { status: resp.status, headers: cors });
+      } catch (err) {
+        return new Response(JSON.stringify({ error: err.message }), { status: 502, headers: cors });
+      }
+    }
+
+
     if (url.pathname === '/esquina-radar') {
       const erUrl = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/esquina-radar.html?bust=1781899536';
       const erResponse = await fetch(erUrl, {
