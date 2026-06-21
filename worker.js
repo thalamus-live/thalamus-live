@@ -164,8 +164,22 @@ export default {
     }
 
 
+    // ── Sirve sw.js (Service Worker para notificaciones push) ───────────────
+    if (url.pathname === '/sw.js') {
+      const swUrl = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/sw.js';
+      const swResp = await fetch(swUrl, { cf: { cacheEverything: false } });
+      const swBody = await swResp.text();
+      return new Response(swBody, {
+        headers: {
+          'Content-Type': 'application/javascript',
+          'Service-Worker-Allowed': '/',
+          'Cache-Control': 'no-cache',
+        }
+      });
+    }
+
     if (url.pathname === '/esquina-radar') {
-      const erUrl = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/esquina-radar.html?bust=1782010621';
+      const erUrl = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/esquina-radar.html?bust=1782021060';
       const erResponse = await fetch(erUrl, {
         cf: { cacheEverything: false },
         headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
