@@ -2608,6 +2608,8 @@ async function attachPinnacleOddsToSignals(signals){
     try {
       const odds = await buildPinnacleOddsForSignal(s, leagueId, homeName, awayName);
       if(odds){
+        // Save on signal object so share card can display it
+        s._pinnacleOdds = odds;
         const unitLabel = (s.market || 'corners') === 'corners' ? 'CORNERS' : 'GOLES';
         const dirLabel = s.direction === 'over' ? 'MÁS' : 'MENOS';
         el.innerHTML = `
@@ -3926,22 +3928,22 @@ function buildShareCardLayers(t){
   }
 
   // Header / brand — Thalamus isotype + wordmark, "negative" (white) version
-  const markW = 130;
-  const markX = W/2 - 240;
-  const markBottom = drawThalamusMark(bctx, markX, 70, markW, '#ffffff');
+  const markW = 120;
+  const markX = W/2 - 220;
+  const markBottom = drawThalamusMark(bctx, markX, 110, markW, '#ffffff');
 
   bctx.textAlign = 'left';
   bctx.fillStyle = '#ffffff';
-  bctx.font = '700 84px Poppins, sans-serif';
-  bctx.fillText('thalamus', markX + markW + 28, 70 + markW * 0.78);
+  bctx.font = '700 78px Poppins, sans-serif';
+  bctx.fillText('thalamus', markX + markW + 24, 110 + markW * 0.78);
 
   bctx.textAlign = 'center';
-  bctx.font = '700 38px Poppins, sans-serif';
+  bctx.font = '700 36px Poppins, sans-serif';
   bctx.fillStyle = 'rgba(255,255,255,0.95)';
-  bctx.fillText('ESQUINA RADAR', W/2, markBottom + 60);
-  bctx.font = '400 30px sans-serif';
-  bctx.fillStyle = 'rgba(255,255,255,0.72)';
-  bctx.fillText('Pronósticos en vivo de corners y goles', W/2, markBottom + 105);
+  bctx.fillText('ESQUINA RADAR', W/2, markBottom + 55);
+  bctx.font = '400 28px sans-serif';
+  bctx.fillStyle = 'rgba(255,255,255,0.70)';
+  bctx.fillText('Pronósticos en vivo de corners y goles', W/2, markBottom + 98);
 
   // Footer — small isotype watermark + text, centered as a group
   const footerY = H - 80;
@@ -4054,6 +4056,121 @@ function buildShareCardLayers(t){
     cctx.fillStyle = THALAMUS_GREEN_DARK;
     cctx.font = '700 38px Poppins, sans-serif';
     y = wrapCanvasText(cctx, `Cuota en vivo al generarse: ${t.liveOdds.odd.toFixed(2)}`, cardX + pad, y, cardW - pad*2, 46, 1);
+  }
+
+  // ── Stats block: current total + projection ───────────────────────────────
+  y += 50;
+  const statLabel = (t.market || 'corners') === 'goals' ? 'goles' : 'corners';
+  const hasStats = t.totalAtSignal != null && t.projectionAtSignal != null;
+
+  if(hasStats){
+    // Divider
+    cctx.strokeStyle = 'rgba(63,122,92,0.18)';
+    cctx.lineWidth = 2;
+    cctx.setLineDash([8, 8]);
+    cctx.beginPath();
+    cctx.moveTo(cardX + pad, y);
+    cctx.lineTo(cardX + cardW - pad, y);
+    cctx.stroke();
+    cctx.setLineDash([]);
+    y += 50;
+
+    // Two stat boxes side by side
+    const boxW = (cardW - pad*2 - 30) / 2;
+    const boxH = 140;
+    const box1X = cardX + pad;
+    const box2X = cardX + pad + boxW + 30;
+
+    // Box backgrounds
+    [box1X, box2X].forEach(bx => {
+      cctx.fillStyle = 'rgba(63,122,92,0.08)';
+      roundRectPath(cctx, bx, y, boxW, boxH, 18);
+      cctx.fill();
+      cctx.strokeStyle = 'rgba(63,122,92,0.18)';
+      cctx.lineWidth = 2;
+      roundRectPath(cctx, bx, y, boxW, boxH, 18);
+      cctx.stroke();
+    });
+
+    // Box 1: actual corners
+    cctx.textAlign = 'center';
+    cctx.fillStyle = THALAMUS_BLACK;
+    cctx.font = '800 52px Poppins, sans-serif';
+    cctx.fillText(t.totalAtSignal, box1X + boxW/2, y + 80);
+    cctx.font = '400 26px sans-serif';
+    cctx.fillStyle = '#6b8378';
+    cctx.fillText(`${statLabel} al ${t.clockAtSignal || '—'}`, box1X + boxW/2, y + 118);
+
+    // Box 2: projection
+    cctx.fillStyle = pickColor;
+    cctx.font = '800 52px Poppins, sans-serif';
+    cctx.fillText(t.projectionAtSignal.toFixed(1), box2X + boxW/2, y + 80);
+    cctx.font = '400 26px sans-serif';
+    cctx.fillStyle = '#6b8378';
+    cctx.fillText('proyección final', box2X + boxW/2, y + 118);
+
+    cctx.textAlign = 'left';
+    y += boxH + 50;
+  }
+
+  // ── Pinnacle / bookmaker odds block ──────────────────────────────────────
+  const pinnOdds = t._pinnacleOdds;
+  const bmOdds = t.bookmakerOdds;
+
+  if(pinnOdds && pinnOdds.decimal){
+    // Divider
+    cctx.strokeStyle = 'rgba(63,122,92,0.18)';
+    cctx.lineWidth = 2;
+    cctx.setLineDash([8, 8]);
+    cctx.beginPath();
+    cctx.moveTo(cardX + pad, y);
+    cctx.lineTo(cardX + cardW - pad, y);
+    cctx.stroke();
+    cctx.setLineDash([]);
+    y += 50;
+
+    // Odds pill
+    const oddsDir = t.direction === 'over' ? 'MÁS' : 'MENOS';
+    cctx.font = '700 34px Poppins, sans-serif';
+    cctx.fillStyle = '#6b8378';
+    cctx.fillText('💰 Cuota Pinnacle al momento', cardX + pad, y);
+    y += 55;
+
+    cctx.font = '800 72px Poppins, sans-serif';
+    cctx.fillStyle = THALAMUS_GREEN_DARK;
+    cctx.fillText(`${oddsDir} ${pinnOdds.line}  →  ${pinnOdds.decimal}`, cardX + pad, y);
+    y += 20;
+  } else if(bmOdds && bmOdds.avg){
+    cctx.strokeStyle = 'rgba(63,122,92,0.18)';
+    cctx.lineWidth = 2;
+    cctx.setLineDash([8, 8]);
+    cctx.beginPath();
+    cctx.moveTo(cardX + pad, y);
+    cctx.lineTo(cardX + cardW - pad, y);
+    cctx.stroke();
+    cctx.setLineDash([]);
+    y += 50;
+
+    const oddsDir = t.direction === 'over' ? 'MÁS' : 'MENOS';
+    cctx.font = '700 34px Poppins, sans-serif';
+    cctx.fillStyle = '#6b8378';
+    cctx.fillText('💰 Cuota promedio de casas', cardX + pad, y);
+    y += 55;
+
+    cctx.font = '800 72px Poppins, sans-serif';
+    cctx.fillStyle = THALAMUS_GREEN_DARK;
+    cctx.fillText(`${oddsDir} ${t.line}  →  ${bmOdds.avg.toFixed(2)}`, cardX + pad, y);
+    y += 20;
+
+    // Individual bookmakers
+    if(bmOdds.results && bmOdds.results.length > 0){
+      y += 30;
+      cctx.font = '400 28px sans-serif';
+      cctx.fillStyle = '#6b8378';
+      const booksLine = bmOdds.results.slice(0,4).map(r => `${r.bookmaker} ${r.price.toFixed(2)}`).join('  ·  ');
+      cctx.fillText(booksLine, cardX + pad, y);
+      y += 10;
+    }
   }
 
   const layout = {
