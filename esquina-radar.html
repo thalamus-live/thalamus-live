@@ -615,6 +615,9 @@
       <div class="pill"><span class="dot live" id="liveDot"></span> <span id="liveCount">0</span> partidos en vivo</div>
       <div class="pill">Última actualización: <b id="lastUpdate">—</b></div>
       <div class="pill" id="autoPill">Auto-refresh: <b id="autoStatus">ON</b></div>
+      <div class="pill" id="notifPill" onclick="toggleNotifications()" style="cursor:pointer" title="Activar notificaciones push">
+        🔔 <b id="notifStatus">OFF</b>
+      </div>
     </div>
   </div>
 </header>
@@ -2588,6 +2591,9 @@ function renderSignals(){
 
   renderSignalsList('signalsList', cornerSignals, threshold, 'CORNERS', 'CORNERS');
   renderSignalsList('goalSignalsList', goalSignals, threshold, 'GOLES', 'goles');
+
+  // Detect new signals and send push notifications
+  checkForNewSignals([...cornerSignals, ...goalSignals]);
 
   // Fetch Pinnacle odds async after render and inject into DOM
   setTimeout(() => attachPinnacleOddsToSignals([...cornerSignals, ...goalSignals]), 100);
@@ -6445,12 +6451,118 @@ function renderFbOdds(eventId, target, data, period){
 
 
 /* ============ INIT ============ */
+// ── Push Notifications ───────────────────────────────────────────────────────
+// Tracks signal IDs already seen to detect new ones on each refresh
+const _seenSignalIds = new Set();
+let _notifPermission = Notification?.permission || 'default';
+
+async function initNotifications(){
+  if(!('Notification' in window) || !('serviceWorker' in navigator)) return;
+
+  // Register service worker
+  try {
+    const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+    debugLog('SW registrado:', reg.scope);
+  } catch(e) {
+    debugLog('SW error:', e.message);
+    return;
+  }
+
+  // Request permission if not yet decided — show a subtle prompt
+  if(Notification.permission === 'default'){
+    _notifPermission = 'default';
+  } else {
+    _notifPermission = Notification.permission;
+  }
+  updateNotifPill();
+}
+
+async function toggleNotifications(){
+  if(_notifPermission === 'denied'){
+    alert('Las notificaciones están bloqueadas en tu navegador. Ve a Configuración del sitio para habilitarlas.');
+    return;
+  }
+  const granted = await requestNotifPermissionIfNeeded();
+  updateNotifPill();
+  if(granted){
+    // Send a test notification
+    const reg = await navigator.serviceWorker.ready;
+    reg.showNotification('🔔 Notificaciones activadas', {
+      body: 'Recibirás alertas cuando salga una señal nueva.',
+      tag: 'test-notif',
+      vibrate: [100],
+    });
+  }
+}
+
+function updateNotifPill(){
+  const el = document.getElementById('notifStatus');
+  const pill = document.getElementById('notifPill');
+  if(!el) return;
+  if(_notifPermission === 'granted'){
+    el.textContent = 'ON';
+    if(pill) pill.style.color = 'var(--green-deep)';
+  } else {
+    el.textContent = 'OFF';
+    if(pill) pill.style.color = '';
+  }
+}
+
+
+  if(_notifPermission === 'granted') return true;
+  if(_notifPermission === 'denied') return false;
+  const result = await Notification.requestPermission();
+  _notifPermission = result;
+  return result === 'granted';
+}
+
+async function notifyNewSignals(newSignals){
+  if(!newSignals.length) return;
+  const granted = await requestNotifPermissionIfNeeded();
+  if(!granted) return;
+
+  const reg = await navigator.serviceWorker.ready;
+
+  for(const s of newSignals){
+    const market = s.market === 'goals' ? 'GOLES' : 'CORNERS';
+    const pick = s.direction === 'over' ? 'MÁS' : 'MENOS';
+    const prob = (s.prob * 100).toFixed(0);
+    const title = `⚽ Nueva señal — ${prob}% confianza`;
+    const body  = `${s.matchTitle}\n${pick} ${s.line} ${market}`;
+
+    // Use showNotification via SW for reliability on mobile
+    await reg.showNotification(title, {
+      body,
+      icon:   'https://thalamus-live.panfernan5.workers.dev/favicon.ico',
+      badge:  'https://thalamus-live.panfernan5.workers.dev/favicon.ico',
+      tag:    `signal-${s.matchId}-${s.line}-${s.direction}`,
+      vibrate: [200, 100, 200],
+      data:   { matchId: s.matchId, market: s.market },
+      requireInteraction: false,
+    });
+  }
+}
+
+// Called after renderSignals to detect new signals and notify
+function checkForNewSignals(allSignals){
+  const newOnes = allSignals.filter(s => {
+    const id = `${s.matchId}-${s.line}-${s.direction}-${s.market||'corners'}`;
+    if(_seenSignalIds.has(id)) return false;
+    _seenSignalIds.add(id);
+    return true;
+  });
+  if(newOnes.length > 0) notifyNewSignals(newOnes);
+}
+
 function init(){
   // Load signal history from cloud KV on startup
   loadSignalsFromCloud().then(() => {
     renderSeguimiento();
   }).catch(() => {});
   buildLeagueChips();
+
+  // Initialize push notifications
+  initNotifications();
 
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
