@@ -6509,6 +6509,7 @@ function updateNotifPill(){
 }
 
 
+async function requestNotifPermissionIfNeeded(){
   if(_notifPermission === 'granted') return true;
   if(_notifPermission === 'denied') return false;
   const result = await Notification.requestPermission();
