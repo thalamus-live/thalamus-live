@@ -4665,6 +4665,142 @@ async function checkTikTokStatus(){
 
 // Generates the animated video for a tracked signal and publishes it directly
 // to the connected TikTok account via the tiktok-worker.js backend.
+// ── TikTok Text Generator ─────────────────────────────────────────────────────
+async function generateTikTokText(trackId, btn){
+  const tracked = getTrackedSignals();
+  const t = tracked.find(s => s.id === trackId);
+  if(!t){ alert('Señal no encontrada.'); return; }
+
+  const originalText = btn.textContent;
+  btn.textContent = 'Generando…';
+  btn.disabled = true;
+
+  try {
+    const market   = (t.market || 'corners') === 'goals' ? 'goles' : 'corners';
+    const pick     = t.direction === 'over' ? 'MÁS' : 'MENOS';
+    const prob     = t.prob ? Math.round(t.prob * 100) : null;
+    const league   = t.league || 'Mundial';
+    const teams    = t.matchTitle || '';
+    const line     = t.line;
+    const clock    = t.clockAtSignal || '';
+    const result   = t.status === 'won' ? 'ACERTÓ ✅' : t.status === 'lost' ? 'FALLÓ ❌' : 'PENDIENTE ⏳';
+    const finalVal = t.finalTotal != null ? `Final: ${t.finalTotal} ${market}` : '';
+    const odds     = t._pinnacleOdds?.decimal ? `Cuota ${t._pinnacleOdds.decimal} en Pinnacle` : t.bookmakerOdds?.avg ? `Cuota aprox. ${t.bookmakerOdds.avg.toFixed(2)}` : '';
+
+    const prompt = `Eres un creador de contenido de apuestas deportivas en TikTok. 
+Genera un texto de exactamente 60 palabras para un video de TikTok sobre esta predicción de fútbol.
+
+Datos:
+- Partido: ${teams}
+- Liga: ${league}
+- Predicción: ${pick} ${line} ${market.toUpperCase()}
+- Probabilidad del modelo: ${prob ? prob + '%' : 'alta'}
+- Minuto de la señal: ${clock}
+- ${odds}
+- Resultado: ${result}
+- ${finalVal}
+
+Reglas:
+1. Exactamente 60 palabras (cuenta con cuidado)
+2. Empezar con algo que enganche (pregunta, dato sorprendente o afirmación fuerte)
+3. Mencionar el partido y la predicción de forma natural
+4. Tono confiado pero no arrogante
+5. Terminar con call-to-action corto ("Sígueme", "Activa la campana", etc.)
+6. Al final poner exactamente 3 hashtags relevantes para el partido (liga + equipos + apuestas)
+7. NO incluir emojis excesivos — máximo 2-3 por texto
+8. Escribir en español
+
+Devuelve SOLO el texto listo para copiar, sin explicaciones ni comillas.`;
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 300,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    const data = await response.json();
+    const text = data.content?.[0]?.text?.trim();
+
+    if(!text){ throw new Error('Sin respuesta de Claude'); }
+
+    // Show modal with the generated text
+    showTikTokTextModal(text, t);
+
+  } catch(err) {
+    alert('Error generando texto: ' + err.message);
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }
+}
+
+function showTikTokTextModal(text, signal){
+  // Remove existing modal if any
+  const existing = document.getElementById('tiktokTextModal');
+  if(existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'tiktokTextModal';
+  modal.style.cssText = `
+    position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);
+    display:flex;align-items:center;justify-content:center;padding:16px;
+  `;
+
+  modal.innerHTML = `
+    <div style="background:var(--panel);border-radius:20px;padding:24px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <span style="font-weight:800;font-size:16px;color:var(--text)">📝 Texto para TikTok</span>
+        <button onclick="document.getElementById('tiktokTextModal').remove()" 
+          style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:20px;line-height:1">✕</button>
+      </div>
+      <div id="tiktokGeneratedText" style="
+        background:var(--mint);border:1px solid var(--line);border-radius:12px;
+        padding:16px;font-size:14px;line-height:1.7;color:var(--text);
+        white-space:pre-wrap;min-height:100px;margin-bottom:16px;
+        font-family:inherit;
+      ">${text}</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button onclick="
+          navigator.clipboard.writeText(document.getElementById('tiktokGeneratedText').textContent.trim())
+            .then(() => { this.textContent = '✓ Copiado'; setTimeout(() => this.textContent = 'Copiar texto', 2000); })
+            .catch(() => { this.textContent = 'Error'; });
+        " class="btn" style="flex:1;min-width:120px">Copiar texto</button>
+        <button onclick="generateTikTokTextRegenerate()" class="btn secondary" style="flex:1;min-width:120px">Regenerar ↺</button>
+      </div>
+      <div style="margin-top:12px;font-size:11px;color:var(--muted);text-align:center">
+        Generado por Claude AI · ${Math.round(text.trim().split(/\s+/).length)} palabras
+      </div>
+    </div>
+  `;
+
+  // Store signal ref for regeneration
+  modal._signal = signal;
+  document.body.appendChild(modal);
+
+  // Close on backdrop click
+  modal.addEventListener('click', e => {
+    if(e.target === modal) modal.remove();
+  });
+}
+
+async function generateTikTokTextRegenerate(){
+  const modal = document.getElementById('tiktokTextModal');
+  if(!modal) return;
+  const signal = modal._signal;
+  if(!signal) return;
+  // Simulate clicking the text button again
+  const textEl = document.getElementById('tiktokGeneratedText');
+  textEl.textContent = 'Generando nueva versión…';
+  textEl.style.opacity = '0.5';
+  // Re-run generation
+  const fakeBtn = { textContent: '', disabled: false };
+  await generateTikTokText(signal.id, fakeBtn);
+}
+
 async function publishSignalToTikTok(trackId, btn){
   const base = getTiktokApiBase();
   if(!base){
@@ -4890,6 +5026,7 @@ function renderTracking(tracked){
         <div class="signal-actions">
           <button class="btn secondary share-signal-btn" data-id="${t.id}">Compartir 📤</button>
           <button class="btn secondary share-video-btn" data-id="${t.id}">Video 🎬</button>
+          <button class="btn secondary tiktok-text-btn" data-id="${t.id}">Texto TikTok 📝</button>
           <button class="btn secondary tiktok-publish-btn" data-id="${t.id}">TikTok 🎵</button>
           <button class="delete-track-btn" data-id="${t.id}" title="Eliminar">✕</button>
         </div>
@@ -6916,6 +7053,10 @@ function init(){
     const tiktokBtn = e.target.closest('.tiktok-publish-btn');
     if(tiktokBtn){
       publishSignalToTikTok(tiktokBtn.dataset.id, tiktokBtn);
+    }
+    const tiktokTextBtn = e.target.closest('.tiktok-text-btn');
+    if(tiktokTextBtn){
+      generateTikTokText(tiktokTextBtn.dataset.id, tiktokTextBtn);
     }
   });
 
