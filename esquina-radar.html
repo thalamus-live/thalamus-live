@@ -2796,6 +2796,9 @@ async function attachPinnacleOddsToSignals(signals){
         s._pinnacleOdds = odds;
         const unitLabel = (s.market || 'corners') === 'corners' ? 'CORNERS' : 'GOLES';
         const dirLabel = s.direction === 'over' ? 'MÁS' : 'MENOS';
+        const matchupId = odds.matchupId;
+        const isLive = matchupId ? (pinnacleMarketsCache[matchupId]?.isLive === true) : false;
+        const liveLabel = isLive ? '' : '<span style="font-size:10px;color:#856404;margin-left:8px;font-weight:600">PRE-PARTIDO</span>';
         el.innerHTML = `
           <div class="odds-avg-header">
             <span class="oah-label">${dirLabel} ${odds.line} ${unitLabel}</span>
@@ -2803,6 +2806,7 @@ async function attachPinnacleOddsToSignals(signals){
               <span class="oah-trend flat">→</span>
               ${odds.decimal}
             </span>
+            ${liveLabel}
           </div>
           <div class="odds-books-row">
             <span class="odds-book-item">
@@ -5733,19 +5737,37 @@ function buildOddsAverageHeader(s){
 function buildEVBlock(s){
   let decimal = null;
   let oddsSource = '';
+  let isLiveOdds = false;
 
   if(s._pinnacleOdds?.decimal){
     decimal = s._pinnacleOdds.decimal;
-    oddsSource = 'Pinnacle';
+    const matchupId = s._pinnacleOdds.matchupId;
+    isLiveOdds = matchupId ? (pinnacleMarketsCache[matchupId]?.isLive === true) : false;
+    oddsSource = isLiveOdds ? 'Pinnacle EN VIVO' : 'Pinnacle (pre-partido)';
   } else if(s.bookmakerOdds?.avg){
     decimal = s.bookmakerOdds.avg;
-    oddsSource = 'Promedio casas';
+    isLiveOdds = false;
+    oddsSource = 'Casas (pre-partido)';
   } else if(s.liveOdds?.odd){
     decimal = s.liveOdds.odd;
+    isLiveOdds = true;
     oddsSource = 'En vivo';
   }
 
   if(!decimal || !s.prob) return '';
+
+  // Do NOT calculate EV with pre-match odds — they are stale during live play
+  if(!isLiveOdds){
+    return `
+      <div class="ev-block" style="border-left-color:#f59e0b;background:rgba(245,158,11,0.06);padding:10px 14px;border-radius:10px;margin:10px 0 0;border-left:3px solid #f59e0b">
+        <div class="ev-main">
+          <span class="ev-label" style="color:#856404;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase">CUOTA</span>
+          <span style="font-size:20px;font-weight:800;color:#856404;margin-left:10px">${decimal.toFixed(2)}</span>
+          <span class="ev-source">${oddsSource}</span>
+        </div>
+        <div class="ev-hint" style="color:#856404;font-size:11px;margin-top:5px">⚠ Cuota pre-partido. EV no calculado — busca la línea actualizada en tu casa de apuestas.</div>
+      </div>`;
+  }
 
   const ev = calcEV(s.prob, decimal);
   const evStr = formatEV(ev);
@@ -5755,8 +5777,8 @@ function buildEVBlock(s){
   const movement = trackLineMovement(signalKey, decimal);
   const movementHtml = movement ? `
     <div class="ev-movement ${movement.direction}">
-      ${movement.direction === 'lengthened' ? '\u{1F4C8}' : '\u{1F4C9}'}
-      L\u00ednea movi\u00f3: ${movement.prev.toFixed(2)} → ${decimal.toFixed(2)}
+      ${movement.direction === 'lengthened' ? '📈' : '📉'}
+      Línea movió: ${movement.prev.toFixed(2)} → ${decimal.toFixed(2)}
       (${movement.direction === 'lengthened' ? 'sube' : 'baja'})
     </div>` : '';
 
@@ -5767,7 +5789,7 @@ function buildEVBlock(s){
         <span class="ev-value">${evStr}</span>
         <span class="ev-source">${oddsSource} · ${decimal.toFixed(2)}</span>
       </div>
-      ${ev >= 0.03 ? '<div class="ev-hint">\u2713 Apuesta con valor matem\u00e1tico positivo</div>' : ev < 0 ? '<div class="ev-hint ev-neg-hint">\u2717 Cuota no compensa la probabilidad</div>' : ''}
+      ${ev >= 0.03 ? '<div class="ev-hint">✓ Apuesta con valor matemático positivo</div>' : ev < 0 ? '<div class="ev-hint ev-neg-hint">✗ Cuota no compensa la probabilidad</div>' : ''}
       ${movementHtml}
     </div>`;
 }
