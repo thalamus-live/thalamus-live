@@ -20,6 +20,47 @@ export default {
     }
 
     // ── /api/odds → proxy seguro a The Odds API, con cache de edge ──────────
+
+    // ── /api/claude-scan → proxy seguro a Anthropic para Atlas Finanzas ─────
+    if (url.pathname === '/api/claude-scan' && request.method === 'POST') {
+      const corsH = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      };
+      if (request.method === 'OPTIONS') return new Response(null, { headers: corsH });
+      try {
+        const { imgB64, imgType, prompt } = await request.json();
+        const r = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': env.ANTHROPIC_API_KEY,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-6',
+            max_tokens: 1500,
+            messages: [{ role: 'user', content: [
+              { type: 'image', source: { type: 'base64', media_type: imgType, data: imgB64 } },
+              { type: 'text', text: prompt }
+            ]}]
+          })
+        });
+        const data = await r.json();
+        const raw = data.content?.find(b => b.type === 'text')?.text || '';
+        const result = JSON.parse(raw.replace(/```json|```/g, '').trim());
+        return new Response(JSON.stringify({ result }), {
+          headers: { ...corsH, 'Content-Type': 'application/json' }
+        });
+      } catch(e) {
+        return new Response(JSON.stringify({ error: e.message }), {
+          status: 500,
+          headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
     if (url.pathname === '/api/odds') {
       const sport   = url.searchParams.get('sport')   || 'basketball_nba';
       const regions = url.searchParams.get('regions') || 'us';
