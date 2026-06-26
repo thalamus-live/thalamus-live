@@ -219,8 +219,35 @@ export default {
       });
     }
 
+    // ── /api/claude → proxy a Anthropic API (evita CORS desde el browser) ──
+    if (url.pathname === '/api/claude') {
+      const cors = {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      };
+      if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
+      if (request.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: cors });
+
+      try {
+        const body = await request.json();
+        const resp = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'anthropic-version': '2023-06-01',
+            'x-api-key': env.ANTHROPIC_API_KEY || '',
+          },
+          body: JSON.stringify(body)
+        });
+        const data = await resp.text();
+        return new Response(data, { status: resp.status, headers: cors });
+      } catch(err) {
+        return new Response(JSON.stringify({ error: err.message }), { status: 502, headers: cors });
+      }
+    }
+
     if (url.pathname === '/esquina-radar') {
-      const erUrl = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/esquina-radar.html?bust=1782251149';
+      const erUrl = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/esquina-radar.html?bust=1782516172';
       const erResponse = await fetch(erUrl, {
         cf: { cacheEverything: false },
         headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
@@ -609,6 +636,7 @@ async function handleTikTok(request, env, url) {
 
   return new Response('Not found', { status: 404 });
 }
+
 
 
 
