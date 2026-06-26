@@ -7046,10 +7046,12 @@ function init(){
     const tiktokBtn = e.target.closest('.tiktok-publish-btn');
     if(tiktokBtn){
       publishSignalToTikTok(tiktokBtn.dataset.id, tiktokBtn);
+      return;
     }
     const tiktokTextBtn = e.target.closest('.tiktok-text-btn');
     if(tiktokTextBtn){
       generateTikTokText(tiktokTextBtn.dataset.id, tiktokTextBtn);
+      return;
     }
   });
 
