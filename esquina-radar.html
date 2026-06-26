@@ -4665,7 +4665,43 @@ async function checkTikTokStatus(){
 
 // Generates the animated video for a tracked signal and publishes it directly
 // to the connected TikTok account via the tiktok-worker.js backend.
-// ── TikTok Text Generator ─────────────────────────────────────────────────────
+// ── TikTok Text Generator (local templates, no external API) ─────────────────
+function generateTikTokTextLocal(t){
+  const market   = (t.market || 'corners') === 'goals' ? 'goles' : 'corners';
+  const pick     = t.direction === 'over' ? 'MÁS' : 'MENOS';
+  const prob     = t.prob ? Math.round(t.prob * 100) : 75;
+  const teams    = t.matchTitle || 'el partido';
+  const line     = t.line;
+  const clock    = t.clockAtSignal || '';
+  const league   = t.league ? leagueShort(t.league) : 'MUNDIAL';
+  const result   = t.status === 'won' ? '✅ ACERTÓ' : t.status === 'lost' ? '❌ FALLÓ' : '⏳ EN SEGUIMIENTO';
+
+  // Team names for hashtags
+  const parts = teams.split(' vs ');
+  const team1 = (parts[0] || '').trim().replace(/\s+/g,'');
+  const team2 = (parts[1] || '').trim().replace(/\s+/g,'');
+  const hashtags = `#${team1}vs${team2} #${league.replace(/\s+/g,'')} #ApuestasFutbol`;
+
+  // Pick one of several templates randomly for variety
+  const templates = [
+    // Template 1 — dato + predicción + resultado
+    `El modelo detectó algo clave en ${teams} al ${clock}: ritmo bajo y solo ${t.totalAtSignal ?? 0} ${market}. La señal fue clara: ${pick} ${line} ${market.toUpperCase()} con ${prob}% de confianza. Proyección final: ${t.projectionAtSignal?.toFixed(1) ?? line}. Resultado: ${result}. Los datos no mienten, sígueme para más análisis. ${hashtags}`,
+
+    // Template 2 — pregunta inicial
+    `¿Sabías que el ${prob}% de probabilidad no es suerte? En ${teams} nuestro modelo marcó ${pick} ${line} ${market.toUpperCase()} al minuto ${clock}. Analizamos ritmo, posesión y tendencia en tiempo real. Resultado: ${result}. Activa la campana y no te pierdas la próxima señal. ${hashtags}`,
+
+    // Template 3 — directo al grano
+    `SEÑAL EN VIVO 🎯 ${teams} · ${league}. Minuto ${clock}: ${pick} ${line} ${market.toUpperCase()}. Confianza del modelo: ${prob}%. Proyección calculada: ${t.projectionAtSignal?.toFixed(1) ?? line} ${market}. ${result}. Seguimos el partido con datos reales, no intuición. Sígueme. ${hashtags}`,
+
+    // Template 4 — narrativa
+    `Al ${clock} en ${teams} el partido hablaba solo: ${t.totalAtSignal ?? 0} ${market} y un ritmo que apuntaba a quedarse corto. Entramos con ${pick} ${line} ${market.toUpperCase()} al ${prob}% de confianza. ${result}. Así se analiza el fútbol con inteligencia. ${hashtags}`,
+  ];
+
+  // Pick template based on signal id for consistency (not random on each view)
+  const idx = t.id ? t.id.charCodeAt(0) % templates.length : 0;
+  return templates[idx];
+}
+
 async function generateTikTokText(trackId, btn){
   const tracked = getTrackedSignals();
   const t = tracked.find(s => s.id === trackId);
@@ -4676,60 +4712,8 @@ async function generateTikTokText(trackId, btn){
   btn.disabled = true;
 
   try {
-    const market   = (t.market || 'corners') === 'goals' ? 'goles' : 'corners';
-    const pick     = t.direction === 'over' ? 'MÁS' : 'MENOS';
-    const prob     = t.prob ? Math.round(t.prob * 100) : null;
-    const league   = t.league || 'Mundial';
-    const teams    = t.matchTitle || '';
-    const line     = t.line;
-    const clock    = t.clockAtSignal || '';
-    const result   = t.status === 'won' ? 'ACERTÓ ✅' : t.status === 'lost' ? 'FALLÓ ❌' : 'PENDIENTE ⏳';
-    const finalVal = t.finalTotal != null ? `Final: ${t.finalTotal} ${market}` : '';
-    const odds     = t._pinnacleOdds?.decimal ? `Cuota ${t._pinnacleOdds.decimal} en Pinnacle` : t.bookmakerOdds?.avg ? `Cuota aprox. ${t.bookmakerOdds.avg.toFixed(2)}` : '';
-
-    const prompt = `Eres un creador de contenido de apuestas deportivas en TikTok. 
-Genera un texto de exactamente 60 palabras para un video de TikTok sobre esta predicción de fútbol.
-
-Datos:
-- Partido: ${teams}
-- Liga: ${league}
-- Predicción: ${pick} ${line} ${market.toUpperCase()}
-- Probabilidad del modelo: ${prob ? prob + '%' : 'alta'}
-- Minuto de la señal: ${clock}
-- ${odds}
-- Resultado: ${result}
-- ${finalVal}
-
-Reglas:
-1. Exactamente 60 palabras (cuenta con cuidado)
-2. Empezar con algo que enganche (pregunta, dato sorprendente o afirmación fuerte)
-3. Mencionar el partido y la predicción de forma natural
-4. Tono confiado pero no arrogante
-5. Terminar con call-to-action corto ("Sígueme", "Activa la campana", etc.)
-6. Al final poner exactamente 3 hashtags relevantes para el partido (liga + equipos + apuestas)
-7. NO incluir emojis excesivos — máximo 2-3 por texto
-8. Escribir en español
-
-Devuelve SOLO el texto listo para copiar, sin explicaciones ni comillas.`;
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 300,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-
-    const data = await response.json();
-    const text = data.content?.[0]?.text?.trim();
-
-    if(!text){ throw new Error('Sin respuesta de Claude'); }
-
-    // Show modal with the generated text
+    const text = generateTikTokTextLocal(t);
     showTikTokTextModal(text, t);
-
   } catch(err) {
     alert('Error generando texto: ' + err.message);
   } finally {
@@ -4792,13 +4776,22 @@ async function generateTikTokTextRegenerate(){
   if(!modal) return;
   const signal = modal._signal;
   if(!signal) return;
-  // Simulate clicking the text button again
   const textEl = document.getElementById('tiktokGeneratedText');
-  textEl.textContent = 'Generando nueva versión…';
   textEl.style.opacity = '0.5';
-  // Re-run generation
-  const fakeBtn = { textContent: '', disabled: false };
-  await generateTikTokText(signal.id, fakeBtn);
+
+  // Rotate to next template by temporarily shifting the id char
+  const originalId = signal.id;
+  signal._regenCount = ((signal._regenCount || 0) + 1) % 4;
+  const fakeSignal = { ...signal, id: String.fromCharCode(signal.id.charCodeAt(0) + signal._regenCount) + signal.id.slice(1) };
+  const newText = generateTikTokTextLocal(fakeSignal);
+  signal.id = originalId;
+
+  textEl.textContent = newText;
+  textEl.style.opacity = '1';
+
+  // Update word count
+  const wc = modal.querySelector('.wc-label');
+  if(wc) wc.textContent = `${Math.round(newText.trim().split(/\s+/).length)} palabras`;
 }
 
 async function publishSignalToTikTok(trackId, btn){
