@@ -564,8 +564,38 @@ function buildScanResultHTML(r){
               </div>
             </div>`).join('')}
         </div>
-      </div>`:'<div style="margin-top:8px;font-size:11px;color:var(--mutedTx);text-align:center">No se detectaron movimientos en la imagen</div>'}
-    <button class="btn-solid" id="apply-scan-btn" style="background:#6BBF9E;width:100%;margin-top:12px;padding:12px;font-size:13px">✓ Aplicar todo a la tarjeta</button>
+      </div>`:`
+      <div style="margin-top:12px;border-top:1px solid #b0ddc8;padding-top:10px">
+        <div style="font-size:9px;letter-spacing:2px;color:var(--mutedTx);font-weight:800;margin-bottom:8px">⚠ NO SE DETECTARON MONTOS — INGRESA MANUALMENTE</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div>
+            <div style="font-size:10px;color:var(--mutedTx);margin-bottom:3px">DESCRIPCIÓN</div>
+            <input id="manual-desc" type="text" placeholder="Ej: Compra supermercado" style="width:100%;padding:8px;border-radius:7px;border:1.5px solid var(--border);font-size:13px;box-sizing:border-box" value="${r.name||''}"/>
+          </div>
+          <div style="display:flex;gap:8px">
+            <div style="flex:1">
+              <div style="font-size:10px;color:var(--mutedTx);margin-bottom:3px">MONTO (S/)</div>
+              <input id="manual-monto" type="number" placeholder="0.00" style="width:100%;padding:8px;border-radius:7px;border:1.5px solid var(--border);font-size:13px;box-sizing:border-box" value="${r.deuda||''}"/>
+            </div>
+            <div style="flex:1">
+              <div style="font-size:10px;color:var(--mutedTx);margin-bottom:3px">TIPO</div>
+              <select id="manual-tipo" style="width:100%;padding:8px;border-radius:7px;border:1.5px solid var(--border);font-size:13px;box-sizing:border-box">
+                <option value="gasto">Gasto</option>
+                <option value="pago">Pago</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--mutedTx);margin-bottom:3px">CATEGORÍA</div>
+            <select id="manual-cat" style="width:100%;padding:8px;border-radius:7px;border:1.5px solid var(--border);font-size:13px;box-sizing:border-box">
+              <option>Alimentación</option><option>Transporte</option><option>Entretenimiento</option>
+              <option>Salud</option><option>Educación</option><option>Servicios</option>
+              <option>Ropa</option><option>Viajes</option><option selected>Otros</option>
+            </select>
+          </div>
+        </div>
+      </div>`}
+    <button class="btn-solid" id="apply-scan-btn" style="background:#6BBF9E;width:100%;margin-top:12px;padding:12px;font-size:13px">✓ Aplicar a la tarjeta</button>
   </div>`;
 }
 
@@ -884,8 +914,8 @@ async function runScan(){
 function applyScan(){
   const r=state.scan.result;if(!r)return;
   const tid=state.scan.targetId||state.cards[0].id;
-  // Convert scanned movements to internal format
-  const newMovs=(r.movimientos||[]).map(m=>({
+  // Si no hay movimientos detectados, leer campos manuales
+  let newMovs=(r.movimientos||[]).map(m=>({
     id: Date.now()+Math.random(),
     fecha: m.fecha||today(),
     desc: m.desc||'Sin descripción',
@@ -893,6 +923,23 @@ function applyScan(){
     tipo: m.tipo==='pago'?'pago':'gasto',
     cat: m.cat||'Otros',
   })).filter(m=>m.monto>0);
+  if(newMovs.length===0){
+    const descEl=document.getElementById('manual-desc');
+    const montoEl=document.getElementById('manual-monto');
+    const tipoEl=document.getElementById('manual-tipo');
+    const catEl=document.getElementById('manual-cat');
+    const monto=parseFloat(montoEl?.value||0);
+    if(monto>0){
+      newMovs=[{
+        id:Date.now()+Math.random(),
+        fecha:today(),
+        desc:descEl?.value||'Gasto escaneado',
+        monto,
+        tipo:tipoEl?.value||'gasto',
+        cat:catEl?.value||'Otros',
+      }];
+    }
+  }
 
   state.cards=state.cards.map(c=>{
     if(c.id!==tid)return c;
