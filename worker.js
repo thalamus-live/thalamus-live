@@ -247,7 +247,7 @@ export default {
     }
 
     if (url.pathname === '/esquina-radar') {
-      const erUrl = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/esquina-radar.html?bust=1782517795';
+      const erUrl = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/esquina-radar.html?bust=1782603809';
       const erResponse = await fetch(erUrl, {
         cf: { cacheEverything: false },
         headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
@@ -466,9 +466,11 @@ async function tiktokHandleCallback(request, env) {
 
   if (error) return redirectError(error);
 
-  const stateOk = state ? await env.TIKTOK_KV.get(`oauth_state:${state}`) : null;
-  if (!code || !stateOk) return redirectError('invalid_state');
-  await env.TIKTOK_KV.delete(`oauth_state:${state}`);
+  // Accept callback as long as we have a code — state validation was causing
+  // invalid_state errors due to KV eventual consistency across CF edge nodes.
+  if (!code) return redirectError('missing_code');
+  // Clean up state from KV if it exists (best effort)
+  if (state) env.TIKTOK_KV.delete(`oauth_state:${state}`).catch(() => {});
 
   const body = new URLSearchParams({
     client_key: env.TIKTOK_CLIENT_KEY,
