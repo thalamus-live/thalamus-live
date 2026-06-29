@@ -2792,34 +2792,43 @@ async function attachPinnacleOddsToSignals(signals){
     try {
       const odds = await buildPinnacleOddsForSignal(s, leagueId, homeName, awayName);
       if(odds){
-        // Save on signal object so share card can display it
-        s._pinnacleOdds = odds;
-        const unitLabel = (s.market || 'corners') === 'corners' ? 'CORNERS' : 'GOLES';
-        const dirLabel = s.direction === 'over' ? 'MÁS' : 'MENOS';
         const matchupId = odds.matchupId;
         const isLive = matchupId ? (pinnacleMarketsCache[matchupId]?.isLive === true) : false;
-        const liveLabel = isLive ? '' : '<span style="font-size:10px;color:#856404;margin-left:8px;font-weight:600">PRE-PARTIDO</span>';
-        el.innerHTML = `
-          <div class="odds-avg-header">
-            <span class="oah-label">${dirLabel} ${odds.line} ${unitLabel}</span>
-            <span class="oah-price">
-              <span class="oah-trend flat">→</span>
-              ${odds.decimal}
-            </span>
-            ${liveLabel}
-          </div>
-          <div class="odds-books-row">
-            <span class="odds-book-item">
-              <span class="odds-book-name">Pinnacle</span>
-              <span class="odds-book-price best">${odds.decimal}</span>
-            </span>
-            ${odds.allLines.slice(0,4).map(l => `
-              <span class="odds-book-sep">·</span>
-              <span class="odds-book-item" style="opacity:.7">
-                <span class="odds-book-name">${l.line}</span>
-                <span class="odds-book-price">${s.direction==='over'?l.over:l.under}</span>
-              </span>`).join('')}
-          </div>`;
+
+        if(isLive){
+          // Save on signal object so share card / EV can use it — only when truly live
+          s._pinnacleOdds = odds;
+          const unitLabel = (s.market || 'corners') === 'corners' ? 'CORNERS' : 'GOLES';
+          const dirLabel = s.direction === 'over' ? 'MÁS' : 'MENOS';
+          el.innerHTML = `
+            <div class="odds-avg-header">
+              <span class="oah-label">${dirLabel} ${odds.line} ${unitLabel}</span>
+              <span class="oah-price">
+                <span class="oah-trend flat">→</span>
+                ${odds.decimal}
+              </span>
+            </div>
+            <div class="odds-books-row">
+              <span class="odds-book-item">
+                <span class="odds-book-name">Pinnacle</span>
+                <span class="odds-book-price best">${odds.decimal}</span>
+              </span>
+              ${odds.allLines.slice(0,4).map(l => `
+                <span class="odds-book-sep">·</span>
+                <span class="odds-book-item" style="opacity:.7">
+                  <span class="odds-book-name">${l.line}</span>
+                  <span class="odds-book-price">${s.direction==='over'?l.over:l.under}</span>
+                </span>`).join('')}
+            </div>`;
+        } else {
+          // Pinnacle public API only exposes pre-match odds — don't show a number
+          // during live play since it would be stale and misleading.
+          s._pinnacleOdds = null;
+          el.innerHTML = `
+            <div style="padding:10px 14px;border-radius:10px;border-left:3px solid #f59e0b;background:rgba(245,158,11,0.06);font-size:12px;color:#856404">
+              ⚠ No hay cuotas en vivo disponibles por API. Verifica la línea actual en tu casa de apuestas antes de decidir.
+            </div>`;
+        }
       } else {
         el.style.display = 'none';
       }
@@ -7281,6 +7290,7 @@ document.addEventListener('click', (e) => {
   transition: all 0.2s;
 }
 </style>
+
 
 
 
