@@ -246,8 +246,45 @@ export default {
       }
     }
 
+    // ── /privacy → Política de Privacidad ────────────────────────────────────
+    if (url.pathname === '/privacy') {
+      const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Política de Privacidad — Esquina Radar</title>
+      <style>body{font-family:sans-serif;max-width:800px;margin:40px auto;padding:0 20px;line-height:1.6;color:#222}h1{color:#3a7a5a}h2{color:#3a7a5a;margin-top:32px}a{color:#3a7a5a}</style></head>
+      <body><h1>Política de Privacidad</h1><p><strong>Última actualización:</strong> Junio 2026</p>
+      <p>Esquina Radar ("la aplicación") es un escáner de señales deportivas en vivo desarrollado bajo la marca Thalamus. Esta política describe cómo tratamos la información de los usuarios.</p>
+      <h2>1. Datos que recopilamos</h2>
+      <p>La aplicación no recopila datos personales identificables. Las señales y pronósticos generados se almacenan localmente en el dispositivo del usuario y en servidores de Cloudflare KV de forma anónima.</p>
+      <h2>2. Uso de TikTok</h2>
+      <p>Si el usuario conecta su cuenta de TikTok, utilizamos los permisos concedidos únicamente para publicar videos de pronósticos deportivos en nombre del usuario. No almacenamos contraseñas ni accedemos a datos privados de la cuenta más allá de lo necesario para la publicación.</p>
+      <h2>3. Datos de terceros</h2>
+      <p>Utilizamos APIs públicas de ESPN, Pinnacle y The Odds API para obtener estadísticas deportivas y cuotas de apuestas. No compartimos datos de usuarios con estos servicios.</p>
+      <h2>4. Cookies</h2><p>La aplicación no utiliza cookies de seguimiento.</p>
+      <h2>5. Contacto</h2><p>Para consultas sobre privacidad: <a href="mailto:panfernan5@gmail.com">panfernan5@gmail.com</a></p>
+      <p><a href="/esquina-radar">← Volver a Esquina Radar</a></p></body></html>`;
+      return new Response(html, { headers: { 'Content-Type': 'text/html;charset=UTF-8' } });
+    }
+
+    // ── /terms → Términos de Servicio ─────────────────────────────────────────
+    if (url.pathname === '/terms') {
+      const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Términos de Servicio — Esquina Radar</title>
+      <style>body{font-family:sans-serif;max-width:800px;margin:40px auto;padding:0 20px;line-height:1.6;color:#222}h1{color:#3a7a5a}h2{color:#3a7a5a;margin-top:32px}a{color:#3a7a5a}</style></head>
+      <body><h1>Términos de Servicio</h1><p><strong>Última actualización:</strong> Junio 2026</p>
+      <p>Al usar Esquina Radar aceptas los siguientes términos.</p>
+      <h2>1. Uso de la aplicación</h2>
+      <p>Esquina Radar es una herramienta de análisis deportivo informativa. Las señales generadas no constituyen asesoramiento financiero ni garantía de resultados en apuestas deportivas.</p>
+      <h2>2. Responsabilidad</h2>
+      <p>El usuario es el único responsable de sus decisiones de apuesta. Thalamus no se hace responsable de pérdidas derivadas del uso de las señales generadas por la aplicación.</p>
+      <h2>3. Propiedad intelectual</h2>
+      <p>El código, diseño y marca de Esquina Radar son propiedad de Thalamus. Queda prohibida su reproducción sin autorización.</p>
+      <h2>4. Modificaciones</h2>
+      <p>Nos reservamos el derecho de modificar estos términos en cualquier momento. El uso continuado de la aplicación implica la aceptación de los nuevos términos.</p>
+      <h2>5. Contacto</h2><p><a href="mailto:panfernan5@gmail.com">panfernan5@gmail.com</a></p>
+      <p><a href="/esquina-radar">← Volver a Esquina Radar</a></p></body></html>`;
+      return new Response(html, { headers: { 'Content-Type': 'text/html;charset=UTF-8' } });
+    }
+
     if (url.pathname === '/esquina-radar') {
-      const erUrl = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/esquina-radar.html?bust=1782603809';
+      const erUrl = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/esquina-radar.html?bust=1782769672';
       const erResponse = await fetch(erUrl, {
         cf: { cacheEverything: false },
         headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
