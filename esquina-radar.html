@@ -656,6 +656,7 @@
       <div class="pill" id="notifPill" onclick="toggleNotifications()" style="cursor:pointer" title="Activar notificaciones push">
         🔔 <b id="notifStatus">OFF</b>
       </div>
+      <button class="btn secondary" id="dailyMenuBtn" style="border-radius:999px;padding:6px 16px;font-size:13px">📋 Menú de Hoy 🎬</button>
     </div>
   </div>
 </header>
@@ -4607,10 +4608,283 @@ function generateSignalVideo(t, onProgress){
   });
 }
 
-// Generates the animated video for a tracked signal and shares it (opens the
-// OS share sheet — TikTok, Instagram, WhatsApp, etc. — when available) or
-// falls back to downloading the file.
-async function shareSignalVideo(trackId, btn){
+// ── "Menú del Día" Video Generator ─────────────────────────────────────────────
+// Builds a 20s vertical video listing today's matches with team logos,
+// using the same Thalamus brand canvas system as the signal video generator.
+function loadImage(src){
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+// Normalizes either a raw ESPN event (upcoming) or an enriched liveMatches
+// object into a common { home, away, date, league } shape for the daily menu.
+function normalizeMatchForMenu(m){
+  // Already-normalized liveMatches entry
+  if(m.home && m.home.team) {
+    return {
+      home: m.home.team, away: m.away?.team,
+      date: m.date, league: m.league
+    };
+  }
+  // Raw ESPN event (from upcomingMatchesCache)
+  const comp = m.competitions && m.competitions[0];
+  const competitors = (comp && comp.competitors) || [];
+  const home = competitors.find(c => c.homeAway === 'home');
+  const away = competitors.find(c => c.homeAway === 'away');
+  return {
+    home: home?.team, away: away?.team,
+    date: m.date, league: m._league
+  };
+}
+
+async function getTodayMatchesForMenu(){
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0,10);
+
+  // Combine currently-live matches with today's upcoming/scheduled ones
+  const upcoming = Object.values(upcomingMatchesCache || {});
+  const combined = [...liveMatches, ...upcoming].map(normalizeMatchForMenu);
+
+  const todays = combined.filter(m => {
+    if(!m.home || !m.away || !m.date) return false;
+    const d = new Date(m.date);
+    return !isNaN(d) && d.toISOString().slice(0,10) === todayStr;
+  });
+
+  // Dedupe and cap at 6 matches for a 20s video (about 2.5s each + intro/outro)
+  const seen = new Set();
+  const unique = [];
+  for(const m of todays){
+    const key = m.home.displayName + m.away.displayName + m.date;
+    if(seen.has(key)) continue;
+    seen.add(key);
+    unique.push(m);
+    if(unique.length >= 6) break;
+  }
+  return unique;
+}
+
+async function generateDailyMenuVideo(onProgress){
+  return new Promise(async (resolve, reject) => {
+    if(typeof MediaRecorder === 'undefined' || !HTMLCanvasElement.prototype.captureStream){
+      reject(new Error('unsupported'));
+      return;
+    }
+
+    const matches = await getTodayMatchesForMenu();
+    if(!matches.length){
+      reject(new Error('no-matches'));
+      return;
+    }
+
+    const W = 1080, H = 1920;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+
+    // Preload team logos
+    const logoPromises = matches.map(async m => ({
+      home: await loadImage(m.home?.logo || ''),
+      away: await loadImage(m.away?.logo || ''),
+    }));
+    const logos = await Promise.all(logoPromises);
+
+    const fps = 30;
+    const stream = canvas.captureStream(fps);
+    let mimeType = 'video/webm;codecs=vp9';
+    if(MediaRecorder.isTypeSupported('video/mp4')) mimeType = 'video/mp4';
+    else if(!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'video/webm';
+    const ext = mimeType.startsWith('video/mp4') ? 'mp4' : 'webm';
+
+    let recorder;
+    try{ recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 5_000_000 }); }
+    catch(err){ reject(err); return; }
+
+    const chunks = [];
+    recorder.ondataavailable = (e) => { if(e.data && e.data.size > 0) chunks.push(e.data); };
+    recorder.onerror = (e) => reject(e.error || new Error('recorder error'));
+    recorder.onstop = () => resolve({ blob: new Blob(chunks, { type: mimeType }), mimeType, ext });
+
+    // Timeline: 2.5s intro "MENÚ DE HOY", then ~2.6s per match, then 2s outro
+    const INTRO_DUR = 2.5;
+    const MATCH_DUR = (20 - INTRO_DUR - 2) / matches.length;
+    const OUTRO_START = INTRO_DUR + matches.length * MATCH_DUR;
+    const TOTAL = OUTRO_START + 2;
+
+    function drawGradientBg(){
+      const grad = ctx.createLinearGradient(0, 0, 0, H);
+      grad.addColorStop(0, '#1a3328');
+      grad.addColorStop(1, '#0d1f17');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    function drawIntro(t){
+      const fade = easeOutCubic(clamp01(t / 0.6));
+      const exitFade = t > INTRO_DUR - 0.5 ? 1 - easeOutCubic(clamp01((t - (INTRO_DUR - 0.5)) / 0.5)) : 1;
+      ctx.save();
+      ctx.globalAlpha = fade * exitFade;
+      drawThalamusMark(ctx, W/2 - 70, 560, 140, '#ffffff');
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '800 90px Poppins, sans-serif';
+      ctx.fillText('MENÚ DE HOY', W/2, 850);
+      ctx.font = '500 36px sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      const dateLabel = new Date().toLocaleDateString('es-PE', { weekday:'long', day:'numeric', month:'long' });
+      ctx.fillText(dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1), W/2, 910);
+      ctx.font = '400 28px sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.fillText(`${matches.length} partidos analizados`, W/2, 960);
+      ctx.restore();
+    }
+
+    function drawMatchCard(m, logoPair, t){
+      const fadeIn = easeOutCubic(clamp01(t / 0.4));
+      const fadeOut = t > MATCH_DUR - 0.4 ? 1 - easeOutCubic(clamp01((t - (MATCH_DUR - 0.4)) / 0.4)) : 1;
+      const alpha = Math.min(fadeIn, fadeOut);
+      const slide = (1 - fadeIn) * 40;
+
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.translate(0, slide);
+
+      // League badge
+      ctx.textAlign = 'center';
+      ctx.font = '700 32px Poppins, sans-serif';
+      ctx.fillStyle = THALAMUS_GREEN;
+      ctx.fillText(leagueShort(m.league) || 'FÚTBOL', W/2, 480);
+
+      // Home logo + name
+      const logoSize = 220;
+      if(logoPair.home){
+        ctx.drawImage(logoPair.home, W/2 - 320 - logoSize/2, 560, logoSize, logoSize);
+      }
+      ctx.font = '700 44px Poppins, sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(m.home?.shortDisplayName || m.home?.displayName || '', W/2 - 320, 840);
+
+      // VS
+      ctx.font = '800 56px Poppins, sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.fillText('VS', W/2, 680);
+
+      // Away logo + name
+      if(logoPair.away){
+        ctx.drawImage(logoPair.away, W/2 + 320 - logoSize/2, 560, logoSize, logoSize);
+      }
+      ctx.font = '700 44px Poppins, sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(m.away?.shortDisplayName || m.away?.displayName || '', W/2 + 320, 840);
+
+      // Kickoff time
+      const kickoff = m.date ? new Date(m.date).toLocaleTimeString('es-PE', { hour:'2-digit', minute:'2-digit' }) : '';
+      ctx.font = '500 34px sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.65)';
+      ctx.fillText(kickoff, W/2, 940);
+
+      ctx.restore();
+    }
+
+    function drawOutro(t){
+      const fade = easeOutCubic(clamp01(t / 0.5));
+      ctx.save();
+      ctx.globalAlpha = fade;
+      drawThalamusMark(ctx, W/2 - 70, 800, 140, '#ffffff');
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '700 56px Poppins, sans-serif';
+      ctx.fillText('thalamus', W/2, 1010);
+      ctx.font = '400 32px sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.fillText('Sígueme para las señales en vivo', W/2, 1070);
+      ctx.restore();
+    }
+
+    const startTime = performance.now();
+    recorder.start();
+
+    function frame(){
+      const elapsed = (performance.now() - startTime) / 1000;
+      drawGradientBg();
+
+      if(elapsed < INTRO_DUR){
+        drawIntro(elapsed);
+      } else if(elapsed < OUTRO_START){
+        const matchIdx = Math.min(matches.length - 1, Math.floor((elapsed - INTRO_DUR) / MATCH_DUR));
+        const matchT = (elapsed - INTRO_DUR) - matchIdx * MATCH_DUR;
+        drawMatchCard(matches[matchIdx], logos[matchIdx], matchT);
+
+        // Progress dots
+        ctx.save();
+        const dotsY = H - 120;
+        const dotSpacing = 30;
+        const startX = W/2 - (matches.length - 1) * dotSpacing / 2;
+        matches.forEach((_, i) => {
+          ctx.beginPath();
+          ctx.arc(startX + i * dotSpacing, dotsY, i === matchIdx ? 8 : 5, 0, Math.PI*2);
+          ctx.fillStyle = i === matchIdx ? THALAMUS_GREEN : 'rgba(255,255,255,0.3)';
+          ctx.fill();
+        });
+        ctx.restore();
+      } else {
+        drawOutro(elapsed - OUTRO_START);
+      }
+
+      if(onProgress) onProgress(clamp01(elapsed / TOTAL));
+
+      if(elapsed < TOTAL){
+        requestAnimationFrame(frame);
+      } else {
+        recorder.stop();
+      }
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+async function shareDailyMenuVideo(btn){
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Generando 0%…';
+
+  try {
+    const { blob, ext } = await generateDailyMenuVideo((pct) => {
+      btn.textContent = `Generando ${Math.round(pct*100)}%…`;
+    });
+
+    const fileName = `menu-del-dia-${new Date().toISOString().slice(0,10)}.${ext}`;
+    const file = new File([blob], fileName, { type: blob.type });
+
+    if(navigator.canShare && navigator.canShare({ files: [file] })){
+      await navigator.share({ files: [file], title: 'Menú del Día — Thalamus', text: 'Partidos de hoy analizados por Esquina Radar' });
+    } else {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = fileName;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    }
+  } catch(err) {
+    if(err.message === 'no-matches'){
+      alert('No hay partidos cargados para hoy. Activa las ligas correspondientes primero.');
+    } else if(err.message === 'unsupported'){
+      alert('Tu navegador no soporta grabar video desde esta página. Probá desde Chrome.');
+    } else {
+      alert('Error generando el video: ' + err.message);
+    }
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
+
   const tracked = getTrackedSignals();
   const t = tracked.find(x => x.id === trackId);
   if(!t) return;
@@ -6990,6 +7264,11 @@ function init(){
   // Initialize push notifications
   initNotifications();
 
+  // Daily menu video button
+  document.getElementById('dailyMenuBtn')?.addEventListener('click', (e) => {
+    shareDailyMenuVideo(e.currentTarget);
+  });
+
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -7332,6 +7611,7 @@ document.addEventListener('click', (e) => {
   transition: all 0.2s;
 }
 </style>
+
 
 
 
