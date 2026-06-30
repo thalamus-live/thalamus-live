@@ -4710,99 +4710,174 @@ async function generateDailyMenuVideo(onProgress){
     recorder.onerror = (e) => reject(e.error || new Error('recorder error'));
     recorder.onstop = () => resolve({ blob: new Blob(chunks, { type: mimeType }), mimeType, ext });
 
-    // Timeline: 2.5s intro "MENÚ DE HOY", then ~2.6s per match, then 2s outro
+    // Timeline: 2.5s intro, ~2.6s per match, 2s outro
     const INTRO_DUR = 2.5;
     const MATCH_DUR = (20 - INTRO_DUR - 2) / matches.length;
     const OUTRO_START = INTRO_DUR + matches.length * MATCH_DUR;
     const TOTAL = OUTRO_START + 2;
 
-    function drawGradientBg(){
-      const grad = ctx.createLinearGradient(0, 0, 0, H);
-      grad.addColorStop(0, '#1a3328');
-      grad.addColorStop(1, '#0d1f17');
-      ctx.fillStyle = grad;
+    // Persistent background with chevron texture + gradient, drawn once per frame
+    function drawBackground(){
+      const bg = ctx.createLinearGradient(0, 0, W * 0.3, H);
+      bg.addColorStop(0, BG_TOP);
+      bg.addColorStop(1, BG_BOTTOM);
+      ctx.fillStyle = bg;
       ctx.fillRect(0, 0, W, H);
+      for(let i = 0; i < 9; i++){
+        drawChevronStripe(ctx, W * 0.35, -120 + i * 230, W * 1.3, 160, 70, '#ffffff', 0.035);
+      }
+    }
+
+    function drawHeader(alpha){
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      const markW = 90, markX = W/2 - 160;
+      const markBottom = drawThalamusMark(ctx, markX, 70, markW, '#ffffff');
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '700 58px Poppins, sans-serif';
+      ctx.fillText('thalamus', markX + markW + 18, 70 + markW * 0.78);
+      ctx.restore();
+    }
+
+    function drawFooterDots(activeIdx){
+      const dotsY = H - 90;
+      const dotSpacing = 34;
+      const startX = W/2 - (matches.length - 1) * dotSpacing / 2;
+      matches.forEach((_, i) => {
+        ctx.beginPath();
+        ctx.arc(startX + i * dotSpacing, dotsY, i === activeIdx ? 9 : 6, 0, Math.PI*2);
+        ctx.fillStyle = i === activeIdx ? '#ffffff' : 'rgba(255,255,255,0.32)';
+        ctx.fill();
+      });
     }
 
     function drawIntro(t){
       const fade = easeOutCubic(clamp01(t / 0.6));
       const exitFade = t > INTRO_DUR - 0.5 ? 1 - easeOutCubic(clamp01((t - (INTRO_DUR - 0.5)) / 0.5)) : 1;
-      ctx.save();
-      ctx.globalAlpha = fade * exitFade;
-      drawThalamusMark(ctx, W/2 - 70, 560, 140, '#ffffff');
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '800 90px Poppins, sans-serif';
-      ctx.fillText('MENÚ DE HOY', W/2, 850);
-      ctx.font = '500 36px sans-serif';
-      ctx.fillStyle = 'rgba(255,255,255,0.7)';
-      const dateLabel = new Date().toLocaleDateString('es-PE', { weekday:'long', day:'numeric', month:'long' });
-      ctx.fillText(dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1), W/2, 910);
-      ctx.font = '400 28px sans-serif';
-      ctx.fillStyle = 'rgba(255,255,255,0.5)';
-      ctx.fillText(`${matches.length} partidos analizados`, W/2, 960);
-      ctx.restore();
-    }
-
-    function drawMatchCard(m, logoPair, t){
-      const fadeIn = easeOutCubic(clamp01(t / 0.4));
-      const fadeOut = t > MATCH_DUR - 0.4 ? 1 - easeOutCubic(clamp01((t - (MATCH_DUR - 0.4)) / 0.4)) : 1;
-      const alpha = Math.min(fadeIn, fadeOut);
-      const slide = (1 - fadeIn) * 40;
+      const alpha = fade * exitFade;
 
       ctx.save();
       ctx.globalAlpha = alpha;
-      ctx.translate(0, slide);
+      ctx.translate(0, (1 - fade) * 30);
+      drawThalamusMark(ctx, W/2 - 90, 600, 180, '#ffffff');
 
-      // League badge
       ctx.textAlign = 'center';
-      ctx.font = '700 32px Poppins, sans-serif';
-      ctx.fillStyle = THALAMUS_GREEN;
-      ctx.fillText(leagueShort(m.league) || 'FÚTBOL', W/2, 480);
+      const badgeY = 870;
+      const badgeText = 'ESQUINA RADAR';
+      ctx.textAlign = 'center';
+      const badgeFont = '700 30px Poppins, sans-serif';
+      ctx.font = badgeFont;
+      const badgeMeasure = ctx.measureText(badgeText).width;
+      ctx.textAlign = 'left';
+      drawPillBadge(ctx, W/2 - badgeMeasure/2 - 26, badgeY, badgeText, badgeFont, THALAMUS_GREEN_DARK, '#ffffff');
+      ctx.textAlign = 'center';
 
-      // Home logo + name
-      const logoSize = 220;
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '800 104px Poppins, sans-serif';
+      ctx.fillText('MENÚ DE HOY', W/2, badgeY + 200);
+
+      const dateLabel = new Date().toLocaleDateString('es-PE', { weekday:'long', day:'numeric', month:'long' });
+      ctx.font = '600 38px sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.fillText(dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1), W/2, badgeY + 265);
+
+      ctx.font = '400 30px sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.fillText(`${matches.length} partidos analizados en vivo`, W/2, badgeY + 315);
+      ctx.restore();
+    }
+
+    function drawMatchCard(m, logoPair, idx, t){
+      const fadeIn = easeOutCubic(clamp01(t / 0.4));
+      const fadeOut = t > MATCH_DUR - 0.4 ? 1 - easeOutCubic(clamp01((t - (MATCH_DUR - 0.4)) / 0.4)) : 1;
+      const alpha = Math.min(fadeIn, fadeOut);
+      const slideY = (1 - fadeIn) * 50;
+
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.translate(0, slideY);
+
+      // White rounded card with shadow, same language as the signal share card
+      const cardX = 60, cardY = 540, cardW = W - 120, cardH = 760;
+      ctx.save();
+      ctx.shadowColor = 'rgba(10, 30, 22, 0.4)';
+      ctx.shadowBlur = 50;
+      ctx.shadowOffsetY = 22;
+      ctx.fillStyle = '#ffffff';
+      roundRectPath(ctx, cardX, cardY, cardW, cardH, 44);
+      ctx.fill();
+      ctx.restore();
+
+      drawLowPolyBackground(ctx, cardX, cardY, cardW, cardH, '#E8F5E9', '#C8E6C9');
+      ctx.save();
+      roundRectPath(ctx, cardX, cardY, cardW, cardH, 44);
+      ctx.clip();
+
+      const pad = 56;
+      let y = cardY + 90;
+
+      // Match number + league badge
+      ctx.textAlign = 'left';
+      drawPillBadge(ctx, cardX + pad, y - 36, `PARTIDO ${idx+1}/${matches.length}`, '700 24px Poppins, sans-serif', '#ffffff', THALAMUS_GREEN_DARK);
+      ctx.textAlign = 'right';
+      ctx.font = '700 26px Poppins, sans-serif';
+      ctx.fillStyle = THALAMUS_GREEN_DARK;
+      ctx.fillText((leagueShort(m.league) || 'FÚTBOL').toUpperCase(), cardX + cardW - pad, y - 4);
+      y += 90;
+
+      // Team logos + names + VS
+      const logoSize = 170;
+      const colCenterHome = cardX + cardW * 0.27;
+      const colCenterAway = cardX + cardW * 0.73;
+
       if(logoPair.home){
-        ctx.drawImage(logoPair.home, W/2 - 320 - logoSize/2, 560, logoSize, logoSize);
+        ctx.drawImage(logoPair.home, colCenterHome - logoSize/2, y, logoSize, logoSize);
       }
-      ctx.font = '700 44px Poppins, sans-serif';
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(m.home?.shortDisplayName || m.home?.displayName || '', W/2 - 320, 840);
-
-      // VS
-      ctx.font = '800 56px Poppins, sans-serif';
-      ctx.fillStyle = 'rgba(255,255,255,0.5)';
-      ctx.fillText('VS', W/2, 680);
-
-      // Away logo + name
       if(logoPair.away){
-        ctx.drawImage(logoPair.away, W/2 + 320 - logoSize/2, 560, logoSize, logoSize);
+        ctx.drawImage(logoPair.away, colCenterAway - logoSize/2, y, logoSize, logoSize);
       }
-      ctx.font = '700 44px Poppins, sans-serif';
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(m.away?.shortDisplayName || m.away?.displayName || '', W/2 + 320, 840);
 
-      // Kickoff time
+      ctx.textAlign = 'center';
+      ctx.font = '800 42px Poppins, sans-serif';
+      ctx.fillStyle = THALAMUS_BLACK;
+      ctx.fillText('VS', cardX + cardW/2, y + logoSize/2 + 14);
+
+      y += logoSize + 50;
+      ctx.font = '700 38px Poppins, sans-serif';
+      ctx.fillStyle = THALAMUS_BLACK;
+      wrapCanvasText(ctx, m.home?.shortDisplayName || m.home?.displayName || '', colCenterHome, y, cardW*0.4, 44, 1);
+      wrapCanvasText(ctx, m.away?.shortDisplayName || m.away?.displayName || '', colCenterAway, y, cardW*0.4, 44, 1);
+
+      y += 80;
+      // Kickoff time pill
       const kickoff = m.date ? new Date(m.date).toLocaleTimeString('es-PE', { hour:'2-digit', minute:'2-digit' }) : '';
-      ctx.font = '500 34px sans-serif';
-      ctx.fillStyle = 'rgba(255,255,255,0.65)';
-      ctx.fillText(kickoff, W/2, 940);
+      if(kickoff){
+        ctx.font = '600 30px sans-serif';
+        ctx.fillStyle = '#6b8378';
+        ctx.fillText(`⏰ ${kickoff}`, cardX + cardW/2, y);
+      }
 
       ctx.restore();
+      ctx.restore();
+      drawFooterDots(idx);
     }
 
     function drawOutro(t){
       const fade = easeOutCubic(clamp01(t / 0.5));
       ctx.save();
       ctx.globalAlpha = fade;
-      drawThalamusMark(ctx, W/2 - 70, 800, 140, '#ffffff');
+      drawThalamusMark(ctx, W/2 - 80, 780, 160, '#ffffff');
       ctx.textAlign = 'center';
       ctx.fillStyle = '#ffffff';
-      ctx.font = '700 56px Poppins, sans-serif';
+      ctx.font = '700 64px Poppins, sans-serif';
       ctx.fillText('thalamus', W/2, 1010);
-      ctx.font = '400 32px sans-serif';
-      ctx.fillStyle = 'rgba(255,255,255,0.7)';
-      ctx.fillText('Sígueme para las señales en vivo', W/2, 1070);
+      ctx.font = '500 34px sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.fillText('Sígueme para las señales en vivo', W/2, 1075);
+      ctx.font = '400 26px sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.fillText('Esquina Radar · Pronósticos con modelo Poisson', W/2, 1120);
       ctx.restore();
     }
 
@@ -4811,28 +4886,18 @@ async function generateDailyMenuVideo(onProgress){
 
     function frame(){
       const elapsed = (performance.now() - startTime) / 1000;
-      drawGradientBg();
+      drawBackground();
 
       if(elapsed < INTRO_DUR){
+        drawHeader(easeOutCubic(clamp01(elapsed / 0.5)));
         drawIntro(elapsed);
       } else if(elapsed < OUTRO_START){
+        drawHeader(1);
         const matchIdx = Math.min(matches.length - 1, Math.floor((elapsed - INTRO_DUR) / MATCH_DUR));
         const matchT = (elapsed - INTRO_DUR) - matchIdx * MATCH_DUR;
-        drawMatchCard(matches[matchIdx], logos[matchIdx], matchT);
-
-        // Progress dots
-        ctx.save();
-        const dotsY = H - 120;
-        const dotSpacing = 30;
-        const startX = W/2 - (matches.length - 1) * dotSpacing / 2;
-        matches.forEach((_, i) => {
-          ctx.beginPath();
-          ctx.arc(startX + i * dotSpacing, dotsY, i === matchIdx ? 8 : 5, 0, Math.PI*2);
-          ctx.fillStyle = i === matchIdx ? THALAMUS_GREEN : 'rgba(255,255,255,0.3)';
-          ctx.fill();
-        });
-        ctx.restore();
+        drawMatchCard(matches[matchIdx], logos[matchIdx], matchIdx, matchT);
       } else {
+        drawHeader(1 - easeOutCubic(clamp01((elapsed - OUTRO_START) / 0.4)));
         drawOutro(elapsed - OUTRO_START);
       }
 
@@ -4847,6 +4912,7 @@ async function generateDailyMenuVideo(onProgress){
     requestAnimationFrame(frame);
   });
 }
+
 
 async function shareDailyMenuVideo(btn){
   const originalText = btn.textContent;
@@ -7644,6 +7710,7 @@ document.addEventListener('click', (e) => {
   transition: all 0.2s;
 }
 </style>
+
 
 
 
