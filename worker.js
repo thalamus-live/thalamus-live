@@ -140,6 +140,8 @@ export default {
       const action = url.searchParams.get('action');
       const fixtureId = url.searchParams.get('fixture');
       const betId = url.searchParams.get('bet');
+      const date = url.searchParams.get('date');
+      const leagueId = url.searchParams.get('league');
 
       let afUrl;
       if (action === 'bookmakers') {
@@ -148,6 +150,14 @@ export default {
         afUrl = `${AF_BASE}/odds/bets`;
       } else if (action === 'live-fixtures') {
         afUrl = `${AF_BASE}/odds/live`;
+      } else if (action === 'fixtures-today' && date) {
+        afUrl = `${AF_BASE}/fixtures?date=${date}${leagueId ? `&league=${leagueId}` : ''}`;
+      } else if (action === 'fixture-players' && fixtureId) {
+        // Returns per-player match stats including rating — used to find the
+        // standout player for share-card/video generation.
+        afUrl = `${AF_BASE}/fixtures/players?fixture=${fixtureId}`;
+      } else if (action === 'player-photo' && url.searchParams.get('player')) {
+        afUrl = `${AF_BASE}/players?id=${url.searchParams.get('player')}&season=${url.searchParams.get('season') || new Date().getFullYear()}`;
       } else if (fixtureId) {
         afUrl = `${AF_BASE}/odds/live?fixture=${fixtureId}${betId ? `&bet=${betId}` : ''}`;
       } else {
@@ -284,7 +294,7 @@ export default {
     }
 
     if (url.pathname === '/esquina-radar') {
-      const erUrl = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/esquina-radar.html?bust=1782784682';
+      const erUrl = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/esquina-radar.html?bust=1782830971';
       const erResponse = await fetch(erUrl, {
         cf: { cacheEverything: false },
         headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
@@ -675,6 +685,7 @@ async function handleTikTok(request, env, url) {
 
   return new Response('Not found', { status: 404 });
 }
+
 
 
 
