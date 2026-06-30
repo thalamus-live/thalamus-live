@@ -4885,6 +4885,10 @@ async function shareDailyMenuVideo(btn){
 }
 
 
+// Generates the animated video for a tracked signal and shares it (opens the
+// OS share sheet — TikTok, Instagram, WhatsApp, etc. — when available) or
+// falls back to downloading the file.
+async function shareSignalVideo(trackId, btn){
   const tracked = getTrackedSignals();
   const t = tracked.find(x => x.id === trackId);
   if(!t) return;
