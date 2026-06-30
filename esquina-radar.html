@@ -4859,17 +4859,7 @@ async function shareDailyMenuVideo(btn){
     });
 
     const fileName = `menu-del-dia-${new Date().toISOString().slice(0,10)}.${ext}`;
-    const file = new File([blob], fileName, { type: blob.type });
-
-    if(navigator.canShare && navigator.canShare({ files: [file] })){
-      await navigator.share({ files: [file], title: 'Menú del Día — Thalamus', text: 'Partidos de hoy analizados por Esquina Radar' });
-    } else {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = fileName;
-      document.body.appendChild(a); a.click(); a.remove();
-      URL.revokeObjectURL(url);
-    }
+    showDailyMenuReadyModal(blob, fileName, ext);
   } catch(err) {
     if(err.message === 'no-matches'){
       alert('No hay partidos cargados para hoy. Activa las ligas correspondientes primero.');
@@ -4882,6 +4872,64 @@ async function shareDailyMenuVideo(btn){
     btn.disabled = false;
     btn.textContent = originalText;
   }
+}
+
+// Shows a small modal with a preview + a "Compartir" button. navigator.share()
+// requires being called directly inside a user gesture (click), so we can't
+// call it automatically right after the async video generation finishes —
+// the user must tap a button themselves to trigger the share sheet.
+function showDailyMenuReadyModal(blob, fileName, ext){
+  const existing = document.getElementById('dailyMenuReadyModal');
+  if(existing) existing.remove();
+
+  const videoUrl = URL.createObjectURL(blob);
+  const file = new File([blob], fileName, { type: blob.type });
+  const canNativeShare = !!(navigator.canShare && navigator.canShare({ files: [file] }));
+
+  const modal = document.createElement('div');
+  modal.id = 'dailyMenuReadyModal';
+  modal.style.cssText = `
+    position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.7);
+    display:flex;align-items:center;justify-content:center;padding:16px;
+  `;
+  modal.innerHTML = `
+    <div style="background:var(--panel);border-radius:20px;padding:20px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.35)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <span style="font-weight:800;font-size:15px;color:var(--text)">🎬 Menú del Día listo</span>
+        <button id="dmCloseBtn" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:20px;line-height:1">✕</button>
+      </div>
+      <video src="${videoUrl}" controls autoplay loop muted playsinline
+        style="width:100%;border-radius:14px;background:#000;max-height:55vh;object-fit:contain"></video>
+      <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+        ${canNativeShare ? `<button id="dmShareBtn" class="btn" style="flex:1;min-width:120px">Compartir 📤</button>` : ''}
+        <button id="dmDownloadBtn" class="btn secondary" style="flex:1;min-width:120px">Descargar ⬇️</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  document.getElementById('dmCloseBtn').addEventListener('click', () => {
+    URL.revokeObjectURL(videoUrl);
+    modal.remove();
+  });
+  modal.addEventListener('click', e => { if(e.target === modal){ URL.revokeObjectURL(videoUrl); modal.remove(); } });
+
+  document.getElementById('dmDownloadBtn').addEventListener('click', () => {
+    const a = document.createElement('a');
+    a.href = videoUrl; a.download = fileName;
+    document.body.appendChild(a); a.click(); a.remove();
+  });
+
+  // This click IS a direct user gesture, so navigator.share() works here
+  document.getElementById('dmShareBtn')?.addEventListener('click', async () => {
+    try {
+      await navigator.share({ files: [file], title: 'Menú del Día — Thalamus', text: 'Partidos de hoy analizados por Esquina Radar' });
+    } catch(err) {
+      if(err.name !== 'AbortError'){
+        alert('No se pudo compartir: ' + err.message);
+      }
+    }
+  });
 }
 
 
@@ -4897,31 +4945,12 @@ async function shareSignalVideo(trackId, btn){
   if(btn){ btn.disabled = true; }
 
   try{
-    const { blob, mimeType, ext } = await generateSignalVideo(t, (p) => {
+    const { blob, ext } = await generateSignalVideo(t, (p) => {
       if(btn) btn.textContent = `Generando... ${Math.round(p * 100)}%`;
     });
 
     const fileName = `esquina-radar-${t.matchTitle.replace(/\s+/g, '_')}-${t.line}.${ext}`;
-    const file = new File([blob], fileName, { type: mimeType });
-
-    let shared = false;
-    if(navigator.canShare && navigator.canShare({ files: [file] })){
-      try{
-        await navigator.share({ files: [file], title: 'Mi pronóstico - Esquina Radar', text: `${t.matchTitle} — ${t.direction === 'over' ? 'MÁS' : 'MENOS'} ${t.line} ${t.market === 'goals' ? 'GOLES' : 'CORNERS'}` });
-        shared = true;
-      }catch(err){ /* user cancelled */ }
-    }
-
-    if(!shared){
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    }
+    showDailyMenuReadyModal(blob, fileName, ext);
   }catch(err){
     console.error('Error generando video para compartir', err);
     if(err && err.message === 'unsupported'){
@@ -7615,6 +7644,7 @@ document.addEventListener('click', (e) => {
   transition: all 0.2s;
 }
 </style>
+
 
 
 
