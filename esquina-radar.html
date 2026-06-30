@@ -5931,7 +5931,7 @@ function buildEVBlock(s){
             <span class="ev-value">${formatEV(s.estimatedEV)}</span>
             <span class="ev-source">cuota estimada ~${estOdds.toFixed(2)} (curva de mercado)</span>
           </div>
-          <div class="ev-hint">Estimación basada en margen típico de casas (6%). Verifica la cuota real antes de apostar.</div>
+          <div class="ev-hint">Esto refleja el margen típico de la casa, no tu ventaja real. Compara con la cuota real: si paga más de ${estOdds.toFixed(2)}, hay valor.</div>
         </div>`;
     }
     return '';
