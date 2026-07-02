@@ -294,7 +294,7 @@ export default {
     }
 
     if (url.pathname === '/esquina-radar') {
-      const erUrl = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/esquina-radar.html?bust=1782839897';
+      const erUrl = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/esquina-radar.html?bust=1782956069';
       const erResponse = await fetch(erUrl, {
         cf: { cacheEverything: false },
         headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
@@ -685,6 +685,7 @@ async function handleTikTok(request, env, url) {
 
   return new Response('Not found', { status: 404 });
 }
+
 
 
 
