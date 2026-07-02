@@ -3854,6 +3854,20 @@ const THALAMUS_GREEN_DARK = '#3f7a5c'; // dark variant, used on light/dark backg
 const THALAMUS_GRAY = '#bcbcbb';       // Pantone 11-0203 TSX
 const THALAMUS_BLACK = '#1a1a1a';      // Pantone Black 6 C (approx)
 
+// TikTok only accepts MP4/H.264. Pick the best MIME type available in this browser.
+function pickVideoMimeType(){
+  const candidates = [
+    'video/mp4;codecs=avc1',
+    'video/mp4;codecs=h264',
+    'video/mp4',
+    'video/webm;codecs=vp9',
+    'video/webm',
+  ];
+  for(const m of candidates){ if(MediaRecorder.isTypeSupported(m)) return m; }
+  return 'video/webm';
+}
+function videoExt(mimeType){ return mimeType.startsWith('video/mp4') ? 'mp4' : 'webm'; }
+
 // Vivid accent colors for the share card — used for picks, status ribbons and
 // probability badges so the card pops instead of looking flat/monochrome.
 const VIVID_GREEN = '#22c55e';
@@ -4562,10 +4576,8 @@ function generateSignalVideo(t, onProgress){
     const fps = 30;
     const stream = canvas.captureStream(fps);
 
-    let mimeType = 'video/webm;codecs=vp9';
-    if(MediaRecorder.isTypeSupported('video/mp4')) mimeType = 'video/mp4';
-    else if(!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'video/webm';
-    const ext = mimeType.startsWith('video/mp4') ? 'mp4' : 'webm';
+    const mimeType = pickVideoMimeType();
+    const ext = videoExt(mimeType);
 
     let recorder;
     try{
@@ -4718,10 +4730,8 @@ async function generateDailyMenuVideo(onProgress){
 
     const fps = 30;
     const stream = canvas.captureStream(fps);
-    let mimeType = 'video/webm;codecs=vp9';
-    if(MediaRecorder.isTypeSupported('video/mp4')) mimeType = 'video/mp4';
-    else if(!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'video/webm';
-    const ext = mimeType.startsWith('video/mp4') ? 'mp4' : 'webm';
+    const mimeType = pickVideoMimeType();
+    const ext = videoExt(mimeType);
 
     let recorder;
     try{ recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 5_000_000 }); }
@@ -4965,10 +4975,8 @@ async function generateResultsVideo(onProgress){
 
     const fps = 30;
     const stream = canvas.captureStream(fps);
-    let mimeType = 'video/webm;codecs=vp9';
-    if(MediaRecorder.isTypeSupported('video/mp4')) mimeType = 'video/mp4';
-    else if(!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'video/webm';
-    const ext = mimeType.startsWith('video/mp4') ? 'mp4' : 'webm';
+    const mimeType = pickVideoMimeType();
+    const ext = videoExt(mimeType);
 
     let recorder;
     try{ recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 5_000_000 }); }
@@ -5229,7 +5237,9 @@ async function autoPublishMenu(btn, auto=false){
     });
     const fileName = `menu-del-dia-${new Date().toISOString().slice(0,10)}.${ext}`;
     if(auto){
-      await publishVideoToTikTok(blob, fileName, `🗓 MENÚ DE HOY — ${new Date().toLocaleDateString('es-PE',{weekday:'long',day:'numeric',month:'long'})} #EsquinaRadar #Thalamus #ApuestasFutbol`);
+      const result = await publishVideoToTikTok(blob, fileName, `🗓 MENÚ DE HOY — ${new Date().toLocaleDateString('es-PE',{weekday:'long',day:'numeric',month:'long'})} #EsquinaRadar #Thalamus #ApuestasFutbol`);
+      if(!result.ok) alert(`Error publicando en TikTok: ${result.error}`);
+      else alert('✅ Menú del Día publicado en TikTok');
     } else {
       showDailyMenuReadyModal(blob, fileName, ext);
     }
@@ -5253,7 +5263,9 @@ async function autoPublishResults(btn, auto=false){
       const today = new Date().toISOString().slice(0,10);
       const wins = tracked.filter(s => s.status==='won' && new Date(s.savedAt).toISOString().slice(0,10)===today).length;
       const total = tracked.filter(s => (s.status==='won'||s.status==='lost') && new Date(s.savedAt).toISOString().slice(0,10)===today).length;
-      await publishVideoToTikTok(blob, fileName, `📊 RESULTADOS DE HOY — ${wins}/${total} aciertos (${total>0?Math.round(wins/total*100):0}%) #EsquinaRadar #Thalamus #ApuestasFutbol`);
+      const result = await publishVideoToTikTok(blob, fileName, `📊 RESULTADOS DE HOY — ${wins}/${total} aciertos (${total>0?Math.round(wins/total*100):0}%) #EsquinaRadar #Thalamus #ApuestasFutbol`);
+      if(!result.ok) alert(`Error publicando en TikTok: ${result.error}`);
+      else alert('✅ Resultados publicados en TikTok');
     } else {
       showDailyMenuReadyModal(blob, fileName, ext);
     }
@@ -5267,18 +5279,22 @@ async function autoPublishResults(btn, auto=false){
 async function publishVideoToTikTok(blob, fileName, caption){
   const base = 'https://thalamus-live.panfernan5.workers.dev';
   const fd = new FormData();
-  fd.append('video', new File([blob], fileName, { type: blob.type }));
+  fd.append('video', new File([blob], fileName, { type: 'video/mp4' }));
   fd.append('title', caption);
   try {
     const r = await fetch(`${base}/tiktok/publish`, { method: 'POST', body: fd });
     const d = await r.json();
     if(d.publish_id){
       debugLog('✅ TikTok auto-publish OK:', d.publish_id);
+      return { ok: true, publish_id: d.publish_id };
     } else {
-      debugLog('❌ TikTok auto-publish error:', JSON.stringify(d));
+      const errMsg = d.detail?.error?.message || d.error || JSON.stringify(d);
+      debugLog('❌ TikTok publish error:', errMsg);
+      return { ok: false, error: errMsg };
     }
   } catch(e) {
     debugLog('❌ TikTok publish fetch error:', e.message);
+    return { ok: false, error: e.message };
   }
 }
 
