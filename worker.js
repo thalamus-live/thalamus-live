@@ -294,7 +294,7 @@ export default {
     }
 
     if (url.pathname === '/esquina-radar') {
-      const erUrl = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/esquina-radar.html?bust=1782956069';
+      const erUrl = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/esquina-radar.html?bust=1782956309';
       const erResponse = await fetch(erUrl, {
         cf: { cacheEverything: false },
         headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
@@ -631,16 +631,18 @@ async function tiktokHandlePublish(request, env) {
   const { publish_id, upload_url } = initData.data;
 
   // 3. Sube el video al upload_url que dio TikTok
+  // Always send as video/mp4 — TikTok requires H.264/MP4 format.
   const uploadResp = await fetch(upload_url, {
     method: 'PUT',
     headers: {
-      'Content-Type': file.type || 'video/mp4',
+      'Content-Type': 'video/mp4',
       'Content-Range': `bytes 0-${videoSize - 1}/${videoSize}`,
     },
     body: videoBuffer,
   });
   if (!uploadResp.ok) {
-    return tiktokJson({ error: 'upload_failed', status: uploadResp.status }, env, { status: 502 });
+    const uploadErr = await uploadResp.text().catch(()=>'');
+    return tiktokJson({ error: 'upload_failed', status: uploadResp.status, detail: uploadErr }, env, { status: 502 });
   }
 
   return tiktokJson({ publish_id, privacy_level: privacyLevel }, env);
