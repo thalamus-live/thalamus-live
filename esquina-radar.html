@@ -657,6 +657,7 @@
         🔔 <b id="notifStatus">OFF</b>
       </div>
       <button class="btn secondary" id="dailyMenuBtn" style="border-radius:999px;padding:6px 16px;font-size:13px">📋 Menú de Hoy 🎬</button>
+      <button class="btn secondary" id="dailyResultsBtn" style="border-radius:999px;padding:6px 16px;font-size:13px">📊 Resultados 🎬</button>
     </div>
   </div>
 </header>
@@ -906,6 +907,27 @@
       Una vez conectado, cada pronóstico en el historial tendrá un botón "TikTok 🎵" que genera el video animado y lo publica directo en tu cuenta
       — mientras la app no pase la auditoría de TikTok, los videos se publican en modo privado (solo visible para ti).
     </div>
+    </div>
+
+    <!-- ── Auto-publicación programada ──────────────────────────── -->
+    <div class="section-title" style="margin-top:24px">📅 Auto-publicación en TikTok</div>
+    <div class="af-config" id="autoPublishConfig">
+      <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:12px">
+        <label style="font-size:13px;font-weight:600;color:var(--muted)">Menú del Día a las</label>
+        <input type="time" id="menuPublishTime" value="09:00" style="width:110px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);font-size:14px" />
+        <label style="font-size:13px;font-weight:600;color:var(--muted)">Resultados a las</label>
+        <input type="time" id="resultsPublishTime" value="23:00" style="width:110px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);font-size:14px" />
+        <button class="btn" id="saveScheduleBtn" style="padding:7px 18px">Guardar horario</button>
+        <span id="scheduleStatus" style="font-size:12px;color:var(--muted)"></span>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn secondary" id="publishMenuNowBtn">📋 Publicar Menú ahora</button>
+        <button class="btn secondary" id="publishResultsNowBtn">📊 Publicar Resultados ahora</button>
+      </div>
+      <div class="note" style="margin-top:10px">
+        El Menú se genera con los partidos del día y se sube automáticamente a TikTok a la hora configurada.
+        Los Resultados se publican al cierre de la jornada con el resumen de aciertos/fallos del día.
+      </div>
     </div>
 
     <div class="section-title">Historial de pronósticos</div>
@@ -4914,7 +4936,353 @@ async function generateDailyMenuVideo(onProgress){
 }
 
 
-async function shareDailyMenuVideo(btn){
+// ── "Resultados de Hoy" Video Generator ─────────────────────────────────────
+// Builds a 20s vertical video showing today's signal results with the same
+// brand quality as the daily menu video.
+async function generateResultsVideo(onProgress){
+  return new Promise(async (resolve, reject) => {
+    if(typeof MediaRecorder === 'undefined' || !HTMLCanvasElement.prototype.captureStream){
+      reject(new Error('unsupported')); return;
+    }
+
+    const today = new Date().toISOString().slice(0,10);
+    const allTracked = getTrackedSignals();
+    const todaysSignals = allTracked.filter(s => {
+      const d = s.savedAt ? new Date(s.savedAt).toISOString().slice(0,10) : null;
+      return d === today && (s.status === 'won' || s.status === 'lost');
+    });
+
+    if(!todaysSignals.length){ reject(new Error('no-results')); return; }
+
+    const wins = todaysSignals.filter(s => s.status === 'won').length;
+    const losses = todaysSignals.filter(s => s.status === 'lost').length;
+    const pct = Math.round((wins / todaysSignals.length) * 100);
+
+    const W = 1080, H = 1920;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+
+    const fps = 30;
+    const stream = canvas.captureStream(fps);
+    let mimeType = 'video/webm;codecs=vp9';
+    if(MediaRecorder.isTypeSupported('video/mp4')) mimeType = 'video/mp4';
+    else if(!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'video/webm';
+    const ext = mimeType.startsWith('video/mp4') ? 'mp4' : 'webm';
+
+    let recorder;
+    try{ recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 5_000_000 }); }
+    catch(err){ reject(err); return; }
+
+    const chunks = [];
+    recorder.ondataavailable = e => { if(e.data?.size > 0) chunks.push(e.data); };
+    recorder.onerror = e => reject(e.error || new Error('recorder error'));
+    recorder.onstop = () => resolve({ blob: new Blob(chunks, { type: mimeType }), mimeType, ext });
+
+    // Cap signals to show (max 5 in cards)
+    const signals = todaysSignals.slice(0, 5);
+    const INTRO_DUR = 2.5;
+    const SIG_DUR = (20 - INTRO_DUR - 2) / signals.length;
+    const OUTRO_START = INTRO_DUR + signals.length * SIG_DUR;
+    const TOTAL = OUTRO_START + 2;
+
+    function drawBg(){
+      const bg = ctx.createLinearGradient(0, 0, W * 0.3, H);
+      bg.addColorStop(0, BG_TOP);
+      bg.addColorStop(1, BG_BOTTOM);
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, W, H);
+      for(let i = 0; i < 9; i++){
+        drawChevronStripe(ctx, W*0.35, -120+i*230, W*1.3, 160, 70, '#ffffff', 0.035);
+      }
+    }
+
+    function drawHeader(alpha){
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      const markW = 90, markX = W/2-160;
+      drawThalamusMark(ctx, markX, 70, markW, '#ffffff');
+      ctx.textAlign = 'left'; ctx.fillStyle = '#ffffff';
+      ctx.font = '700 58px Poppins, sans-serif';
+      ctx.fillText('thalamus', markX+markW+18, 70+markW*0.78);
+      ctx.restore();
+    }
+
+    function drawIntro(t){
+      const fade = easeOutCubic(clamp01(t/0.6));
+      const exitFade = t > INTRO_DUR-0.5 ? 1-easeOutCubic(clamp01((t-(INTRO_DUR-0.5))/0.5)) : 1;
+      ctx.save();
+      ctx.globalAlpha = fade * exitFade;
+      ctx.translate(0, (1-fade)*30);
+      ctx.textAlign = 'center';
+
+      // Big win count
+      const winColor = wins > losses ? '#22c55e' : '#ef4444';
+      ctx.font = '800 180px Poppins, sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(`${pct}%`, W/2, 920);
+
+      ctx.font = '600 44px Poppins, sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.fillText('DE ACIERTO HOY', W/2, 990);
+
+      ctx.font = '500 34px sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.65)';
+      ctx.fillText(`✅ ${wins} aciertos  ·  ❌ ${losses} fallos`, W/2, 1055);
+
+      ctx.font = '400 28px sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      const dateLabel = new Date().toLocaleDateString('es-PE', { weekday:'long', day:'numeric', month:'long' });
+      ctx.fillText(dateLabel.charAt(0).toUpperCase()+dateLabel.slice(1), W/2, 1110);
+      ctx.restore();
+    }
+
+    function drawSignalCard(s, idx, t){
+      const fadeIn = easeOutCubic(clamp01(t/0.4));
+      const fadeOut = t > SIG_DUR-0.4 ? 1-easeOutCubic(clamp01((t-(SIG_DUR-0.4))/0.4)) : 1;
+      ctx.save();
+      ctx.globalAlpha = Math.min(fadeIn, fadeOut);
+      ctx.translate(0, (1-fadeIn)*50);
+
+      const cardX = 60, cardY = 520, cardW = W-120, cardH = 780;
+      ctx.save();
+      ctx.shadowColor = 'rgba(10,30,22,0.4)'; ctx.shadowBlur = 50; ctx.shadowOffsetY = 22;
+      ctx.fillStyle = '#ffffff';
+      roundRectPath(ctx, cardX, cardY, cardW, cardH, 44);
+      ctx.fill();
+      ctx.restore();
+
+      drawLowPolyBackground(ctx, cardX, cardY, cardW, cardH, '#E8F5E9', '#C8E6C9');
+      ctx.save();
+      roundRectPath(ctx, cardX, cardY, cardW, cardH, 44);
+      ctx.clip();
+
+      const pad = 56;
+      let y = cardY + 90;
+
+      // Status badge
+      const isWin = s.status === 'won';
+      const badgeColor = isWin ? '#22c55e' : '#ef4444';
+      const badgeLabel = isWin ? '✅ ACIERTO' : '❌ FALLO';
+      ctx.textAlign = 'left';
+      drawPillBadge(ctx, cardX+pad, y-36, badgeLabel, '700 28px Poppins, sans-serif', '#ffffff', badgeColor);
+
+      // League
+      ctx.textAlign = 'right'; ctx.font = '700 26px Poppins, sans-serif';
+      ctx.fillStyle = THALAMUS_GREEN_DARK;
+      ctx.fillText((leagueShort(s.league)||'FÚTBOL').toUpperCase(), cardX+cardW-pad, y-4);
+      y += 80;
+
+      // Match title
+      ctx.textAlign = 'center'; ctx.fillStyle = THALAMUS_BLACK;
+      ctx.font = '700 46px Poppins, sans-serif';
+      wrapCanvasText(ctx, s.matchTitle||'—', W/2, y, cardW-pad*2, 54, 2);
+      y += 120;
+
+      // Pick
+      const pick = s.direction==='over' ? 'MÁS' : 'MENOS';
+      const market = (s.market||'corners')==='goals' ? 'GOLES' : 'CORNERS';
+      ctx.font = '800 64px Poppins, sans-serif';
+      ctx.fillStyle = isWin ? '#22c55e' : '#ef4444';
+      ctx.fillText(`${pick} ${s.line} ${market}`, W/2, y);
+      y += 80;
+
+      // Prob + result
+      ctx.font = '500 34px sans-serif'; ctx.fillStyle = '#6b8378';
+      ctx.fillText(`${Math.round((s.prob||0)*100)}% confianza · min. ${s.clockAtSignal||'—'}`, W/2, y);
+      y += 60;
+
+      // Final total if available
+      if(s.finalTotal != null){
+        ctx.font = '600 36px sans-serif'; ctx.fillStyle = THALAMUS_BLACK;
+        ctx.fillText(`Total final: ${s.finalTotal} ${market.toLowerCase()}`, W/2, y);
+      }
+
+      // Progress dots
+      const dotsY = cardY + cardH - 42;
+      const dotSpacing = 28;
+      const startX = W/2-(signals.length-1)*dotSpacing/2;
+      signals.forEach((_,i) => {
+        ctx.beginPath();
+        ctx.arc(startX+i*dotSpacing, dotsY, i===idx?8:5, 0, Math.PI*2);
+        ctx.fillStyle = i===idx ? THALAMUS_GREEN_DARK : 'rgba(63,122,92,0.25)';
+        ctx.fill();
+      });
+
+      ctx.restore();
+      ctx.restore();
+    }
+
+    function drawOutro(t){
+      const fade = easeOutCubic(clamp01(t/0.5));
+      ctx.save(); ctx.globalAlpha = fade;
+      drawThalamusMark(ctx, W/2-80, 780, 160, '#ffffff');
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffffff'; ctx.font = '700 64px Poppins, sans-serif';
+      ctx.fillText('thalamus', W/2, 1010);
+      ctx.font = '500 34px sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.fillText('Sígueme para las señales en vivo', W/2, 1075);
+      ctx.font = '400 26px sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.fillText('Esquina Radar · Resultados reales, sin filtros', W/2, 1120);
+      ctx.restore();
+    }
+
+    const startTime = performance.now();
+    recorder.start();
+    function frame(){
+      const elapsed = (performance.now()-startTime)/1000;
+      drawBg();
+      if(elapsed < INTRO_DUR){
+        drawHeader(easeOutCubic(clamp01(elapsed/0.5)));
+        drawIntro(elapsed);
+      } else if(elapsed < OUTRO_START){
+        drawHeader(1);
+        const idx = Math.min(signals.length-1, Math.floor((elapsed-INTRO_DUR)/SIG_DUR));
+        drawSignalCard(signals[idx], idx, (elapsed-INTRO_DUR)-idx*SIG_DUR);
+      } else {
+        drawHeader(1-easeOutCubic(clamp01((elapsed-OUTRO_START)/0.4)));
+        drawOutro(elapsed-OUTRO_START);
+      }
+      if(onProgress) onProgress(clamp01(elapsed/TOTAL));
+      if(elapsed < TOTAL){ requestAnimationFrame(frame); } else { recorder.stop(); }
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+// ── Auto-publicación programada ──────────────────────────────────────────────
+let _scheduleInterval = null;
+const SCHEDULE_KEY = 'thalamus_autopublish_schedule';
+
+function loadScheduleConfig(){
+  try{ return JSON.parse(localStorage.getItem(SCHEDULE_KEY)||'{}'); }
+  catch(e){ return {}; }
+}
+
+function saveScheduleConfig(cfg){
+  localStorage.setItem(SCHEDULE_KEY, JSON.stringify(cfg));
+}
+
+function initAutoPublish(){
+  const cfg = loadScheduleConfig();
+  const menuInput = document.getElementById('menuPublishTime');
+  const resultsInput = document.getElementById('resultsPublishTime');
+  if(menuInput && cfg.menuTime) menuInput.value = cfg.menuTime;
+  if(resultsInput && cfg.resultsTime) resultsInput.value = cfg.resultsTime;
+
+  document.getElementById('saveScheduleBtn')?.addEventListener('click', () => {
+    const newCfg = {
+      menuTime: menuInput?.value || '09:00',
+      resultsTime: resultsInput?.value || '23:00',
+      enabled: true
+    };
+    saveScheduleConfig(newCfg);
+    startScheduleChecker(newCfg);
+    const st = document.getElementById('scheduleStatus');
+    if(st){ st.textContent = '✓ Guardado'; setTimeout(() => st.textContent = '', 2000); }
+  });
+
+  document.getElementById('publishMenuNowBtn')?.addEventListener('click', async (e) => {
+    await autoPublishMenu(e.currentTarget);
+  });
+
+  document.getElementById('publishResultsNowBtn')?.addEventListener('click', async (e) => {
+    await autoPublishResults(e.currentTarget);
+  });
+
+  if(cfg.enabled) startScheduleChecker(cfg);
+}
+
+function startScheduleChecker(cfg){
+  if(_scheduleInterval) clearInterval(_scheduleInterval);
+  _scheduleInterval = setInterval(() => checkScheduledPublish(cfg), 60_000);
+  checkScheduledPublish(cfg); // also check immediately
+}
+
+let _lastMenuPublishDate = null;
+let _lastResultsPublishDate = null;
+
+async function checkScheduledPublish(cfg){
+  const now = new Date();
+  const today = now.toISOString().slice(0,10);
+  const timeStr = now.toTimeString().slice(0,5); // "HH:MM"
+
+  // Check menu publish time
+  if(cfg.menuTime && timeStr === cfg.menuTime && _lastMenuPublishDate !== today){
+    _lastMenuPublishDate = today;
+    await autoPublishMenu(null, true);
+  }
+
+  // Check results publish time
+  if(cfg.resultsTime && timeStr === cfg.resultsTime && _lastResultsPublishDate !== today){
+    _lastResultsPublishDate = today;
+    await autoPublishResults(null, true);
+  }
+}
+
+async function autoPublishMenu(btn, auto=false){
+  const originalText = btn?.textContent || '';
+  if(btn){ btn.disabled = true; btn.textContent = 'Generando...'; }
+  try {
+    const { blob, ext } = await generateDailyMenuVideo((p) => {
+      if(btn) btn.textContent = `Generando ${Math.round(p*100)}%...`;
+    });
+    const fileName = `menu-del-dia-${new Date().toISOString().slice(0,10)}.${ext}`;
+    if(auto){
+      await publishVideoToTikTok(blob, fileName, `🗓 MENÚ DE HOY — ${new Date().toLocaleDateString('es-PE',{weekday:'long',day:'numeric',month:'long'})} #EsquinaRadar #Thalamus #ApuestasFutbol`);
+    } else {
+      showDailyMenuReadyModal(blob, fileName, ext);
+    }
+  } catch(err) {
+    if(!auto) alert(err.message === 'no-matches' ? 'No hay partidos cargados para hoy.' : 'Error: ' + err.message);
+  } finally {
+    if(btn){ btn.disabled = false; btn.textContent = originalText; }
+  }
+}
+
+async function autoPublishResults(btn, auto=false){
+  const originalText = btn?.textContent || '';
+  if(btn){ btn.disabled = true; btn.textContent = 'Generando...'; }
+  try {
+    const { blob, ext } = await generateResultsVideo((p) => {
+      if(btn) btn.textContent = `Generando ${Math.round(p*100)}%...`;
+    });
+    const fileName = `resultados-${new Date().toISOString().slice(0,10)}.${ext}`;
+    if(auto){
+      const tracked = getTrackedSignals();
+      const today = new Date().toISOString().slice(0,10);
+      const wins = tracked.filter(s => s.status==='won' && new Date(s.savedAt).toISOString().slice(0,10)===today).length;
+      const total = tracked.filter(s => (s.status==='won'||s.status==='lost') && new Date(s.savedAt).toISOString().slice(0,10)===today).length;
+      await publishVideoToTikTok(blob, fileName, `📊 RESULTADOS DE HOY — ${wins}/${total} aciertos (${total>0?Math.round(wins/total*100):0}%) #EsquinaRadar #Thalamus #ApuestasFutbol`);
+    } else {
+      showDailyMenuReadyModal(blob, fileName, ext);
+    }
+  } catch(err) {
+    if(!auto) alert(err.message === 'no-results' ? 'No hay resultados de hoy todavía.' : 'Error: ' + err.message);
+  } finally {
+    if(btn){ btn.disabled = false; btn.textContent = originalText; }
+  }
+}
+
+async function publishVideoToTikTok(blob, fileName, caption){
+  const base = 'https://thalamus-live.panfernan5.workers.dev';
+  const fd = new FormData();
+  fd.append('video', new File([blob], fileName, { type: blob.type }));
+  fd.append('title', caption);
+  try {
+    const r = await fetch(`${base}/tiktok/publish`, { method: 'POST', body: fd });
+    const d = await r.json();
+    if(d.publish_id){
+      debugLog('✅ TikTok auto-publish OK:', d.publish_id);
+    } else {
+      debugLog('❌ TikTok auto-publish error:', JSON.stringify(d));
+    }
+  } catch(e) {
+    debugLog('❌ TikTok publish fetch error:', e.message);
+  }
+}
+
+
   const originalText = btn.textContent;
   btn.disabled = true;
   btn.textContent = 'Generando 0%…';
@@ -7368,6 +7736,14 @@ function init(){
     shareDailyMenuVideo(e.currentTarget);
   });
 
+  // Results video button
+  document.getElementById('dailyResultsBtn')?.addEventListener('click', (e) => {
+    autoPublishResults(e.currentTarget, false);
+  });
+
+  // Auto-publish scheduler
+  initAutoPublish();
+
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -7710,6 +8086,7 @@ document.addEventListener('click', (e) => {
   transition: all 0.2s;
 }
 </style>
+
 
 
 
