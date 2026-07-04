@@ -811,6 +811,14 @@
       <button class="btn secondary" id="afLoadFixtures">Cargar partidos en vivo (1 req)</button>
       <button class="btn secondary" id="afLoadLiveOdds">Cargar cuotas en vivo - todas (1 req)</button>
       <button class="btn secondary" id="afLoadBookmakers">Ver casas de apuestas disponibles (1 req)</button>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted-2)">
+        <input type="checkbox" id="afAutoRefreshToggle" /> Auto-refrescar cuotas cada
+        <select id="afAutoRefreshInterval">
+          <option value="180000">3 min</option>
+          <option value="300000" selected>5 min</option>
+          <option value="600000">10 min</option>
+        </select>
+      </label>
     </div>
     <div class="af-signal-row" id="afBookmakersList"></div>
     <div class="af-list" id="afList"></div>
@@ -5918,6 +5926,50 @@ async function afLoadLiveOdds(){
   setTimeout(() => { btn.textContent = 'Cargar cuotas en vivo - todas (1 req)'; }, 4000);
 }
 
+// Auto-refresh for API-Football live odds. Stops itself once the daily counter
+// hits 90/100 to leave headroom for manual "Ver corners" lookups the rest of the day.
+const AF_AUTO_STOP_AT = 90;
+let afAutoRefreshTimer = null;
+function afSetupAutoRefresh(){
+  const toggle = document.getElementById('afAutoRefreshToggle');
+  const intervalSelect = document.getElementById('afAutoRefreshInterval');
+
+  function start(){
+    if(afAutoRefreshTimer) clearInterval(afAutoRefreshTimer);
+    const ms = parseInt(intervalSelect.value, 10);
+    afAutoRefreshTimer = setInterval(async () => {
+      const count = getAfCounter().count;
+      if(count >= AF_AUTO_STOP_AT){
+        toggle.checked = false;
+        clearInterval(afAutoRefreshTimer);
+        afAutoRefreshTimer = null;
+        const btn = document.getElementById('afLoadLiveOdds');
+        if(btn) btn.textContent = `Auto-refresh detenido (límite ${AF_AUTO_STOP_AT}/100)`;
+        return;
+      }
+      await afLoadLiveOdds();
+    }, ms);
+  }
+  function stop(){
+    if(afAutoRefreshTimer){ clearInterval(afAutoRefreshTimer); afAutoRefreshTimer = null; }
+  }
+
+  toggle.addEventListener('change', () => {
+    if(toggle.checked){
+      if(getAfCounter().count >= AF_AUTO_STOP_AT){
+        toggle.checked = false;
+        alert(`Ya llegaste a ${AF_AUTO_STOP_AT}/100 requests hoy. El auto-refresh no arranca para no gastar el resto del cupo.`);
+        return;
+      }
+      afLoadLiveOdds(); // fetch immediately, then keep going
+      start();
+    } else {
+      stop();
+    }
+  });
+  intervalSelect.addEventListener('change', () => { if(toggle.checked) start(); });
+}
+
 // Shows the "Ver cuotas" button only for fixtures that have data in afLiveOddsCache
 function applyAfLiveOddsAvailability(){
   document.querySelectorAll('.af-odds-btn').forEach(btn => {
@@ -7825,6 +7877,7 @@ function init(){
   document.getElementById('afLoadFixtures').addEventListener('click', afLoadFixtures);
   document.getElementById('afLoadBookmakers').addEventListener('click', afLoadBookmakers);
   document.getElementById('afLoadLiveOdds').addEventListener('click', afLoadLiveOdds);
+  afSetupAutoRefresh();
 
   buildOddsLeagueOptions();
   document.getElementById('oddsLoadEvents').addEventListener('click', oddsLoadEvents);
