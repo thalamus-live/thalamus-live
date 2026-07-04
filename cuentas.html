@@ -19,7 +19,7 @@
   .accent-bar{position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:16px 0 0 16px;}
   .info{flex:1;min-width:180px;}
   .bank-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-weight:600;}
-  .bank-row .alias{color:var(--muted);font-weight:400;font-size:13px;}
+  .bank-row .alias{color:var(--muted);font-weight:500;font-size:15px;}
   .field-row{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:14px;}
   .field-label{width:64px;flex-shrink:0;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#5c6270;}
   .field-value{font-family:'JetBrains Mono',monospace;color:#d4d7dd;}
@@ -137,8 +137,9 @@ function accentFor(name){
 }
 function maskNumber(num){
   if(!num) return '';
-  const d=num.replace(/\s/g,''); if(d.length<=4) return d;
-  return '•••• '+d.slice(-4);
+  const d=num.replace(/\s/g,'');
+  if(d.length<=7) return d;
+  return d.slice(0,3)+' •••• '+d.slice(-4);
 }
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
