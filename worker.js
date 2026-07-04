@@ -313,7 +313,8 @@ export default {
     if (url.pathname === '/mis-cuentas') {
       const cuUrl = `https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/cuentas.html?bust=${Date.now()}`;
       const cuResponse = await fetch(cuUrl, {
-        cf: { cacheEverything: false },
+        cache: 'no-store',
+        cf: { cacheEverything: false, cacheTtl: 0 },
         headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
       });
       const cuHtml = await cuResponse.text();
