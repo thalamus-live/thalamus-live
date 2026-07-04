@@ -309,6 +309,27 @@ export default {
       });
     }
 
+    // ── Mis cuentas (bank account wallet) ──────────────────────────────────
+    if (url.pathname === '/mis-cuentas') {
+      const cuUrl = `https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/cuentas.html?bust=${Date.now()}`;
+      const cuResponse = await fetch(cuUrl, {
+        cf: { cacheEverything: false },
+        headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
+      });
+      const cuHtml = await cuResponse.text();
+      return new Response(cuHtml, {
+        headers: {
+          'Content-Type':  'text/html; charset=utf-8',
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'X-Deploy':      Date.now().toString(),
+        },
+      });
+    }
+
+    if (url.pathname === '/api/cuentas') {
+      return handleCuentas(request, env);
+    }
+
     // ── Sirve index.html desde GitHub (comportamiento original) ────────────
     const htmlUrl  = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/index.html';
     const response = await fetch(htmlUrl, {
@@ -342,6 +363,39 @@ export default {
  *  POST /tiktok/publish          -> sube y publica un video (FormData: video, title)
  *  GET  /tiktok/publish-status   -> ?id=<publish_id> — estado de publicación
  * ========================================================================= */
+
+// ── Cuentas KV Handler ──────────────────────────────────────────────────
+const CUENTAS_KEY = 'thalamus_cuentas_v1';
+
+async function handleCuentas(request, env) {
+  const cors = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  };
+  if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
+
+  const json = (data, status = 200) => new Response(JSON.stringify(data), {
+    status, headers: { 'Content-Type': 'application/json', ...cors }
+  });
+
+  try {
+    if (request.method === 'GET') {
+      const raw = await env.TIKTOK_KV.get(CUENTAS_KEY);
+      const accounts = raw ? JSON.parse(raw) : [];
+      return json({ ok: true, accounts });
+    }
+    if (request.method === 'POST') {
+      const body = await request.json();
+      const accounts = body.accounts || [];
+      await env.TIKTOK_KV.put(CUENTAS_KEY, JSON.stringify(accounts));
+      return json({ ok: true, count: accounts.length });
+    }
+  } catch (e) {
+    return json({ ok: false, error: String(e) }, 500);
+  }
+  return new Response('Method not allowed', { status: 405, headers: cors });
+}
 
 // ── Signals KV Handler ─────────────────────────────────────────────────────
 const SIGNALS_KEY = 'esquina_signals_v1';
