@@ -11,10 +11,19 @@
   :root{
     --mint:#f0faf4; --green:#6ebd91; --green-dark:#2d7d5a; --gray:#bcbcbb;
     --bg:var(--mint); --card:#ffffff; --border:#d7ebe0; --text:#163526; --muted:#6f8579;
-    --accent:var(--green); --accent-dark:var(--green-dark);
+    --accent:var(--green); --accent-dark:var(--green-dark); --surface-soft:var(--mint);
+  }
+  [data-theme="dark"]{
+    --bg:#0e1a14; --card:#152922; --border:#234136; --text:#eaf5ef; --muted:#8fae9f;
+    --accent:#6ebd91; --accent-dark:#8fd1ab; --gray:#7c948a; --surface-soft:#1c3229;
   }
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--text);font-family:'Noto Sans',system-ui,sans-serif;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:'Noto Sans',system-ui,sans-serif;transition:background .2s,color .2s;}
+  .top-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
+  .theme-toggle{flex-shrink:0;background:var(--card);border:1px solid var(--border);color:var(--text);
+        border-radius:999px;padding:8px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px;
+        box-shadow:0 1px 3px rgba(45,125,90,.08);}
+  .theme-toggle:hover{border-color:var(--accent);}
   .wrap{max-width:560px;margin:0 auto;padding:32px 16px 80px;}
   #list{display:flex;flex-direction:column;gap:12px;}
 
@@ -28,7 +37,7 @@
     .wrap{max-width:1400px;}
     #list{grid-template-columns:repeat(3, 1fr);}
   }
-  h1{font-size:26px;margin:0 0 4px;font-family:'Poppins',sans-serif;font-weight:700;letter-spacing:-.02em;color:var(--green-dark);}
+  h1{font-size:26px;margin:0 0 4px;font-family:'Poppins',sans-serif;font-weight:700;letter-spacing:-.02em;color:var(--accent-dark);}
   .sub{color:var(--muted);font-size:14px;margin:0 0 24px;line-height:1.4;}
   .card{position:relative;background:var(--card);border:1px solid var(--border);border-radius:16px;
         padding:16px 16px 16px 20px;margin-bottom:12px;display:flex;gap:16px;flex-wrap:wrap;
@@ -39,47 +48,47 @@
   .bank-row .alias{color:var(--muted);font-weight:500;font-size:15px;font-family:'Noto Sans',sans-serif;}
   .field-row{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:14px;}
   .field-label{width:64px;flex-shrink:0;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--gray);}
-  .field-value{font-family:'JetBrains Mono',monospace;color:var(--green-dark);}
+  .field-value{font-family:'JetBrains Mono',monospace;color:var(--accent-dark);}
   .icon-btn{background:none;border:none;color:var(--muted);cursor:pointer;padding:4px;border-radius:6px;display:inline-flex;}
-  .icon-btn:hover{color:var(--green-dark);background:rgba(110,189,145,.15);}
+  .icon-btn:hover{color:var(--accent-dark);background:rgba(110,189,145,.15);}
   .actions{display:flex;gap:14px;margin-top:10px;font-size:12px;flex-wrap:wrap;}
   .actions button{background:none;border:none;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:4px;font-size:12px;padding:0;}
-  .actions button:hover{color:var(--green-dark);}
+  .actions button:hover{color:var(--accent-dark);}
   .actions button.danger:hover{color:#c0392b;}
   .qr-wrap{flex-shrink:0;width:128px;height:128px;border-radius:12px;overflow:hidden;background:#fff;
            display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid var(--border);margin:0 auto;}
   .qr-wrap img{width:100%;height:100%;object-fit:contain;padding:8px;}
   .qr-empty{width:128px;height:128px;border-radius:12px;border:1px dashed var(--border);
             display:flex;align-items:center;justify-content:center;color:var(--gray);margin:0 auto;}
-  .add-btn{width:100%;padding:14px;border-radius:12px;border:1px dashed var(--green);background:#fff;
-           color:var(--green-dark);cursor:pointer;font-size:14px;font-weight:600;margin-top:6px;}
-  .add-btn:hover{background:var(--mint);border-color:var(--green-dark);}
+  .add-btn{width:100%;padding:14px;border-radius:12px;border:1px dashed var(--accent);background:#fff;
+           color:var(--accent-dark);cursor:pointer;font-size:14px;font-weight:600;margin-top:6px;}
+  .add-btn:hover{background:var(--surface-soft);border-color:var(--accent-dark);}
   .form{background:#fff;border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:12px;
         box-shadow:0 1px 3px rgba(45,125,90,.06);}
   .form label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:4px;}
-  .form input[type=text]{width:100%;background:var(--mint);border:1px solid var(--border);border-radius:8px;
+  .form input[type=text]{width:100%;background:var(--surface-soft);border:1px solid var(--border);border-radius:8px;
             padding:9px 10px;color:var(--text);font-size:14px;margin-bottom:14px;outline:none;}
-  .form input[type=text]:focus{border-color:var(--green);}
-  .form textarea{width:100%;background:var(--mint);border:1px solid var(--border);border-radius:8px;
+  .form input[type=text]:focus{border-color:var(--accent);}
+  .form textarea{width:100%;background:var(--surface-soft);border:1px solid var(--border);border-radius:8px;
         padding:9px 10px;color:var(--text);font-size:14px;margin-bottom:14px;outline:none;resize:vertical;
         min-height:64px;font-family:inherit;}
-  .form textarea:focus{border-color:var(--green);}
+  .form textarea:focus{border-color:var(--accent);}
   .obs-toggle{background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;
         display:flex;align-items:center;gap:4px;margin-top:8px;padding:0;}
-  .obs-toggle:hover{color:var(--green-dark);}
+  .obs-toggle:hover{color:var(--accent-dark);}
   .obs-toggle .chev{display:inline-block;transition:transform .15s;font-size:10px;}
   .obs-toggle.open .chev{transform:rotate(90deg);}
-  .obs-body{margin-top:8px;padding:10px 12px;background:var(--mint);border:1px solid var(--border);
+  .obs-body{margin-top:8px;padding:10px 12px;background:var(--surface-soft);border:1px solid var(--border);
         border-radius:8px;font-size:13px;color:var(--text);white-space:pre-wrap;line-height:1.4;}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
   .drop{border:1px dashed var(--border);border-radius:10px;padding:24px;text-align:center;color:var(--muted);
         cursor:pointer;font-size:13px;margin-bottom:14px;}
-  .drop:hover{border-color:var(--green);color:var(--green-dark);}
+  .drop:hover{border-color:var(--accent);color:var(--accent-dark);}
   .form-actions{display:flex;justify-content:flex-end;gap:8px;}
   .btn-secondary{background:none;border:none;color:var(--muted);padding:8px 12px;cursor:pointer;font-size:14px;}
-  .btn-primary{background:var(--green);border:none;color:#0c2318;padding:8px 16px;border-radius:8px;
+  .btn-primary{background:var(--accent);border:none;color:#0c2318;padding:8px 16px;border-radius:8px;
                font-weight:600;font-size:14px;cursor:pointer;font-family:'Poppins',sans-serif;}
-  .btn-primary:hover{background:var(--green-dark);color:#fff;}
+  .btn-primary:hover{background:var(--accent-dark);color:#fff;}
   .btn-primary:disabled{opacity:.4;cursor:not-allowed;}
   .empty{text-align:center;padding:56px 20px;border:1px dashed var(--border);border-radius:16px;color:var(--muted);}
   .footer-note{text-align:center;font-size:11px;color:var(--gray);margin-top:32px;}
@@ -87,28 +96,28 @@
             align-items:center;justify-content:center;z-index:50;padding:24px;}
   .lightbox img{max-width:100%;max-height:70vh;border-radius:12px;background:#fff;padding:12px;}
   .lightbox .close{position:absolute;top:16px;right:16px;background:#fff;border:1px solid var(--border);
-                    border-radius:999px;padding:8px;color:var(--green-dark);cursor:pointer;}
-  .lightbox .dl{margin-top:20px;background:var(--green);color:#0c2318;border:none;padding:10px 18px;
+                    border-radius:999px;padding:8px;color:var(--accent-dark);cursor:pointer;}
+  .lightbox .dl{margin-top:20px;background:var(--accent);color:#0c2318;border:none;padding:10px 18px;
                 border-radius:8px;font-weight:600;cursor:pointer;font-family:'Poppins',sans-serif;}
-  .lightbox .dl:hover{background:var(--green-dark);color:#fff;}
-  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--green-dark);border:1px solid var(--green-dark);
+  .lightbox .dl:hover{background:var(--accent-dark);color:#fff;}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--accent-dark);border:1px solid var(--accent-dark);
          padding:8px 14px;border-radius:8px;font-size:13px;color:#fff;}
   .masked{letter-spacing:2px;}
 
   .chat-section{margin-top:36px;border-top:1px solid var(--border);padding-top:24px;max-width:640px;}
-  .chat-section h2{font-size:16px;margin:0 0 4px;font-family:'Poppins',sans-serif;color:var(--green-dark);}
+  .chat-section h2{font-size:16px;margin:0 0 4px;font-family:'Poppins',sans-serif;color:var(--accent-dark);}
   .chat-section .sub{margin-bottom:16px;}
   .chat-name-row{display:flex;gap:8px;margin-bottom:12px;}
-  .chat-name-row input{background:var(--mint);border:1px solid var(--border);border-radius:8px;color:var(--text);
+  .chat-name-row input{background:var(--surface-soft);border:1px solid var(--border);border-radius:8px;color:var(--text);
         padding:8px 10px;font-size:13px;}
   .chat-name-row input.name-input{width:140px;}
   .chat-messages{display:flex;flex-direction:column;gap:10px;margin-bottom:12px;max-height:360px;overflow-y:auto;
         padding-right:4px;}
   .chat-msg{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;position:relative;}
-  .chat-msg.pinned{border-color:var(--green-dark);background:var(--mint);}
+  .chat-msg.pinned{border-color:var(--accent-dark);background:var(--surface-soft);}
   .chat-msg .meta{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;margin-bottom:4px;gap:8px;}
-  .chat-msg .author{color:var(--green-dark);font-weight:600;}
-  .chat-msg .pin-flag{color:var(--green-dark);margin-right:4px;}
+  .chat-msg .author{color:var(--accent-dark);font-weight:600;}
+  .chat-msg .pin-flag{color:var(--accent-dark);margin-right:4px;}
   .chat-msg .msg-actions{display:flex;gap:10px;margin-top:6px;}
   .chat-msg .msg-actions button{background:none;border:none;color:var(--gray);font-size:11px;cursor:pointer;padding:0;}
   .chat-msg .msg-actions button:hover{color:var(--text);}
@@ -116,15 +125,15 @@
   .chat-img{max-width:180px;max-height:180px;border-radius:8px;margin-top:6px;cursor:pointer;background:#fff;padding:4px;display:block;}
   .chat-empty{color:var(--gray);font-size:13px;text-align:center;padding:20px 0;}
   .chat-input-row{display:flex;gap:8px;align-items:flex-end;}
-  .chat-input-row input.msg-input{flex:1;background:var(--mint);border:1px solid var(--border);border-radius:8px;
+  .chat-input-row input.msg-input{flex:1;background:var(--surface-soft);border:1px solid var(--border);border-radius:8px;
         color:var(--text);padding:9px 10px;font-size:14px;}
-  .chat-attach-btn{background:var(--mint);border:1px solid var(--border);color:var(--muted);border-radius:8px;
+  .chat-attach-btn{background:var(--surface-soft);border:1px solid var(--border);color:var(--muted);border-radius:8px;
         padding:0 12px;height:38px;cursor:pointer;font-size:16px;}
-  .chat-attach-btn:hover{color:var(--green-dark);border-color:var(--green);}
-  .chat-send{background:var(--green);border:none;color:#0c2318;padding:0 16px;height:38px;border-radius:8px;font-weight:600;cursor:pointer;font-family:'Poppins',sans-serif;}
-  .chat-send:hover{background:var(--green-dark);color:#fff;}
+  .chat-attach-btn:hover{color:var(--accent-dark);border-color:var(--accent);}
+  .chat-send{background:var(--accent);border:none;color:#0c2318;padding:0 16px;height:38px;border-radius:8px;font-weight:600;cursor:pointer;font-family:'Poppins',sans-serif;}
+  .chat-send:hover{background:var(--accent-dark);color:#fff;}
   .chat-send:disabled{opacity:.4;cursor:not-allowed;}
-  .chat-pending-img{display:flex;align-items:center;gap:8px;background:var(--mint);border:1px solid var(--border);
+  .chat-pending-img{display:flex;align-items:center;gap:8px;background:var(--surface-soft);border:1px solid var(--border);
         border-radius:8px;padding:6px 8px;margin-bottom:8px;font-size:12px;color:var(--muted);}
   .chat-pending-img img{height:36px;border-radius:4px;background:#fff;}
   .chat-pending-img button{background:none;border:none;color:#c0392b;cursor:pointer;font-size:12px;margin-left:auto;}
@@ -132,8 +141,13 @@
 </head>
 <body>
 <div class="wrap" id="app">
-  <h1>Mis cuentas</h1>
-  <p class="sub">Guardado en tu Worker de Thalamus — accesible desde cualquier dispositivo con este link, sin necesidad de cuenta.</p>
+  <div class="top-row">
+    <div>
+      <h1>Mis cuentas</h1>
+      <p class="sub">Guardado en tu Worker de Thalamus — accesible desde cualquier dispositivo con este link, sin necesidad de cuenta.</p>
+    </div>
+    <button class="theme-toggle" id="themeToggle">🌙 Oscuro</button>
+  </div>
   <div id="list"></div>
   <button class="add-btn" id="addBtn">+ Agregar cuenta</button>
   <p class="footer-note">Los datos son visibles para cualquiera que tenga este link. No lo compartas si contiene información sensible.</p>
@@ -385,6 +399,27 @@ function openLightbox(src, bank){
   };
   document.body.appendChild(box);
 }
+
+// ── Tema claro / oscuro ──────────────────────────────────────────────────
+const themeBtn = document.getElementById('themeToggle');
+function applyTheme(mode){
+  if(mode === 'dark'){
+    document.documentElement.setAttribute('data-theme', 'dark');
+    themeBtn.textContent = '☀️ Claro';
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+    themeBtn.textContent = '🌙 Oscuro';
+  }
+}
+const savedTheme = localStorage.getItem('cuentas_theme');
+const systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+applyTheme(savedTheme || (systemPrefersDark ? 'dark' : 'light'));
+themeBtn.onclick = ()=>{
+  const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  const next = current === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('cuentas_theme', next);
+  applyTheme(next);
+};
 
 document.getElementById('addBtn').onclick = ()=>{ editingId='new'; pendingImage=null; render(); };
 
