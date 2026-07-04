@@ -370,7 +370,11 @@ export default {
 
 // ── Chat / retroalimentación KV Handler ────────────────────────────────
 const CHAT_KEY = 'thalamus_cuentas_chat_v1';
-const CHAT_MAX = 200;
+const CHAT_MAX = 60;
+
+function chatUid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
 
 async function handleChat(request, env) {
   const cors = {
@@ -390,17 +394,46 @@ async function handleChat(request, env) {
       const messages = raw ? JSON.parse(raw) : [];
       return json({ ok: true, messages });
     }
+
     if (request.method === 'POST') {
       const body = await request.json();
-      const author = String(body.author || 'Anónimo').slice(0, 40);
-      const text = String(body.text || '').slice(0, 500);
-      if (!text.trim()) return json({ ok: false, error: 'empty message' }, 400);
+      const action = body.action || 'send';
       const raw = await env.TIKTOK_KV.get(CHAT_KEY);
-      const messages = raw ? JSON.parse(raw) : [];
-      messages.push({ author, text, ts: Date.now() });
-      while (messages.length > CHAT_MAX) messages.shift();
-      await env.TIKTOK_KV.put(CHAT_KEY, JSON.stringify(messages));
-      return json({ ok: true });
+      let messages = raw ? JSON.parse(raw) : [];
+
+      if (action === 'send') {
+        const author = String(body.author || 'Anónimo').slice(0, 40);
+        const text = String(body.text || '').slice(0, 500);
+        const image = typeof body.image === 'string' && body.image.startsWith('data:image/') ? body.image : null;
+        if (!text.trim() && !image) return json({ ok: false, error: 'empty message' }, 400);
+        messages.push({ id: chatUid(), author, text, image, pinned: false, ts: Date.now() });
+        // Al recortar por límite, conserva los fijados aunque sean viejos.
+        if (messages.length > CHAT_MAX) {
+          const pinned = messages.filter(m => m.pinned);
+          const rest = messages.filter(m => !m.pinned).slice(-1 * (CHAT_MAX - pinned.length));
+          messages = [...pinned, ...rest].sort((a, b) => a.ts - b.ts);
+        }
+        await env.TIKTOK_KV.put(CHAT_KEY, JSON.stringify(messages));
+        return json({ ok: true });
+      }
+
+      if (action === 'delete') {
+        messages = messages.filter(m => m.id !== body.id);
+        await env.TIKTOK_KV.put(CHAT_KEY, JSON.stringify(messages));
+        return json({ ok: true });
+      }
+
+      if (action === 'pin') {
+        const idx = messages.findIndex(m => m.id === body.id);
+        if (idx >= 0) {
+          messages[idx].pinned = !!body.pinned;
+          await env.TIKTOK_KV.put(CHAT_KEY, JSON.stringify(messages));
+          return json({ ok: true });
+        }
+        return json({ ok: false, error: 'not found' }, 404);
+      }
+
+      return json({ ok: false, error: 'unknown action' }, 400);
     }
   } catch (e) {
     return json({ ok: false, error: String(e) }, 500);
