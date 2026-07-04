@@ -63,6 +63,25 @@
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#161616;border:1px solid var(--border);
          padding:8px 14px;border-radius:8px;font-size:13px;color:#ccc;}
   .masked{letter-spacing:2px;}
+
+  .chat-section{margin-top:36px;border-top:1px solid var(--border);padding-top:24px;}
+  .chat-section h2{font-size:16px;margin:0 0 4px;}
+  .chat-section .sub{margin-bottom:16px;}
+  .chat-name-row{display:flex;gap:8px;margin-bottom:12px;}
+  .chat-name-row input{background:#111;border:1px solid var(--border);border-radius:8px;color:var(--text);
+        padding:8px 10px;font-size:13px;}
+  .chat-name-row input.name-input{width:140px;}
+  .chat-messages{display:flex;flex-direction:column;gap:10px;margin-bottom:12px;max-height:360px;overflow-y:auto;
+        padding-right:4px;}
+  .chat-msg{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;}
+  .chat-msg .meta{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;margin-bottom:4px;}
+  .chat-msg .author{color:var(--accent);font-weight:600;}
+  .chat-empty{color:#444;font-size:13px;text-align:center;padding:20px 0;}
+  .chat-input-row{display:flex;gap:8px;}
+  .chat-input-row input.msg-input{flex:1;background:#111;border:1px solid var(--border);border-radius:8px;
+        color:var(--text);padding:9px 10px;font-size:14px;}
+  .chat-send{background:var(--accent);border:none;color:#000;padding:0 16px;border-radius:8px;font-weight:600;cursor:pointer;}
+  .chat-send:disabled{opacity:.4;cursor:not-allowed;}
 </style>
 </head>
 <body>
@@ -72,6 +91,19 @@
   <div id="list"></div>
   <button class="add-btn" id="addBtn">+ Agregar cuenta</button>
   <p class="footer-note">Los datos son visibles para cualquiera que tenga este link. No lo compartas si contiene información sensible.</p>
+
+  <div class="chat-section">
+    <h2>💬 Actualizaciones</h2>
+    <p class="sub">Deja un aviso para los demás con acceso a este link (ej. "cambié el CCI del BCP").</p>
+    <div class="chat-name-row">
+      <input type="text" class="name-input" id="chatName" placeholder="Tu nombre"/>
+    </div>
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="chat-input-row">
+      <input type="text" class="msg-input" id="chatInput" placeholder="Escribe un mensaje..." maxlength="500"/>
+      <button class="chat-send" id="chatSend">Enviar</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -274,6 +306,72 @@ function openLightbox(src, bank){
 }
 
 document.getElementById('addBtn').onclick = ()=>{ editingId='new'; pendingImage=null; render(); };
+
+// ── Chat / retroalimentación ─────────────────────────────────────────────
+const CHAT_API = '/api/chat';
+let chatMessages = [];
+let lastChatSignature = '';
+
+const chatNameEl = document.getElementById('chatName');
+chatNameEl.value = localStorage.getItem('cuentas_chat_name') || '';
+chatNameEl.addEventListener('change', ()=> localStorage.setItem('cuentas_chat_name', chatNameEl.value.trim()));
+
+function renderChat(){
+  const box = document.getElementById('chatMessages');
+  if(chatMessages.length===0){
+    box.innerHTML = '<div class="chat-empty">Todavía no hay mensajes.</div>';
+    return;
+  }
+  box.innerHTML = chatMessages.map(m => `
+    <div class="chat-msg">
+      <div class="meta"><span class="author">${escapeHtml(m.author||'Anónimo')}</span><span>${new Date(m.ts).toLocaleString('es-PE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span></div>
+      <div>${escapeHtml(m.text)}</div>
+    </div>
+  `).join('');
+  box.scrollTop = box.scrollHeight;
+}
+
+async function loadChat(){
+  try{
+    const res = await fetch(CHAT_API);
+    const data = await res.json();
+    const msgs = data.messages || [];
+    const sig = msgs.length + ':' + (msgs[msgs.length-1]?.ts || '');
+    if(sig !== lastChatSignature){
+      chatMessages = msgs;
+      lastChatSignature = sig;
+      renderChat();
+    }
+  }catch(e){ /* silencioso, reintenta en el próximo poll */ }
+}
+
+async function sendChat(){
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if(!text) return;
+  const author = chatNameEl.value.trim() || 'Anónimo';
+  localStorage.setItem('cuentas_chat_name', author);
+  input.value='';
+  document.getElementById('chatSend').disabled = true;
+  try{
+    await fetch(CHAT_API, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ author, text })
+    });
+    await loadChat();
+  }catch(e){ toast('No se pudo enviar, intenta de nuevo'); }
+  document.getElementById('chatSend').disabled = false;
+}
+
+document.getElementById('chatSend').onclick = sendChat;
+document.getElementById('chatInput').addEventListener('keydown', (e)=>{
+  if(e.key==='Enter') sendChat();
+});
+
+loadChat();
+setInterval(loadChat, 4000);
+
 
 load();
 </script>
