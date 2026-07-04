@@ -701,7 +701,7 @@
   <div class="controls" style="padding:0; margin: 0 0 14px;">
     <div class="field">
       Confianza mínima
-      <input type="number" id="signalThreshold" value="75" step="5" min="50" max="99" />
+      <input type="number" id="signalThreshold" value="70" step="5" min="50" max="99" />
       <span>%</span>
     </div>
     <div class="control-divider"></div>
@@ -2479,9 +2479,19 @@ function estimateEV(prob){
   return (prob * odds) - 1;
 }
 
+// Hard floor on estimated market odds. NOTE: estimateEV() above is mathematically
+// constant at ≈ -5.66% for ANY probability (since estimateMarketOdds derives odds
+// directly from prob with a fixed 1.06 overround, the EV formula always collapses
+// to 1/1.06 - 1). It can never reject a line on its own. The real filter that
+// matters is this odds floor: it rejects "obvious" near-certain lines (e.g. Under
+// 2.5 goals @ 90% → ~1.05 cuota) that have negligible real payout or often don't
+// even exist as a live market.
+const MIN_ODDS = 1.35;
+
 // Given a probability curve across lines, picks the line with the BEST estimated EV
-// instead of the most extreme line that clears the threshold. This avoids signals
-// like "Under 2.5 goals @ 75%" which pay ~1.05 and have near-zero real value.
+// among those that clear both the confidence threshold AND the minimum odds floor.
+// This avoids signals like "Under 2.5 goals @ 90%" which pay ~1.05 and have
+// near-zero real value or no real market at all.
 function computeSignalsForLines(lambda, threshold, lines){
   lines = lines || SIGNAL_LINES;
   let bestOver = null, bestUnder = null;
@@ -2491,20 +2501,20 @@ function computeSignalsForLines(lambda, threshold, lines){
     const probUnder = 1 - probOver;
 
     if(probOver >= threshold){
+      const odds = estimateMarketOdds(probOver);
       const ev = estimateEV(probOver);
-      // Skip lines with estimated EV below -15% — these are "obvious" picks
-      // with such poor payout (e.g. Under 2.5 @ ~1.05) that they're not worth signaling
-      if(ev >= -0.15 && (!bestOver || ev > bestOver.ev)) bestOver = { line, prob: probOver, ev };
+      if(odds >= MIN_ODDS && (!bestOver || odds > bestOver.odds)) bestOver = { line, prob: probOver, ev, odds };
     }
     if(probUnder >= threshold){
+      const odds = estimateMarketOdds(probUnder);
       const ev = estimateEV(probUnder);
-      if(ev >= -0.15 && (!bestUnder || ev > bestUnder.ev)) bestUnder = { line, prob: probUnder, ev };
+      if(odds >= MIN_ODDS && (!bestUnder || odds > bestUnder.odds)) bestUnder = { line, prob: probUnder, ev, odds };
     }
   });
 
   const out = [];
-  if(bestOver) out.push({ direction: 'over', line: bestOver.line, prob: bestOver.prob, estimatedEV: bestOver.ev });
-  if(bestUnder) out.push({ direction: 'under', line: bestUnder.line, prob: bestUnder.prob, estimatedEV: bestUnder.ev });
+  if(bestOver) out.push({ direction: 'over', line: bestOver.line, prob: bestOver.prob, estimatedEV: bestOver.ev, estimatedOdds: bestOver.odds });
+  if(bestUnder) out.push({ direction: 'under', line: bestUnder.line, prob: bestUnder.prob, estimatedEV: bestUnder.ev, estimatedOdds: bestUnder.odds });
   return out;
 }
 
