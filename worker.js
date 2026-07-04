@@ -330,6 +330,10 @@ export default {
       return handleCuentas(request, env);
     }
 
+    if (url.pathname === '/api/chat') {
+      return handleChat(request, env);
+    }
+
     // ── Sirve index.html desde GitHub (comportamiento original) ────────────
     const htmlUrl  = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/index.html';
     const response = await fetch(htmlUrl, {
@@ -363,6 +367,46 @@ export default {
  *  POST /tiktok/publish          -> sube y publica un video (FormData: video, title)
  *  GET  /tiktok/publish-status   -> ?id=<publish_id> — estado de publicación
  * ========================================================================= */
+
+// ── Chat / retroalimentación KV Handler ────────────────────────────────
+const CHAT_KEY = 'thalamus_cuentas_chat_v1';
+const CHAT_MAX = 200;
+
+async function handleChat(request, env) {
+  const cors = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  };
+  if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
+
+  const json = (data, status = 200) => new Response(JSON.stringify(data), {
+    status, headers: { 'Content-Type': 'application/json', ...cors }
+  });
+
+  try {
+    if (request.method === 'GET') {
+      const raw = await env.TIKTOK_KV.get(CHAT_KEY);
+      const messages = raw ? JSON.parse(raw) : [];
+      return json({ ok: true, messages });
+    }
+    if (request.method === 'POST') {
+      const body = await request.json();
+      const author = String(body.author || 'Anónimo').slice(0, 40);
+      const text = String(body.text || '').slice(0, 500);
+      if (!text.trim()) return json({ ok: false, error: 'empty message' }, 400);
+      const raw = await env.TIKTOK_KV.get(CHAT_KEY);
+      const messages = raw ? JSON.parse(raw) : [];
+      messages.push({ author, text, ts: Date.now() });
+      while (messages.length > CHAT_MAX) messages.shift();
+      await env.TIKTOK_KV.put(CHAT_KEY, JSON.stringify(messages));
+      return json({ ok: true });
+    }
+  } catch (e) {
+    return json({ ok: false, error: String(e) }, 500);
+  }
+  return new Response('Method not allowed', { status: 405, headers: cors });
+}
 
 // ── Cuentas KV Handler ──────────────────────────────────────────────────
 const CUENTAS_KEY = 'thalamus_cuentas_v1';
