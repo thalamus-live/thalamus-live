@@ -42,6 +42,17 @@
   .form input[type=text]{width:100%;background:#111;border:1px solid var(--border);border-radius:8px;
             padding:9px 10px;color:var(--text);font-size:14px;margin-bottom:14px;outline:none;}
   .form input[type=text]:focus{border-color:rgba(51,214,166,.5);}
+  .form textarea{width:100%;background:#111;border:1px solid var(--border);border-radius:8px;
+        padding:9px 10px;color:var(--text);font-size:14px;margin-bottom:14px;outline:none;resize:vertical;
+        min-height:64px;font-family:inherit;}
+  .form textarea:focus{border-color:rgba(51,214,166,.5);}
+  .obs-toggle{background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;
+        display:flex;align-items:center;gap:4px;margin-top:8px;padding:0;}
+  .obs-toggle:hover{color:var(--accent);}
+  .obs-toggle .chev{display:inline-block;transition:transform .15s;font-size:10px;}
+  .obs-toggle.open .chev{transform:rotate(90deg);}
+  .obs-body{margin-top:8px;padding:10px 12px;background:#0a0a0d;border:1px solid var(--border);
+        border-radius:8px;font-size:13px;color:#c7cad1;white-space:pre-wrap;line-height:1.4;}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
   .drop{border:1px dashed var(--border);border-radius:10px;padding:24px;text-align:center;color:var(--muted);
         cursor:pointer;font-size:13px;margin-bottom:14px;}
@@ -201,6 +212,12 @@ function renderCard(a){
         <button class="edit-btn" data-id="${a.id}">✏️ Editar</button>
         <button class="danger del-btn" data-id="${a.id}">🗑 Eliminar</button>
       </div>
+      ${a.obs && a.obs.trim() ? `
+        <button class="obs-toggle ${a._obsOpen?'open':''}" data-id="${a.id}">
+          <span class="chev">▶</span> ${a._obsOpen?'Ocultar observaciones':'Ver observaciones'}
+        </button>
+        ${a._obsOpen ? `<div class="obs-body">${escapeHtml(a.obs)}</div>` : ''}
+      ` : ''}
     </div>
     ${a.image
       ? `<div class="qr-wrap open-lightbox" data-id="${a.id}"><img src="${a.image}" alt="QR"/></div>`
@@ -221,6 +238,8 @@ function renderForm(a){
     <input type="text" class="f-account" placeholder="191-xxxxxxxx-x-xx" value="${a?escapeHtml(a.accountNumber||''):''}"/>
     <label>CCI</label>
     <input type="text" class="f-cci" placeholder="003-191-xxxxxxxxxxxx-xx" value="${a?escapeHtml(a.cci||''):''}"/>
+    <label>Observaciones (opcional)</label>
+    <textarea class="f-obs" placeholder="Notas, horarios, condiciones especiales...">${a?escapeHtml(a.obs||''):''}</textarea>
     <label>Imagen / QR</label>
     ${image
       ? `<div style="margin-bottom:14px;"><img src="${image}" style="height:130px;border-radius:8px;border:1px solid var(--border);background:#fff;padding:6px;" class="preview-img"/>
@@ -278,6 +297,12 @@ function attachHandlers(){
       reader.readAsDataURL(file);
     };
   });
+  document.getElementById('list').querySelectorAll('.obs-toggle').forEach(btn=>{
+    btn.onclick = ()=>{
+      const acc = accounts.find(a=>a.id===btn.dataset.id);
+      acc._obsOpen = !acc._obsOpen; render();
+    };
+  });
   document.getElementById('list').querySelectorAll('.save-form-btn').forEach(btn=>{
     btn.onclick = async ()=>{
       const form = btn.closest('.form');
@@ -287,16 +312,17 @@ function attachHandlers(){
       const alias = form.querySelector('.f-alias').value.trim();
       const accountNumber = form.querySelector('.f-account').value.trim();
       const cci = form.querySelector('.f-cci').value.trim();
+      const obs = form.querySelector('.f-obs').value.trim();
       let image = pendingImage;
       if(image===null && id!=='new'){
         const existing = accounts.find(a=>a.id===id);
         image = existing ? existing.image : null;
       }
       if(id==='new'){
-        accounts.unshift({ id: uid(), bank, alias, accountNumber, cci, image, updatedAt: Date.now() });
+        accounts.unshift({ id: uid(), bank, alias, accountNumber, cci, obs, image, updatedAt: Date.now() });
       } else {
         const acc = accounts.find(a=>a.id===id);
-        Object.assign(acc, { bank, alias, accountNumber, cci, image, updatedAt: Date.now() });
+        Object.assign(acc, { bank, alias, accountNumber, cci, obs, image, updatedAt: Date.now() });
       }
       editingId = null; pendingImage = null;
       render();
