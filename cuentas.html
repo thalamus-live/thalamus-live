@@ -73,15 +73,29 @@
   .chat-name-row input.name-input{width:140px;}
   .chat-messages{display:flex;flex-direction:column;gap:10px;margin-bottom:12px;max-height:360px;overflow-y:auto;
         padding-right:4px;}
-  .chat-msg{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;}
-  .chat-msg .meta{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;margin-bottom:4px;}
+  .chat-msg{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;position:relative;}
+  .chat-msg.pinned{border-color:rgba(242,169,59,.5);background:#161208;}
+  .chat-msg .meta{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;margin-bottom:4px;gap:8px;}
   .chat-msg .author{color:var(--accent);font-weight:600;}
+  .chat-msg .pin-flag{color:#F2A93B;margin-right:4px;}
+  .chat-msg .msg-actions{display:flex;gap:10px;margin-top:6px;}
+  .chat-msg .msg-actions button{background:none;border:none;color:#666;font-size:11px;cursor:pointer;padding:0;}
+  .chat-msg .msg-actions button:hover{color:var(--text);}
+  .chat-msg .msg-actions button.danger:hover{color:#f26d6d;}
+  .chat-img{max-width:180px;max-height:180px;border-radius:8px;margin-top:6px;cursor:pointer;background:#fff;padding:4px;display:block;}
   .chat-empty{color:#444;font-size:13px;text-align:center;padding:20px 0;}
-  .chat-input-row{display:flex;gap:8px;}
+  .chat-input-row{display:flex;gap:8px;align-items:flex-end;}
   .chat-input-row input.msg-input{flex:1;background:#111;border:1px solid var(--border);border-radius:8px;
         color:var(--text);padding:9px 10px;font-size:14px;}
-  .chat-send{background:var(--accent);border:none;color:#000;padding:0 16px;border-radius:8px;font-weight:600;cursor:pointer;}
+  .chat-attach-btn{background:#111;border:1px solid var(--border);color:var(--muted);border-radius:8px;
+        padding:0 12px;height:38px;cursor:pointer;font-size:16px;}
+  .chat-attach-btn:hover{color:var(--accent);border-color:rgba(51,214,166,.4);}
+  .chat-send{background:var(--accent);border:none;color:#000;padding:0 16px;height:38px;border-radius:8px;font-weight:600;cursor:pointer;}
   .chat-send:disabled{opacity:.4;cursor:not-allowed;}
+  .chat-pending-img{display:flex;align-items:center;gap:8px;background:#111;border:1px solid var(--border);
+        border-radius:8px;padding:6px 8px;margin-bottom:8px;font-size:12px;color:var(--muted);}
+  .chat-pending-img img{height:36px;border-radius:4px;background:#fff;}
+  .chat-pending-img button{background:none;border:none;color:#f26d6d;cursor:pointer;font-size:12px;margin-left:auto;}
 </style>
 </head>
 <body>
@@ -99,7 +113,10 @@
       <input type="text" class="name-input" id="chatName" placeholder="Tu nombre"/>
     </div>
     <div class="chat-messages" id="chatMessages"></div>
+    <div id="chatPendingImgBox"></div>
     <div class="chat-input-row">
+      <input type="file" accept="image/*" id="chatFileInput" style="display:none"/>
+      <button class="chat-attach-btn" id="chatAttachBtn" title="Adjuntar imagen">📷</button>
       <input type="text" class="msg-input" id="chatInput" placeholder="Escribe un mensaje..." maxlength="500"/>
       <button class="chat-send" id="chatSend">Enviar</button>
     </div>
@@ -311,10 +328,29 @@ document.getElementById('addBtn').onclick = ()=>{ editingId='new'; pendingImage=
 const CHAT_API = '/api/chat';
 let chatMessages = [];
 let lastChatSignature = '';
+let chatPendingImage = null;
 
 const chatNameEl = document.getElementById('chatName');
 chatNameEl.value = localStorage.getItem('cuentas_chat_name') || '';
 chatNameEl.addEventListener('change', ()=> localStorage.setItem('cuentas_chat_name', chatNameEl.value.trim()));
+
+function renderChatPendingImage(){
+  const box = document.getElementById('chatPendingImgBox');
+  if(!chatPendingImage){ box.innerHTML=''; return; }
+  box.innerHTML = `<div class="chat-pending-img"><img src="${chatPendingImage}"/><span>Imagen lista para enviar</span><button id="chatRemoveImg">Quitar</button></div>`;
+  document.getElementById('chatRemoveImg').onclick = ()=>{ chatPendingImage=null; renderChatPendingImage(); };
+}
+
+document.getElementById('chatAttachBtn').onclick = ()=> document.getElementById('chatFileInput').click();
+document.getElementById('chatFileInput').addEventListener('change', (e)=>{
+  const file = e.target.files[0]; if(!file) return;
+  if(!file.type.startsWith('image/')){ toast('Eso no es una imagen'); return; }
+  if(file.size > 4.5*1024*1024){ toast('Imagen muy pesada (máx ~4.5MB)'); return; }
+  const reader = new FileReader();
+  reader.onload = () => { chatPendingImage = reader.result; renderChatPendingImage(); };
+  reader.readAsDataURL(file);
+  e.target.value='';
+});
 
 function renderChat(){
   const box = document.getElementById('chatMessages');
@@ -322,13 +358,36 @@ function renderChat(){
     box.innerHTML = '<div class="chat-empty">Todavía no hay mensajes.</div>';
     return;
   }
-  box.innerHTML = chatMessages.map(m => `
-    <div class="chat-msg">
-      <div class="meta"><span class="author">${escapeHtml(m.author||'Anónimo')}</span><span>${new Date(m.ts).toLocaleString('es-PE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span></div>
-      <div>${escapeHtml(m.text)}</div>
-    </div>
-  `).join('');
-  box.scrollTop = box.scrollHeight;
+  const pinned = chatMessages.filter(m=>m.pinned);
+  const rest = chatMessages.filter(m=>!m.pinned);
+  const ordered = [...pinned, ...rest];
+  box.innerHTML = ordered.map(renderChatMsg).join('');
+
+  box.querySelectorAll('.chat-img').forEach(img=>{
+    img.onclick = ()=> openLightbox(img.dataset.full, 'imagen-chat');
+  });
+  box.querySelectorAll('.pin-btn').forEach(btn=>{
+    btn.onclick = ()=> chatAction({ action:'pin', id: btn.dataset.id, pinned: btn.dataset.pinned !== 'true' });
+  });
+  box.querySelectorAll('.del-msg-btn').forEach(btn=>{
+    btn.onclick = ()=>{ if(confirm('¿Eliminar este mensaje?')) chatAction({ action:'delete', id: btn.dataset.id }); };
+  });
+}
+
+function renderChatMsg(m){
+  return `
+    <div class="chat-msg ${m.pinned?'pinned':''}">
+      <div class="meta">
+        <span><span class="author">${m.pinned?'<span class="pin-flag">📌</span>':''}${escapeHtml(m.author||'Anónimo')}</span></span>
+        <span>${new Date(m.ts).toLocaleString('es-PE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>
+      </div>
+      ${m.text? `<div>${escapeHtml(m.text)}</div>` : ''}
+      ${m.image? `<img class="chat-img" src="${m.image}" data-full="${m.image}"/>` : ''}
+      <div class="msg-actions">
+        <button class="pin-btn" data-id="${m.id}" data-pinned="${!!m.pinned}">${m.pinned?'Desfijar':'📌 Fijar'}</button>
+        <button class="del-msg-btn danger" data-id="${m.id}">🗑 Eliminar</button>
+      </div>
+    </div>`;
 }
 
 async function loadChat(){
@@ -336,7 +395,7 @@ async function loadChat(){
     const res = await fetch(CHAT_API);
     const data = await res.json();
     const msgs = data.messages || [];
-    const sig = msgs.length + ':' + (msgs[msgs.length-1]?.ts || '');
+    const sig = JSON.stringify(msgs.map(m=>m.id+':'+m.pinned));
     if(sig !== lastChatSignature){
       chatMessages = msgs;
       lastChatSignature = sig;
@@ -345,20 +404,34 @@ async function loadChat(){
   }catch(e){ /* silencioso, reintenta en el próximo poll */ }
 }
 
+async function chatAction(body){
+  try{
+    await fetch(CHAT_API, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    lastChatSignature = '';
+    await loadChat();
+  }catch(e){ toast('No se pudo completar la acción'); }
+}
+
 async function sendChat(){
   const input = document.getElementById('chatInput');
   const text = input.value.trim();
-  if(!text) return;
+  if(!text && !chatPendingImage) return;
   const author = chatNameEl.value.trim() || 'Anónimo';
   localStorage.setItem('cuentas_chat_name', author);
-  input.value='';
+  const image = chatPendingImage;
+  input.value=''; chatPendingImage=null; renderChatPendingImage();
   document.getElementById('chatSend').disabled = true;
   try{
     await fetch(CHAT_API, {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ author, text })
+      body: JSON.stringify({ action:'send', author, text, image })
     });
+    lastChatSignature = '';
     await loadChat();
   }catch(e){ toast('No se pudo enviar, intenta de nuevo'); }
   document.getElementById('chatSend').disabled = false;
@@ -371,6 +444,7 @@ document.getElementById('chatInput').addEventListener('keydown', (e)=>{
 
 loadChat();
 setInterval(loadChat, 4000);
+
 
 
 load();
