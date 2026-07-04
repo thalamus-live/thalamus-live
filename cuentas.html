@@ -282,6 +282,9 @@ function attachHandlers(){
   });
   document.getElementById('list').querySelectorAll('.del-btn').forEach(btn=>{
     btn.onclick = async ()=>{
+      const acc = accounts.find(a=>a.id===btn.dataset.id);
+      const label = acc ? `${acc.bank}${acc.alias?' · '+acc.alias:''}` : 'esta cuenta';
+      if(!confirm(`¿Eliminar ${label}? Esta acción no se puede deshacer.`)) return;
       accounts = accounts.filter(a=>a.id!==btn.dataset.id);
       render(); await persist();
     };
