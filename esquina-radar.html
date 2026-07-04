@@ -2260,7 +2260,10 @@ async function autoFetchCornersOdds(oddsEventId, sportKey){
     oddsAutoFetched.delete(oddsEventId); // allow retry
   }
 }
-const GOAL_LINES = [0.5, 1.5, 2.5, 3.5, 4.5, 5.5];
+// Trimmed from [0.5,1.5,2.5,3.5,4.5,5.5]: lines above 3.5 total goals almost never
+// exist as a real tradable market (pre-match or live), so signaling them just
+// produces "Sin cuotas aún" noise with no way to actually place the bet.
+const GOAL_LINES = [0.5, 1.5, 2.5, 3.5];
 
 // Approximate historical averages (corners and goals per 90 minutes) per league,
 // used as a "prior" to stabilize early-match projections. These are typical
@@ -6573,10 +6576,26 @@ function buildOddsAverageHeader(s){
   const unitLabel = s.market === 'goals' ? 'GOLES' : 'CORNERS';
   const headerLabel = `${pickLabel} ${s.line} ${unitLabel}`;
 
-  // --- GOALS: use bookmakerOdds (The Odds API totals, fetched per league) ---
+  // --- GOALS: prefer The Odds API totals (per-league bookmaker average); if that
+  // has nothing (common — the free Odds API plan doesn't cover soccer), fall back
+  // to API-Football's live odds (s.liveOdds), which is already fetched and attached
+  // to every signal via attachLiveOdds() but was previously never checked here. ---
   if(s.market === 'goals'){
-    if(!s.bookmakerOddsAttempted) return '';
-    if(!s.bookmakerOdds || !s.bookmakerOdds.results || s.bookmakerOdds.results.length === 0){
+    const hasOddsApiData = s.bookmakerOdds && s.bookmakerOdds.results && s.bookmakerOdds.results.length > 0;
+
+    if(!hasOddsApiData && s.liveOdds){
+      const exactNote = s.liveOdds.exact ? '' : ` (línea: ${s.liveOdds.line})`;
+      return `
+        <div class="odds-avg-header">
+          <span class="oah-label">${headerLabel}</span>
+          <span class="oah-price">${s.liveOdds.odd.toFixed(2)}</span>
+        </div>
+        <div class="odds-books-row"><span class="odds-book-item"><span class="odds-book-name">API-Football${exactNote}</span></span></div>
+      `;
+    }
+
+    if(!s.bookmakerOddsAttempted && !s.liveOddsChecked) return '';
+    if(!hasOddsApiData){
       return `
         <div class="odds-avg-header unavailable">
           <span class="oah-label">${headerLabel}</span>
