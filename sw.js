@@ -18,8 +18,8 @@ self.addEventListener('push', e => {
   e.waitUntil(
     self.registration.showNotification(data.title || 'Esquina Radar', {
       body: data.body || '',
-      icon: data.icon || '/favicon.ico',
-      badge: data.badge || '/favicon.ico',
+      icon: data.icon || 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/icon-192.png',
+      badge: data.badge || 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/badge-96.png',
       tag: data.tag || 'signal',
       data: data.data || {},
       vibrate: [200, 100, 200],
