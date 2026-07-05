@@ -96,6 +96,23 @@
   .copy-all-btn{width:100%;background:none;border:1px dashed var(--border);color:var(--muted);
         border-radius:8px;padding:8px;font-size:12px;cursor:pointer;font-family:inherit;}
   .copy-all-btn:hover{border-color:var(--accent);color:var(--accent-dark);}
+  .obs-attach-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
+  .obs-attach-item{position:relative;width:72px;height:72px;border-radius:8px;overflow:hidden;
+        border:1px solid var(--border);background:var(--surface-soft);}
+  .obs-attach-item img{width:100%;height:100%;object-fit:cover;}
+  .obs-attach-item .file-chip{display:flex;flex-direction:column;align-items:center;justify-content:center;
+        height:100%;font-size:10px;color:var(--muted);text-align:center;padding:4px;word-break:break-all;}
+  .obs-attach-item .remove-attach{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;
+        border:none;border-radius:999px;width:18px;height:18px;font-size:11px;line-height:1;cursor:pointer;}
+  .obs-attach-add{width:72px;height:72px;border-radius:8px;border:1px dashed var(--border);
+        display:flex;align-items:center;justify-content:center;color:var(--muted);cursor:pointer;font-size:20px;}
+  .obs-attach-add:hover{border-color:var(--accent);color:var(--accent-dark);}
+  .obs-view-grid{display:flex;flex-wrap:wrap;gap:8px;padding:8px 10px 4px;}
+  .obs-view-item{width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--border);
+        cursor:pointer;background:var(--card);}
+  .obs-view-item img{width:100%;height:100%;object-fit:cover;}
+  .obs-view-item.file-chip-view{display:flex;align-items:center;justify-content:center;font-size:9px;
+        color:var(--muted);text-align:center;padding:3px;word-break:break-all;}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
   .drop{border:1px dashed var(--border);border-radius:10px;padding:24px;text-align:center;color:var(--muted);
         cursor:pointer;font-size:13px;margin-bottom:14px;}
@@ -190,6 +207,7 @@ const API = '/api/cuentas';
 let accounts = [];
 let editingId = null; // null = not editing, 'new' = new form, or account id
 let pendingImage = null;
+let pendingObsFiles = null; // null = "usar los existentes de la cuenta"; array = lista editada en el formulario actual
 
 const ACCENTS = ['#6ebd91','#2d7d5a','#8fd1ab','#4a9873','#a9c9bc','#3f8264'];
 function accentFor(name){
@@ -275,16 +293,19 @@ function renderCard(a){
         <button class="move-btn" data-id="${a.id}" data-dir="up" title="Subir">⬆️</button>
         <button class="move-btn" data-id="${a.id}" data-dir="down" title="Bajar">⬇️</button>
       </div>
-      ${a.obs && a.obs.trim() ? `
+      ${(a.obs && a.obs.trim()) || (a.obsFiles && a.obsFiles.length) ? `
         <button class="obs-toggle ${a._obsOpen?'open':''}" data-id="${a.id}">
           <span class="chev">▶</span> ${a._obsOpen?'Ocultar observaciones':'Ver observaciones'}
         </button>
         ${a._obsOpen ? `
           <div class="obs-body">
-            ${renderObsLines(a.obs)}
-            <div class="obs-copy-all-row">
-              <button class="copy-btn copy-all-btn" data-copy="${escapeHtml(a.obs)}">📋 Copiar todo</button>
-            </div>
+            ${a.obs && a.obs.trim() ? renderObsLines(a.obs) : ''}
+            ${a.obs && a.obs.trim() ? `
+              <div class="obs-copy-all-row">
+                <button class="copy-btn copy-all-btn" data-copy="${escapeHtml(a.obs)}">📋 Copiar todo</button>
+              </div>
+            ` : ''}
+            ${a.obsFiles && a.obsFiles.length ? renderObsFilesView(a) : ''}
           </div>
         ` : ''}
       ` : ''}
@@ -310,6 +331,8 @@ function renderForm(a){
     <input type="text" class="f-cci" placeholder="003-191-xxxxxxxxxxxx-xx" value="${a?escapeHtml(a.cci||''):''}"/>
     <label>Observaciones (opcional)</label>
     <textarea class="f-obs" placeholder="Notas, horarios, condiciones especiales...">${a?escapeHtml(a.obs||''):''}</textarea>
+    <label>Adjuntos de observaciones (fotos o archivos)</label>
+    ${renderObsAttachEditor(a)}
     <label>Imagen / QR</label>
     ${image
       ? `<div style="margin-bottom:14px;"><img src="${image}" style="height:130px;border-radius:8px;border:1px solid var(--border);background:#fff;padding:6px;" class="preview-img"/>
@@ -323,6 +346,37 @@ function renderForm(a){
   </div>`;
 }
 
+function renderObsAttachEditor(a){
+  const files = pendingObsFiles !== null ? pendingObsFiles : (a?.obsFiles || []);
+  const items = files.map((f, idx) => `
+    <div class="obs-attach-item">
+      ${f.type && f.type.startsWith('image/')
+        ? `<img src="${f.data}"/>`
+        : `<div class="file-chip">📄<br/>${escapeHtml(f.name||'archivo')}</div>`}
+      <button class="remove-attach" data-idx="${idx}" title="Quitar">✕</button>
+    </div>
+  `).join('');
+  return `
+    <div class="obs-attach-grid">
+      ${items}
+      <label class="obs-attach-add">
+        +
+        <input type="file" accept="image/*,.pdf,.doc,.docx" multiple class="obs-file-input" style="display:none"/>
+      </label>
+    </div>
+  `;
+}
+
+function renderObsFilesView(a){
+  const items = (a.obsFiles || []).map((f, idx) => {
+    const isImg = f.type && f.type.startsWith('image/');
+    return isImg
+      ? `<div class="obs-view-item obs-view-open" data-id="${a.id}" data-idx="${idx}"><img src="${f.data}"/></div>`
+      : `<a class="obs-view-item file-chip-view" href="${f.data}" download="${escapeHtml(f.name||'archivo')}">📄<br/>${escapeHtml(f.name||'archivo')}</a>`;
+  }).join('');
+  return `<div class="obs-view-grid">${items}</div>`;
+}
+
 function attachHandlers(){
   document.getElementById('list').querySelectorAll('.copy-btn').forEach(btn=>{
     btn.onclick = ()=>{ navigator.clipboard.writeText(btn.dataset.copy); toast('Copiado'); };
@@ -334,7 +388,7 @@ function attachHandlers(){
     };
   });
   document.getElementById('list').querySelectorAll('.edit-btn').forEach(btn=>{
-    btn.onclick = ()=>{ editingId = btn.dataset.id; pendingImage=null; render(); };
+    btn.onclick = ()=>{ editingId = btn.dataset.id; pendingImage=null; pendingObsFiles=null; render(); };
   });
   document.getElementById('list').querySelectorAll('.del-btn').forEach(btn=>{
     btn.onclick = async ()=>{
@@ -351,8 +405,15 @@ function attachHandlers(){
       openLightbox(acc.image, acc.bank);
     };
   });
+  document.getElementById('list').querySelectorAll('.obs-view-open').forEach(el=>{
+    el.onclick = ()=>{
+      const acc = accounts.find(a=>a.id===el.dataset.id);
+      const file = acc?.obsFiles?.[Number(el.dataset.idx)];
+      if(file) openLightbox(file.data, file.name || acc.bank);
+    };
+  });
   document.getElementById('list').querySelectorAll('.cancel-form-btn').forEach(btn=>{
-    btn.onclick = ()=>{ editingId=null; pendingImage=null; render(); };
+    btn.onclick = ()=>{ editingId=null; pendingImage=null; pendingObsFiles=null; render(); };
   });
   document.getElementById('list').querySelectorAll('.remove-img-btn').forEach(btn=>{
     btn.onclick = ()=>{ pendingImage=null; const form=btn.closest('.form'); const acc=accounts.find(a=>a.id===form.dataset.formId); if(acc) acc.image=null; render(); };
@@ -368,6 +429,38 @@ function attachHandlers(){
       const reader = new FileReader();
       reader.onload = () => { pendingImage = reader.result; render(); };
       reader.readAsDataURL(file);
+    };
+  });
+  document.getElementById('list').querySelectorAll('.obs-file-input').forEach(input=>{
+    input.onchange = async ()=>{
+      const form = input.closest('.form');
+      const id = form.dataset.formId;
+      const acc = id!=='new' ? accounts.find(a=>a.id===id) : null;
+      const current = pendingObsFiles !== null ? pendingObsFiles : (acc?.obsFiles ? [...acc.obsFiles] : []);
+      for(const file of input.files){
+        if(file.size > 4.5*1024*1024){ toast(`"${file.name}" pesa demasiado (máx ~4.5MB)`); continue; }
+        const dataUrl = await new Promise((res, rej)=>{
+          const reader = new FileReader();
+          reader.onload = ()=>res(reader.result);
+          reader.onerror = rej;
+          reader.readAsDataURL(file);
+        });
+        current.push({ name: file.name, type: file.type, data: dataUrl });
+      }
+      pendingObsFiles = current;
+      input.value = '';
+      render();
+    };
+  });
+  document.getElementById('list').querySelectorAll('.remove-attach').forEach(btn=>{
+    btn.onclick = ()=>{
+      const form = btn.closest('.form');
+      const id = form.dataset.formId;
+      const acc = id!=='new' ? accounts.find(a=>a.id===id) : null;
+      const current = pendingObsFiles !== null ? pendingObsFiles : (acc?.obsFiles ? [...acc.obsFiles] : []);
+      current.splice(Number(btn.dataset.idx), 1);
+      pendingObsFiles = current;
+      render();
     };
   });
   document.getElementById('list').querySelectorAll('.move-btn').forEach(btn=>{
@@ -402,13 +495,19 @@ function attachHandlers(){
         const existing = accounts.find(a=>a.id===id);
         image = existing ? existing.image : null;
       }
+      let obsFiles = pendingObsFiles;
+      if(obsFiles===null && id!=='new'){
+        const existing = accounts.find(a=>a.id===id);
+        obsFiles = existing ? (existing.obsFiles || []) : [];
+      }
+      if(obsFiles===null) obsFiles = [];
       if(id==='new'){
-        accounts.unshift({ id: uid(), bank, alias, accountNumber, cci, obs, image, updatedAt: Date.now() });
+        accounts.unshift({ id: uid(), bank, alias, accountNumber, cci, obs, obsFiles, image, updatedAt: Date.now() });
       } else {
         const acc = accounts.find(a=>a.id===id);
-        Object.assign(acc, { bank, alias, accountNumber, cci, obs, image, updatedAt: Date.now() });
+        Object.assign(acc, { bank, alias, accountNumber, cci, obs, obsFiles, image, updatedAt: Date.now() });
       }
-      editingId = null; pendingImage = null;
+      editingId = null; pendingImage = null; pendingObsFiles = null;
       render();
       await persist();
     };
@@ -454,7 +553,7 @@ themeBtn.onclick = ()=>{
   applyTheme(next);
 };
 
-document.getElementById('addBtn').onclick = ()=>{ editingId='new'; pendingImage=null; render(); };
+document.getElementById('addBtn').onclick = ()=>{ editingId='new'; pendingImage=null; pendingObsFiles=null; render(); };
 
 // ── Chat / retroalimentación ─────────────────────────────────────────────
 const CHAT_API = '/api/chat';
