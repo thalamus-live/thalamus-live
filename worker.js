@@ -311,31 +311,12 @@ export default {
 
     // ── Mis cuentas (bank account wallet) ──────────────────────────────────
     if (url.pathname === '/mis-cuentas') {
-      let cuHtml = null;
-      try {
-        const apiResp = await fetch(
-          'https://api.github.com/repos/thalamus-live/thalamus-live/contents/cuentas.html?ref=main',
-          {
-            cf: { cacheEverything: false, cacheTtl: 0 },
-            headers: {
-              'User-Agent': 'thalamus-worker',
-              'Accept': 'application/vnd.github.v3.raw',
-              'Cache-Control': 'no-cache',
-            },
-          }
-        );
-        if (apiResp.ok) cuHtml = await apiResp.text();
-      } catch (e) { /* cae al fallback de abajo */ }
-
-      if (!cuHtml) {
-        const cuUrl = `https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/cuentas.html?bust=${Date.now()}`;
-        const cuResponse = await fetch(cuUrl, {
-          cf: { cacheEverything: false },
-          headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
-        });
-        cuHtml = await cuResponse.text();
-      }
-
+      const cuUrl = `https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/cuentas.html?bust=${Date.now()}`;
+      const cuResponse = await fetch(cuUrl, {
+        cf: { cacheEverything: false },
+        headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
+      });
+      const cuHtml = await cuResponse.text();
       return new Response(cuHtml, {
         headers: {
           'Content-Type':  'text/html; charset=utf-8',
