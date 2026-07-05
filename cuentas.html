@@ -92,6 +92,10 @@
         padding:6px 10px;border-bottom:1px solid var(--border);}
   .obs-line:last-child{border-bottom:none;}
   .obs-line span{word-break:break-word;}
+  .obs-copy-all-row{padding:8px 10px 6px;}
+  .copy-all-btn{width:100%;background:none;border:1px dashed var(--border);color:var(--muted);
+        border-radius:8px;padding:8px;font-size:12px;cursor:pointer;font-family:inherit;}
+  .copy-all-btn:hover{border-color:var(--accent);color:var(--accent-dark);}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
   .drop{border:1px dashed var(--border);border-radius:10px;padding:24px;text-align:center;color:var(--muted);
         cursor:pointer;font-size:13px;margin-bottom:14px;}
@@ -275,7 +279,14 @@ function renderCard(a){
         <button class="obs-toggle ${a._obsOpen?'open':''}" data-id="${a.id}">
           <span class="chev">▶</span> ${a._obsOpen?'Ocultar observaciones':'Ver observaciones'}
         </button>
-        ${a._obsOpen ? `<div class="obs-body">${renderObsLines(a.obs)}</div>` : ''}
+        ${a._obsOpen ? `
+          <div class="obs-body">
+            ${renderObsLines(a.obs)}
+            <div class="obs-copy-all-row">
+              <button class="copy-btn copy-all-btn" data-copy="${escapeHtml(a.obs)}">📋 Copiar todo</button>
+            </div>
+          </div>
+        ` : ''}
       ` : ''}
     </div>
     ${a.image
