@@ -86,8 +86,12 @@
   .obs-toggle:hover{color:var(--accent-dark);}
   .obs-toggle .chev{display:inline-block;transition:transform .15s;font-size:10px;}
   .obs-toggle.open .chev{transform:rotate(90deg);}
-  .obs-body{margin-top:8px;padding:10px 12px;background:var(--surface-soft);border:1px solid var(--border);
-        border-radius:8px;font-size:13px;color:var(--text);white-space:pre-wrap;line-height:1.4;}
+  .obs-body{margin-top:8px;padding:4px 4px;background:var(--surface-soft);border:1px solid var(--border);
+        border-radius:8px;font-size:13px;color:var(--text);line-height:1.4;}
+  .obs-line{display:flex;align-items:center;justify-content:space-between;gap:8px;
+        padding:6px 10px;border-bottom:1px solid var(--border);}
+  .obs-line:last-child{border-bottom:none;}
+  .obs-line span{word-break:break-word;}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
   .drop{border:1px dashed var(--border);border-radius:10px;padding:24px;text-align:center;color:var(--muted);
         cursor:pointer;font-size:13px;margin-bottom:14px;}
@@ -197,6 +201,16 @@ function maskNumber(num){
 }
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function renderObsLines(obs){
+  const lines = obs.split('\n').map(l=>l.trim()).filter(Boolean);
+  if(lines.length===0) return '';
+  return lines.map(line => `
+    <div class="obs-line">
+      <span>${escapeHtml(line)}</span>
+      <button class="icon-btn copy-btn" data-copy="${escapeHtml(line)}" title="Copiar">📋</button>
+    </div>
+  `).join('');
+}
 
 async function load(){
   try{
@@ -261,7 +275,7 @@ function renderCard(a){
         <button class="obs-toggle ${a._obsOpen?'open':''}" data-id="${a.id}">
           <span class="chev">▶</span> ${a._obsOpen?'Ocultar observaciones':'Ver observaciones'}
         </button>
-        ${a._obsOpen ? `<div class="obs-body">${escapeHtml(a.obs)}</div>` : ''}
+        ${a._obsOpen ? `<div class="obs-body">${renderObsLines(a.obs)}</div>` : ''}
       ` : ''}
     </div>
     ${a.image
