@@ -7799,8 +7799,8 @@ async function notifyNewSignals(newSignals){
     // Use showNotification via SW for reliability on mobile
     await reg.showNotification(title, {
       body,
-      icon:   'https://thalamus-live.panfernan5.workers.dev/favicon.ico',
-      badge:  'https://thalamus-live.panfernan5.workers.dev/favicon.ico',
+      icon:   'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/icon-192.png',
+      badge:  'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/badge-96.png',
       tag:    `signal-${s.matchId}-${s.line}-${s.direction}`,
       vibrate: [200, 100, 200],
       data:   { matchId: s.matchId, market: s.market },
