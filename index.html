@@ -35,6 +35,8 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--bg);co
 .strip-val{font-family:var(--mono);font-size:16px;font-weight:800}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;padding:14px 12px}
 @media(min-width:480px){.grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;padding:16px 20px}}
+.tile.dragging{opacity:0.4;transform:scale(0.97);}
+.tile.drag-over{border:2px dashed var(--green)!important;background:var(--greenBg)!important;}
 .tile{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px;cursor:pointer;position:relative;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.05);transition:box-shadow .15s}
 .tile:active{box-shadow:0 0 0 2px var(--green)}
 .bar-track{height:4px;background:#dde8e1;border-radius:99px;overflow:hidden;margin:10px 0 0}
@@ -193,6 +195,7 @@ function showToast(msg){
 function render(){
   document.getElementById('app').innerHTML=buildApp();
   bindEvents();startClock();
+  initDragDrop();
 }
 
 function buildApp(){
@@ -392,12 +395,11 @@ function buildResumen(){
 }
 
 function buildDashboard(){
-  const sorted = [...state.cards].sort((a,b)=>b.deuda-a.deuda);
-  return`<div class="grid">${sorted.map(buildTile).join('')}</div>`;}
+  return`<div class="grid" id="cards-grid">${state.cards.map((c,i)=>buildTile(c,i)).join('')}</div>`;}
 
-function buildTile(c){
+function buildTile(c,i){
   const uso=pct(c.deuda,c.linea),hc=heat(uso);
-  return`<div class="tile" data-action="open-card" data-id="${c.id}">
+  return`<div class="tile" data-action="open-card" data-id="${c.id}" draggable="true" data-idx="${i||0}" style="cursor:grab">
     <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${c.bankColor}"></div>
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-top:4px;margin-bottom:8px">
       <div><div style="font-size:8px;letter-spacing:2px;font-weight:800;color:${c.bankColor};margin-bottom:2px;text-transform:uppercase">${c.bank}</div><div style="font-size:14px;font-weight:800;color:var(--text)">${c.name}</div></div>
@@ -1021,6 +1023,104 @@ function applyScan(){
 }
 
 let clockInterval=null;
+
+// ── DRAG & DROP para reordenar tarjetas ─────────────────────────────────
+function initDragDrop(){
+  const grid = document.getElementById('cards-grid');
+  if(!grid || grid._dragInit) return;
+  grid._dragInit = true;
+  let dragIdx = null;
+
+  grid.addEventListener('dragstart', e=>{
+    const tile = e.target.closest('.tile');
+    if(!tile) return;
+    dragIdx = parseInt(tile.dataset.idx);
+    tile.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+  });
+
+  grid.addEventListener('dragend', e=>{
+    document.querySelectorAll('.tile').forEach(t=>{
+      t.classList.remove('dragging','drag-over');
+    });
+    dragIdx = null;
+  });
+
+  grid.addEventListener('dragover', e=>{
+    e.preventDefault();
+    const tile = e.target.closest('.tile');
+    if(!tile) return;
+    document.querySelectorAll('.tile').forEach(t=>t.classList.remove('drag-over'));
+    tile.classList.add('drag-over');
+  });
+
+  grid.addEventListener('drop', e=>{
+    e.preventDefault();
+    const tile = e.target.closest('.tile');
+    if(!tile || dragIdx === null) return;
+    const dropIdx = parseInt(tile.dataset.idx);
+    if(dragIdx === dropIdx) return;
+    // Reordenar
+    const cards = [...state.cards];
+    const [moved] = cards.splice(dragIdx, 1);
+    cards.splice(dropIdx, 0, moved);
+    state.cards = cards;
+    scheduleSave(state.cards);
+    render();
+  });
+
+  // Touch support
+  let touchDragIdx = null, touchClone = null;
+  grid.addEventListener('touchstart', e=>{
+    const tile = e.target.closest('.tile');
+    if(!tile) return;
+    touchDragIdx = parseInt(tile.dataset.idx);
+    tile.classList.add('dragging');
+    // Crear clon visual
+    touchClone = tile.cloneNode(true);
+    touchClone.style.cssText = 'position:fixed;opacity:0.8;pointer-events:none;z-index:9999;width:'+tile.offsetWidth+'px;transform:scale(1.05);transition:none';
+    document.body.appendChild(touchClone);
+  }, {passive:true});
+
+  grid.addEventListener('touchmove', e=>{
+    if(touchDragIdx===null||!touchClone) return;
+    const t = e.touches[0];
+    touchClone.style.left = (t.clientX - touchClone.offsetWidth/2) + 'px';
+    touchClone.style.top = (t.clientY - touchClone.offsetHeight/2) + 'px';
+    // Highlight target
+    document.querySelectorAll('.tile').forEach(tile=>{
+      const r = tile.getBoundingClientRect();
+      if(t.clientX>=r.left&&t.clientX<=r.right&&t.clientY>=r.top&&t.clientY<=r.bottom){
+        document.querySelectorAll('.tile').forEach(t2=>t2.classList.remove('drag-over'));
+        tile.classList.add('drag-over');
+      }
+    });
+  }, {passive:true});
+
+  grid.addEventListener('touchend', e=>{
+    if(touchDragIdx===null) return;
+    if(touchClone){touchClone.remove();touchClone=null;}
+    document.querySelectorAll('.tile').forEach(t=>t.classList.remove('dragging','drag-over'));
+    const t = e.changedTouches[0];
+    let dropIdx = null;
+    document.querySelectorAll('.tile').forEach(tile=>{
+      const r = tile.getBoundingClientRect();
+      if(t.clientX>=r.left&&t.clientX<=r.right&&t.clientY>=r.top&&t.clientY<=r.bottom){
+        dropIdx = parseInt(tile.dataset.idx);
+      }
+    });
+    if(dropIdx!==null && dropIdx!==touchDragIdx){
+      const cards=[...state.cards];
+      const [moved]=cards.splice(touchDragIdx,1);
+      cards.splice(dropIdx,0,moved);
+      state.cards=cards;
+      scheduleSave(state.cards);
+      render();
+    }
+    touchDragIdx=null;
+  }, {passive:true});
+}
+
 function startClock(){
   if(clockInterval)clearInterval(clockInterval);
   const el=document.getElementById('clock');if(!el)return;
