@@ -6645,7 +6645,14 @@ async function fetchAfCornersForCard(matchId, homeName, awayName){
     }
 
     if(!fixtureId){
-      target.textContent = 'No encontrado en API-Football (puede no estar en vivo ahí, o el nombre del equipo no matchea)';
+      const sample = Object.values(afFixturesCache).slice(0, 8)
+        .map(f => `${f.teams?.home?.name} vs ${f.teams?.away?.name}`)
+        .join(' · ');
+      const total = Object.keys(afFixturesCache).length;
+      target.innerHTML = `No encontrado en API-Football buscando "${homeName}" vs "${awayName}".<br>` +
+        (total > 0
+          ? `API-Football tiene ${total} partidos en vivo ahora. Algunos: ${sample || '—'}`
+          : `API-Football no devolvió ningún partido en vivo (puede que esta competición no esté en su cobertura, o que el partido ya haya terminado).`);
       if(btn){ btn.disabled = false; btn.textContent = 'Ver corners (API-Football)'; }
       return;
     }
