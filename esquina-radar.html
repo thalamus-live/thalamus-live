@@ -6640,6 +6640,19 @@ async function fetchAfCornersForCard(matchId, homeName, awayName){
       if(!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       bumpAfCounter(1);
+
+      // API-Football returns HTTP 200 even for auth/quota errors — the actual
+      // problem lives in `errors`, not the status code. Surface it explicitly
+      // instead of silently treating it as "0 live matches".
+      const apiErrors = data.errors;
+      const hasApiError = apiErrors && (Array.isArray(apiErrors) ? apiErrors.length > 0 : Object.keys(apiErrors).length > 0);
+      if(hasApiError){
+        const msg = Array.isArray(apiErrors) ? apiErrors.join(' · ') : Object.entries(apiErrors).map(([k,v]) => `${k}: ${v}`).join(' · ');
+        target.innerHTML = `Error de API-Football: ${msg}`;
+        if(btn){ btn.disabled = false; btn.textContent = 'Ver corners (API-Football)'; }
+        return;
+      }
+
       (data.response || []).forEach(f => { afFixturesCache[f.fixture.id] = f; });
       fixtureId = findAfFixtureIdByTeams(homeName, awayName);
     }
