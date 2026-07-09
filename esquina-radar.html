@@ -1595,7 +1595,22 @@ async function fetchLeagueScoreboard(code){
     const res = await fetch(url);
     if(!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
-    const events = data.events || [];
+    let events = data.events || [];
+
+    // Some ESPN league IDs (seen on newly-started qualifying rounds) return 0
+    // events when a `dates` range is passed, but DO return events when queried
+    // with no date param at all (ESPN's own default window). Fall back to that
+    // before giving up, so brand-new competitions aren't silently dropped.
+    if(events.length === 0){
+      const fallbackUrl = `https://site.api.espn.com/apis/site/v2/sports/soccer/${code}/scoreboard`;
+      const res2 = await fetch(fallbackUrl);
+      if(res2.ok){
+        const data2 = await res2.json();
+        events = data2.events || [];
+        if(events.length > 0) debugLog(`${code}: 0 con rango, ${events.length} sin rango (fallback usado)`);
+      }
+    }
+
     debugLog(`${code}: ${events.length} eventos`);
     return events.map(ev => ({ ...ev, _league: code }));
   }catch(err){
