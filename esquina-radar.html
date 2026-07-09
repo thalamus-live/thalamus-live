@@ -1938,7 +1938,11 @@ function renderMatches(){
     }
 
     const errLine = m.noStatsFeed
-      ? `<div class="card-foot"><span class="err">⚠ ESPN no reporta tiros/corners para este partido (típico en rondas de clasificación) — probá el botón "Ver corners" de API-Football abajo</span><span>${m.league}</span></div>`
+      ? `<div class="card-foot" style="flex-direction:column;align-items:flex-start;gap:6px">
+           <span class="err">⚠ ESPN no reporta tiros/corners para este partido (típico en rondas de clasificación)</span>
+           <button class="btn secondary card-af-btn" data-match-id="${m.id}" data-home="${(homeName||'').replace(/"/g,'&quot;')}" data-away="${(awayName||'').replace(/"/g,'&quot;')}">Ver corners (API-Football)</button>
+           <div class="corners-data" id="card-af-corners-${m.id}"></div>
+         </div>`
       : (m.cornersErr ? `<div class="card-foot"><span class="err">⚠ ${m.cornersErr}</span><span>${m.league}</span></div>` : '');
 
     const goalsHtml = (m.goals && m.goals.length > 0)
@@ -1997,6 +2001,12 @@ function renderMatches(){
       </div>
     `;
   }).join('');
+
+  grid.querySelectorAll('.card-af-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      fetchAfCornersForCard(btn.dataset.matchId, btn.dataset.home, btn.dataset.away);
+    });
+  });
 }
 
 function formatUpcomingDateTime(dateStr){
@@ -6611,6 +6621,53 @@ function normalizeTeamName(name){
 }
 
 // Tries to find a matching AF live fixture (with odds) for a given pair of ESPN team names
+// Self-contained lookup: given team names from an ESPN card (not the AF fixtures
+// panel, which may be hidden/unloaded), fetch AF's live fixtures, match by team
+// name, then pull that fixture's corner stats. Used by the inline "Ver corners"
+// button on cards where ESPN has no shots/corners feed (noStatsFeed).
+async function fetchAfCornersForCard(matchId, homeName, awayName){
+  const target = document.getElementById(`card-af-corners-${matchId}`);
+  const btn = document.querySelector(`.card-af-btn[data-match-id="${matchId}"]`);
+  if(btn){ btn.disabled = true; btn.textContent = 'Buscando...'; }
+  try{
+    const { base, headers } = afHeaders();
+
+    // Reuse the live fixtures cache if it's already loaded (e.g. the hidden
+    // panel was used earlier this session); otherwise fetch it fresh (1 req).
+    let fixtureId = findAfFixtureIdByTeams(homeName, awayName);
+    if(!fixtureId){
+      const res = await fetch(`${base}/fixtures?live=all`, { headers });
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      bumpAfCounter(1);
+      (data.response || []).forEach(f => { afFixturesCache[f.fixture.id] = f; });
+      fixtureId = findAfFixtureIdByTeams(homeName, awayName);
+    }
+
+    if(!fixtureId){
+      target.textContent = 'No encontrado en API-Football (puede no estar en vivo ahí, o el nombre del equipo no matchea)';
+      if(btn){ btn.disabled = false; btn.textContent = 'Ver corners (API-Football)'; }
+      return;
+    }
+
+    const statsRes = await fetch(`${base}/fixtures/statistics?fixture=${fixtureId}`, { headers });
+    if(!statsRes.ok) throw new Error('HTTP ' + statsRes.status);
+    const statsData = await statsRes.json();
+    bumpAfCounter(1);
+    const teams = statsData.response || [];
+    const html = teams.map(t => {
+      const stat = (t.statistics || []).find(s => (s.type || '').toLowerCase().includes('corner'));
+      const val = stat ? (stat.value ?? 0) : null;
+      return `<span><span class="lbl">${t.team.name}</span><span class="val">${val ?? '—'}</span></span>`;
+    }).join('');
+    target.innerHTML = html || 'API-Football tampoco reporta corners para este partido.';
+    if(btn){ btn.style.display = 'none'; }
+  }catch(err){
+    target.textContent = `Error: ${err.message}`;
+    if(btn){ btn.disabled = false; btn.textContent = 'Ver corners (API-Football)'; }
+  }
+}
+
 function findAfFixtureIdByTeams(homeTeam, awayTeam){
   const h = normalizeTeamName(homeTeam);
   const a = normalizeTeamName(awayTeam);
