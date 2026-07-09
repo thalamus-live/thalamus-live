@@ -1629,8 +1629,14 @@ async function fetchMatchCorners(eventId, league){
     const teams = (data.boxscore && data.boxscore.teams) || [];
     const result = {};
     const stats = {};
+    // If ESPN's data provider for this match doesn't track shots/corners at all
+    // (common on lower-tier qualifying rounds), every team's `statistics` array
+    // comes back empty. Flag that so the UI can say "no data" instead of a
+    // misleading "0 corners" that looks like a real stat.
+    let noStatsFeed = teams.length > 0;
     teams.forEach(t => {
       const id = t.team && t.team.id;
+      if(Array.isArray(t.statistics) && t.statistics.length > 0) noStatsFeed = false;
       const corners = findCornerStat(t.statistics);
       if(id != null){
         result[id] = corners;
@@ -1638,7 +1644,7 @@ async function fetchMatchCorners(eventId, league){
       }
     });
     const goals = extractGoalEvents(data);
-    return { ok: true, corners: result, stats, goals };
+    return { ok: true, corners: result, stats, goals, noStatsFeed };
   }catch(err){
     return { ok: false, error: err.message };
   }
@@ -1769,6 +1775,7 @@ async function loadAll(){
       home, away,
       cornersOk: cornersRes.ok,
       cornersErr: cornersRes.error || null,
+      noStatsFeed: cornersRes.noStatsFeed || false,
       homeCorners, awayCorners,
       elapsed, totalCorners, pace, projection,
       totalGoals, goalsPace, goalsProjection,
@@ -1905,7 +1912,10 @@ function renderMatches(){
     let projectionLabel = '—', paceLabel = '—', totalLabel = '—';
     let arcHtml = '';
 
-    if(m.cornersOk && m.homeCorners != null && m.awayCorners != null){
+    if(m.noStatsFeed){
+      signalLabel = 'SIN CORNERS EN ESPN';
+      totalLabel = '—';
+    } else if(m.cornersOk && m.homeCorners != null && m.awayCorners != null){
       totalLabel = m.totalCorners.toFixed(0);
 
       if(m.projection != null){
@@ -1927,7 +1937,9 @@ function renderMatches(){
       signalLabel = 'ERROR DATOS';
     }
 
-    const errLine = m.cornersErr ? `<div class="card-foot"><span class="err">⚠ ${m.cornersErr}</span><span>${m.league}</span></div>` : '';
+    const errLine = m.noStatsFeed
+      ? `<div class="card-foot"><span class="err">⚠ ESPN no reporta tiros/corners para este partido (típico en rondas de clasificación) — probá el botón "Ver corners" de API-Football abajo</span><span>${m.league}</span></div>`
+      : (m.cornersErr ? `<div class="card-foot"><span class="err">⚠ ${m.cornersErr}</span><span>${m.league}</span></div>` : '');
 
     const goalsHtml = (m.goals && m.goals.length > 0)
       ? `<div class="goals-timeline">${m.goals.map(g => `
