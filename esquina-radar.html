@@ -1107,8 +1107,11 @@
 const LEAGUES = [
   { code: 'fifa.world',             short: 'MUNDIAL' },
   { code: 'uefa.champions',         short: 'UCL' },
+  { code: 'uefa.champions_qual',    short: 'UCL QUALY' },
   { code: 'uefa.europa',            short: 'UEL' },
+  { code: 'uefa.europa_qual',       short: 'UEL QUALY' },
   { code: 'uefa.europa.conf',       short: 'CONF' },
+  { code: 'uefa.europa.conf_qual',  short: 'CONF QUALY' },
   { code: 'eng.1',                  short: 'EPL' },
   { code: 'eng.2',                  short: 'CHAMPIONSHIP' },
   { code: 'esp.1',                  short: 'LALIGA' },
@@ -1139,7 +1142,7 @@ const LEAGUES = [
 ];
 
 const DEFAULT_ACTIVE = [
-  'fifa.world','uefa.champions','uefa.europa',
+  'fifa.world','uefa.champions','uefa.champions_qual','uefa.europa','uefa.europa_qual','uefa.europa.conf_qual',
   'eng.1','eng.2','esp.1','ita.1','ger.1','fra.1','ned.1','bel.1',
   'arg.1','bra.1','mex.1','col.1','chi.1',
   'per.1','par.1','uru.1','bol.1','ecu.1','ven.1',
@@ -2287,8 +2290,11 @@ const GOAL_LINES = [0.5, 1.5, 2.5, 3.5];
 const LEAGUE_ANCHORS = {
   'fifa.world':             { corners: 10.0, goals: 2.5  },
   'uefa.champions':         { corners: 10.0, goals: 3.0  },
+  'uefa.champions_qual':    { corners: 9.6,  goals: 2.9  },
   'uefa.europa':            { corners: 9.8,  goals: 2.7  },
+  'uefa.europa_qual':       { corners: 9.5,  goals: 2.8  },
   'uefa.europa.conf':       { corners: 9.5,  goals: 2.6  },
+  'uefa.europa.conf_qual':  { corners: 9.3,  goals: 2.7  },
   'eng.1':                  { corners: 10.3, goals: 2.85 },
   'eng.2':                  { corners: 11.2, goals: 2.7  },  // Championship: highest corners rate in Europe
   'esp.1':                  { corners: 9.8,  goals: 2.6  },
