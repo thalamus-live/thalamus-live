@@ -371,17 +371,6 @@
     display:grid; grid-template-columns: 1fr auto 1fr; align-items:center; margin-bottom: 12px; gap:8px;
   }
   .card-top .clock{ justify-self:center; }
-  .time-detail{
-    grid-column: 1 / -1;
-    text-align:center;
-    font-size:10px;
-    color:var(--muted);
-    margin-top:-2px;
-    margin-bottom:4px;
-    letter-spacing:.2px;
-  }
-  .time-detail .added{ color:#c9a227; font-weight:700; }
-  .time-detail .remaining{ color:var(--muted-2, #8a8a8a); }
   .league-tag{
     font-size: 10px; color: var(--muted); letter-spacing: 0.14em;
     text-transform: uppercase; font-family:'Poppins',sans-serif; font-weight:500;
@@ -1550,30 +1539,61 @@ function parseElapsedMinutes(status){
   return null;
 }
 
-// Extrae partes del reloj de ESPN: minuto base, tiempo añadido (descuento) y periodo.
-// displayClock típico: "23'" (juego normal), "45'+2'" o "90+7" (descuento), "45'" (medio tiempo).
+// Devuelve { half:true } si es descanso, o { base, extra } en minutos (extra = minutos ya
+// transcurridos dentro del tiempo añadido, tal como lo reporta ESPN). Se usa junto con
+// clockSyncedAt para "tickear" el reloj en vivo con segundos entre refrescos de datos.
 function parseClockParts(status){
   if(!status) return null;
   const detail = (status.type && status.type.shortDetail) || '';
   const display = status.displayClock || '';
-  if(/HT|half/i.test(detail) || /HT/i.test(display)){
-    return { base: 45, extra: 0, period: 1, halftime: true };
-  }
+  if(/HT|half/i.test(detail) || /HT/i.test(display)) return { half: true };
   const m = display.match(/(\d+)(?:\+(\d+))?/);
-  if(!m) return null;
-  const base = parseInt(m[1], 10) || 0;
-  const extra = m[2] != null ? (parseInt(m[2], 10) || 0) : 0;
-  const period = typeof status.period === 'number' ? status.period : (base > 45 ? 2 : 1);
-  return { base, extra, period, halftime: false };
+  if(m){
+    return { base: parseInt(m[1],10) || 0, extra: m[2] ? (parseInt(m[2],10) || 0) : 0 };
+  }
+  if(typeof status.clock === 'number'){
+    return { base: Math.floor(status.clock / 60), extra: 0 };
+  }
+  return null;
 }
 
-// Boundary regular (sin descuento) del periodo actual, en minutos.
-function periodBoundaryMinutes(period){
-  if(period <= 1) return 45;
-  if(period === 2) return 90;
-  if(period === 3) return 105; // 1er tiempo extra
-  if(period === 4) return 120; // 2do tiempo extra
-  return 90;
+function pad2(n){ return String(Math.max(0, Math.floor(n))).padStart(2,'0'); }
+
+// Formatea el reloj en vivo con segundos, "tickeando" localmente entre refrescos de datos.
+// - Tiempo regular: "45:23 · faltan 02:37" (contando hacia el próximo corte de 45'/90')
+// - Tiempo añadido:  "90+07:23" (minutos añadidos ya confirmados por ESPN + segundos reales
+//   transcurridos desde el último dato conocido)
+// - Descanso: "Descanso"
+function formatLiveClock(parts, syncedAt){
+  if(!parts) return '—';
+  if(parts.half) return 'Descanso';
+  const secsSinceSync = Math.max(0, Math.floor((Date.now() - (syncedAt || Date.now())) / 1000));
+  if(parts.extra > 0){
+    // Ya está en tiempo añadido: seguimos sumando segundos reales al minuto añadido conocido.
+    const liveExtraSecs = parts.extra * 60 + secsSinceSync;
+    return `${parts.base}+${pad2(Math.floor(liveExtraSecs/60))}:${pad2(liveExtraSecs%60)}`;
+  }
+  // Tiempo regular: tickeamos hacia adelante y mostramos cuánto falta para el próximo corte.
+  const liveTotalSecs = parts.base * 60 + secsSinceSync;
+  const milestoneMin = parts.base < 45 ? 45 : 90;
+  const remainingSecs = Math.max(0, milestoneMin * 60 - liveTotalSecs);
+  const mm = pad2(Math.floor(liveTotalSecs/60));
+  const ss = pad2(liveTotalSecs%60);
+  const remMm = pad2(Math.floor(remainingSecs/60));
+  const remSs = pad2(remainingSecs%60);
+  return `${mm}:${ss}<small style="font-weight:600;opacity:.6;margin-left:5px;font-size:10px;letter-spacing:0">-${remMm}:${remSs}</small>`;
+}
+
+// Recorre las tarjetas visibles y actualiza su reloj en vivo cada segundo, sin esperar
+// al próximo refresco de datos (que solo llega cada 30-60s).
+function tickLiveClocks(){
+  if(!Array.isArray(liveMatches) || liveMatches.length === 0) return;
+  liveMatches.forEach(m => {
+    if(!m.clockParts) return;
+    const el = document.getElementById(`clock-live-${m.id}`);
+    if(!el) return;
+    el.innerHTML = formatLiveClock(m.clockParts, m.clockSyncedAt);
+  });
 }
 
 function findStatByKeywords(statsArr, keywords){
@@ -1818,6 +1838,8 @@ async function loadAll(){
       totalGoals, goalsPace, goalsProjection,
       goals,
       homeStats, awayStats,
+      clockParts: parseClockParts(status),
+      clockSyncedAt: Date.now(),
     };
   }));
 
@@ -1927,9 +1949,6 @@ function buildStatsComparison(m){
 
 function renderMatches(){
   const grid = document.getElementById('matchGrid');
-  if(!window._liveClocks) window._liveClocks = {};
-  const stillLiveIds = new Set(liveMatches.map(m => m.id));
-  Object.keys(window._liveClocks).forEach(id => { if(!stillLiveIds.has(id)) delete window._liveClocks[id]; });
   if(liveMatches.length === 0){
     grid.innerHTML = `<div class="empty">No hay partidos en vivo en las ligas seleccionadas ahora mismo.<br><b>Tip:</b> activa más ligas arriba o vuelve a intentar más tarde.</div>`;
     return;
@@ -1946,18 +1965,7 @@ function renderMatches(){
     const awayScore = m.away ? m.away.score : '-';
 
     const elapsed = m.elapsed;
-    const clockLabel = (m.status && m.status.displayClock) || '—';
-    const clockParts = parseClockParts(m.status);
-    if(clockParts && !clockParts.halftime){
-      window._liveClocks[m.id] = {
-        base: clockParts.base,
-        extra: clockParts.extra,
-        boundary: periodBoundaryMinutes(clockParts.period),
-        fetchedAt: Date.now()
-      };
-    } else {
-      delete window._liveClocks[m.id];
-    }
+    const clockLabel = formatLiveClock(m.clockParts, m.clockSyncedAt);
 
     let signalClass = 'wait', signalLabel = 'SIN DATOS', cardClass = '';
     let projectionLabel = '—', paceLabel = '—', totalLabel = '—';
@@ -2011,9 +2019,8 @@ function renderMatches(){
         ${arcHtml}
         <div class="card-top">
           <div class="league-tag">${leagueShort(m.league)}</div>
-          <div class="clock"><span class="dot live"></span> ${clockLabel}</div>
+          <div class="clock"><span class="dot live"></span> <span id="clock-live-${m.id}">${clockLabel}</span></div>
         </div>
-        <div class="time-detail" id="time-detail-${m.id}"></div>
         <div class="col-labels">
           <span class="score-label">GOL</span><span>CORNERS</span>
         </div>
@@ -8002,6 +8009,9 @@ function init(){
   }).catch(() => {});
   buildLeagueChips();
 
+  // Reloj en vivo con segundos: tickea cada segundo entre refrescos de datos (30-60s)
+  setInterval(tickLiveClocks, 1000);
+
   // Initialize push notifications
   initNotifications();
 
@@ -8312,48 +8322,7 @@ function descargarCSV() {
   
   alert(`✅ Descargado: ${partidos.length} partidos\n\nAbre en Excel para análisis.`);
 }
-// ============ CONTADOR EN VIVO (segundos jugados / restantes) ============
-function fmtMMSS(totalSeconds){
-  const s = Math.max(0, Math.round(totalSeconds));
-  const mm = Math.floor(s / 60);
-  const ss = s % 60;
-  return `${mm}:${ss.toString().padStart(2,'0')}`;
-}
-
-function tickLiveClocks(){
-  if(!window._liveClocks) return;
-  Object.keys(window._liveClocks).forEach(matchId => {
-    const el = document.getElementById(`time-detail-${matchId}`);
-    if(!el) return; // la tarjeta ya no está en el DOM
-    const data = window._liveClocks[matchId];
-    const secondsSinceFetch = (Date.now() - data.fetchedAt) / 1000;
-    const liveElapsedSeconds = data.base * 60 + secondsSinceFetch;
-    const totalBoundaryMinutes = data.boundary + (data.extra || 0);
-    const totalBoundarySeconds = totalBoundaryMinutes * 60;
-    const remainingSeconds = totalBoundarySeconds - liveElapsedSeconds;
-
-    const elapsedStr = fmtMMSS(liveElapsedSeconds);
-    let html = `⏱ ${elapsedStr} jugados`;
-
-    if(data.extra > 0){
-      html += ` · <span class="added">+${data.extra}' añadidos (${data.boundary}+${data.extra})</span>`;
-    }
-
-    if(remainingSeconds > 0){
-      html += ` · <span class="remaining">faltan ~${fmtMMSS(remainingSeconds)}</span>`;
-    } else if(data.extra === 0){
-      html += ` · <span class="remaining">en descuento</span>`;
-    } else {
-      html += ` · <span class="remaining">a punto de terminar</span>`;
-    }
-
-    el.innerHTML = html;
-  });
-}
-
-setInterval(tickLiveClocks, 1000);
-
-
+// Agregar botones a la interfaz (cuando la página cargue)
 window.addEventListener('load', () => {
   const botoneraStats = document.createElement('div');
   botoneraStats.id = 'stats-buttons';
