@@ -175,6 +175,94 @@ export default {
       }
     }
 
+    // ── /api/sofascore → fallback de corners cuando ESPN no reporta stats y
+    //    API-Football está caído/suspendido. SofaScore no es una API oficial:
+    //    es el endpoint interno que usa sofascore.com, sin key ni registro.
+    //    Puede cambiar de formato o bloquear por IP sin aviso — por eso es un
+    //    fallback #2, no la fuente principal. Se proxea aquí (no directo desde
+    //    el navegador) porque requiere un User-Agent de navegador real, algo
+    //    que fetch() del lado del cliente no puede setear.
+    // /api/sofascore?home=Equipo A&away=Equipo B
+    if (url.pathname === '/api/sofascore') {
+      const homeQ = url.searchParams.get('home') || '';
+      const awayQ = url.searchParams.get('away') || '';
+      const cors = {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      };
+      if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
+
+      const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+
+      const norm = (s) => (s || '')
+        .toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9 ]/g, '')
+        .trim();
+
+      try {
+        const liveRes = await fetch('https://api.sofascore.com/api/v1/sport/football/events/live', {
+          headers: { 'User-Agent': UA, 'Accept': 'application/json' }
+        });
+        if (!liveRes.ok) {
+          return new Response(JSON.stringify({ error: `SofaScore live HTTP ${liveRes.status}` }), { status: 502, headers: cors });
+        }
+        const liveData = await liveRes.json();
+        const events = liveData.events || [];
+
+        const h = norm(homeQ), a = norm(awayQ);
+        const match = events.find(ev => {
+          const eh = norm(ev.homeTeam && ev.homeTeam.name);
+          const ea = norm(ev.awayTeam && ev.awayTeam.name);
+          if (!eh || !ea) return false;
+          const sameOrder = (eh.includes(h) || h.includes(eh)) && (ea.includes(a) || a.includes(ea));
+          const swapped   = (eh.includes(a) || a.includes(eh)) && (ea.includes(h) || h.includes(ea));
+          return sameOrder || swapped;
+        });
+
+        if (!match) {
+          return new Response(JSON.stringify({
+            error: `No encontrado en SofaScore: "${homeQ}" vs "${awayQ}"`,
+            liveCount: events.length,
+          }), { status: 404, headers: cors });
+        }
+
+        const statsRes = await fetch(`https://api.sofascore.com/api/v1/event/${match.id}/statistics`, {
+          headers: { 'User-Agent': UA, 'Accept': 'application/json' }
+        });
+        if (!statsRes.ok) {
+          return new Response(JSON.stringify({ error: `SofaScore stats HTTP ${statsRes.status}` }), { status: 502, headers: cors });
+        }
+        const statsData = await statsRes.json();
+        const periods = statsData.statistics || [];
+        const allPeriod = periods.find(p => p.period === 'ALL') || periods[0];
+
+        let homeCorners = null, awayCorners = null;
+        if (allPeriod) {
+          for (const group of (allPeriod.groups || [])) {
+            for (const item of (group.statisticsItems || [])) {
+              if (/corner/i.test(item.name || '')) {
+                const hv = parseInt(item.home, 10);
+                const av = parseInt(item.away, 10);
+                if (!isNaN(hv)) homeCorners = hv;
+                if (!isNaN(av)) awayCorners = av;
+              }
+            }
+          }
+        }
+
+        return new Response(JSON.stringify({
+          matchId: match.id,
+          home: match.homeTeam && match.homeTeam.name,
+          away: match.awayTeam && match.awayTeam.name,
+          homeCorners, awayCorners,
+          statusDesc: match.status && match.status.description,
+        }), { headers: cors });
+      } catch (err) {
+        return new Response(JSON.stringify({ error: err.message }), { status: 502, headers: cors });
+      }
+    }
+
 
     // ── /api/pinnacle → proxy a Pinnacle API pública ─────────────────────────
     // /api/pinnacle?action=sports                    → lista deportes
