@@ -804,7 +804,7 @@
       <div class="af-counter" id="afCounter">0 / 100 hoy</div>
     </div>
     <div class="af-config">
-      <input type="password" id="afKey" placeholder="API-Football key" value="60ca2e420b5bfdfdba95028fc079f507" />
+      <input type="password" id="afKey" placeholder="API-Football key" value="5a0d5818ad87681f784e2512d3944259" />
       <select id="afHost">
         <option value="direct">api-sports.io (directo)</option>
         <option value="rapidapi">RapidAPI</option>
@@ -1999,6 +1999,7 @@ function renderMatches(){
     const errLine = m.noStatsFeed
       ? `<div class="card-foot" style="flex-direction:column;align-items:flex-start;gap:6px">
            <span class="err">⚠ ESPN no reporta tiros/corners para este partido (típico en rondas de clasificación)</span>
+           <div class="corners-data" id="card-sofa-${m.id}" style="font-size:11px;opacity:.75">🔄 Buscando corners en SofaScore…</div>
            <button class="btn secondary card-af-btn" data-match-id="${m.id}" data-home="${(homeName||'').replace(/"/g,'&quot;')}" data-away="${(awayName||'').replace(/"/g,'&quot;')}">Ver corners (API-Football)</button>
            <div class="corners-data" id="card-af-corners-${m.id}"></div>
          </div>`
@@ -2065,6 +2066,16 @@ function renderMatches(){
     btn.addEventListener('click', () => {
       fetchAfCornersForCard(btn.dataset.matchId, btn.dataset.home, btn.dataset.away);
     });
+  });
+
+  // Fallback automático: para las tarjetas sin datos de ESPN, intentamos SofaScore
+  // sin esperar a que el usuario toque el botón de API-Football. Si SofaScore
+  // tampoco encuentra el partido, el botón manual de API-Football queda como
+  // último recurso (ya visible desde el render).
+  liveMatches.filter(m => m.noStatsFeed).forEach(m => {
+    const h = m.home && m.home.team ? (m.home.team.shortDisplayName || m.home.team.displayName) : '';
+    const a = m.away && m.away.team ? (m.away.team.shortDisplayName || m.away.team.displayName) : '';
+    fetchSofascoreCornersForCard(m.id, h, a);
   });
 }
 
@@ -6677,6 +6688,40 @@ function normalizeTeamName(name){
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9 ]/g, '')
     .trim();
+}
+
+// Fallback automático de corners vía SofaScore (proxeado por nuestro worker) cuando
+// ESPN no reporta tiros/corners para el partido. Se dispara solo, sin necesidad de
+// que el usuario toque ningún botón. Si no encuentra el partido o falla, deja el
+// mensaje visible y el botón manual de API-Football sigue disponible como respaldo.
+async function fetchSofascoreCornersForCard(matchId, homeName, awayName){
+  const target = document.getElementById(`card-sofa-${matchId}`);
+  if(!target) return;
+  try{
+    const res = await fetch(`/api/sofascore?home=${encodeURIComponent(homeName)}&away=${encodeURIComponent(awayName)}`);
+    const data = await res.json();
+
+    if(!res.ok || data.error){
+      target.innerHTML = `<span style="opacity:.6">SofaScore: ${data.error || 'sin datos'}</span>`;
+      return;
+    }
+    if(data.homeCorners == null && data.awayCorners == null){
+      target.innerHTML = `<span style="opacity:.6">SofaScore encontró el partido pero aún no reporta corners.</span>`;
+      return;
+    }
+
+    target.innerHTML =
+      `<span><span class="lbl">${data.home || homeName}</span><span class="val">${data.homeCorners ?? '—'}</span></span>` +
+      `<span><span class="lbl">${data.away || awayName}</span><span class="val">${data.awayCorners ?? '—'}</span></span>` +
+      `<div style="font-size:9px;opacity:.5;margin-top:2px">fuente: SofaScore (no oficial)</div>`;
+
+    // Ya tenemos corners de un fallback en vivo — el botón manual de API-Football
+    // ya no hace falta para esta tarjeta.
+    const btn = document.querySelector(`.card-af-btn[data-match-id="${matchId}"]`);
+    if(btn) btn.style.display = 'none';
+  }catch(err){
+    target.innerHTML = `<span style="opacity:.6">SofaScore: error de red (${err.message})</span>`;
+  }
 }
 
 // Tries to find a matching AF live fixture (with odds) for a given pair of ESPN team names
