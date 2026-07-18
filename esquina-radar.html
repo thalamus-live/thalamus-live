@@ -2624,8 +2624,8 @@ function estimateEV(prob){
 // matters is this odds floor: it rejects "obvious" near-certain lines (e.g. Under
 // 2.5 goals @ 90% → ~1.05 cuota) that have negligible real payout or often don't
 // even exist as a live market.
-const MIN_ODDS = 1.12;
-// Given a probability curve across lines, picks the line with the BEST estimated EV
+const MIN_ODDS = 1.20;
+  // Given a probability curve across lines, picks the line with the BEST estimated EV
 // among those that clear both the confidence threshold AND the minimum odds floor.
 // This avoids signals like "Under 2.5 goals @ 90%" which pay ~1.05 and have
 // near-zero real value or no real market at all.
