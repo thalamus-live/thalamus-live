@@ -626,7 +626,7 @@ const TIKTOK_TOKENS_KEY = 'tiktok_tokens';
 const TIKTOK_API = 'https://open.tiktokapis.com';
 // Para Sandbox: https://open-sandbox.tiktokapis.com
 // El token exchange del Sandbox usa un endpoint diferente
-const TIKTOK_TOKEN_API = 'https://open-sandbox.tiktokapis.com';
+const TIKTOK_TOKEN_API = 'https://open.tiktokapis.com';
 
 function tiktokBase64url(buffer) {
   return btoa(String.fromCharCode(...new Uint8Array(buffer)))
