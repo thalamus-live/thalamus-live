@@ -2603,11 +2603,11 @@ function negBinomCDF(k, mu, phi){
 
 
 // Estimates a realistic market decimal odds for a given probability, based on
-// typical bookmaker margins observed on goals/corners totals markets (~5-8% overround).
+// margins observed on real in-play goals/corners totals markets (~20% overround,
 // This lets us calculate EV even without live odds, to avoid picking "obvious"
 // extreme lines that have terrible payout (e.g. Under 2.5 goals at 1.05).
 function estimateMarketOdds(prob){
-  const overround = 1.06; // ~6% bookmaker margin, typical for totals markets
+      const overround = 1.20; // ~20% effective margin, calibrated Jul 2026 from real market odds
   const fairOdds = 1 / prob;
   return fairOdds / overround;
 }
@@ -2618,13 +2618,13 @@ function estimateEV(prob){
 }
 
 // Hard floor on estimated market odds. NOTE: estimateEV() above is mathematically
-// constant at ≈ -5.66% for ANY probability (since estimateMarketOdds derives odds
+// constant at ≈ -16.67% for ANY probability (since estimateMarketOdds derives odds
 // directly from prob with a fixed 1.06 overround, the EV formula always collapses
 // to 1/1.06 - 1). It can never reject a line on its own. The real filter that
 // matters is this odds floor: it rejects "obvious" near-certain lines (e.g. Under
 // 2.5 goals @ 90% → ~1.05 cuota) that have negligible real payout or often don't
 // even exist as a live market.
-const MIN_ODDS = 1.20;
+const MIN_ODDS = 1.15;
   // Given a probability curve across lines, picks the line with the BEST estimated EV
 // among those that clear both the confidence threshold AND the minimum odds floor.
 // This avoids signals like "Under 2.5 goals @ 90%" which pay ~1.05 and have
