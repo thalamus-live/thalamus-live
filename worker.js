@@ -3,8 +3,8 @@ export default {
     const url = new URL(request.url);
 
     // ── Verificación de dominio TikTok (archivo de firma) ───────────────────
-    if (url.pathname === '/tiktok4pwHmljmTw12x8u6Ix0Td2oMJseH8Ij5.txt') {
-      return new Response('tiktok-developers-site-verification=4pwHmljmTw12x8u6Ix0Td2oMJseH8Ij5', {
+    if (url.pathname === '/tiktokpgsid6TJGjs85B0WumjohXrTt8mRhVfB.txt') {
+            return new Response('tiktok-developers-site-verification=pgsid6TJGjs85B0WumjohXrTt8mRhVfB', {
         headers: { 'Content-Type': 'text/plain; charset=utf-8' },
       });
     }
