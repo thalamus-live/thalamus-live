@@ -816,38 +816,19 @@ async function tiktokHandlePublish(request, env) {
   const videoBuffer = await file.arrayBuffer();
   const videoSize = videoBuffer.byteLength;
 
-  // 1. Query creator info — requerido antes de publicar; indica qué niveles
-  //    de privacidad permite esta combinación de app/cuenta.
-  const creatorResp = await fetch(`${TIKTOK_API}/v2/post/publish/creator_info/query/`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${tokens.access_token}`,
-      'Content-Type': 'application/json; charset=UTF-8',
-    },
-  });
-  const creatorData = await creatorResp.json();
-  const privacyOptions = creatorData?.data?.privacy_level_options || [];
-  // Apps sin auditar quedan restringidas a SELF_ONLY (privado) sin importar
-  // lo que pidamos — la elegimos si está disponible.
-  const privacyLevel = privacyOptions.includes('SELF_ONLY')
-    ? 'SELF_ONLY'
-    : privacyOptions[0] || 'SELF_ONLY';
-
-  // 2. Inicializa la publicación (1 solo chunk — nuestros clips son ~3MB)
-  const initResp = await fetch(`${TIKTOK_API}/v2/post/publish/video/init/`, {
+  // Nuestra conexión OAuth solo tiene el scope `video.upload` (no
+  // `video.publish` — ese requiere que la app pase la revisión de TikTok).
+  // Por eso usamos el endpoint de "inbox" (borrador): sube el video a la
+  // bandeja de entrada de TikTok del creador; el creador debe abrir la app
+  // y tocar "Publicar" para que salga público. No requiere creator_info
+  // ni post_info — esos solo aplican al endpoint de publicación directa.
+  const initResp = await fetch(`${TIKTOK_API}/v2/post/publish/inbox/video/init/`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${tokens.access_token}`,
       'Content-Type': 'application/json; charset=UTF-8',
     },
     body: JSON.stringify({
-      post_info: {
-        title,
-        privacy_level: privacyLevel,
-        disable_duet: false,
-        disable_comment: false,
-        disable_stitch: false,
-      },
       source_info: {
         source: 'FILE_UPLOAD',
         video_size: videoSize,
@@ -877,7 +858,7 @@ async function tiktokHandlePublish(request, env) {
     return tiktokJson({ error: 'upload_failed', status: uploadResp.status, detail: uploadErr }, env, { status: 502 });
   }
 
-  return tiktokJson({ publish_id, privacy_level: privacyLevel }, env);
+  return tiktokJson({ publish_id, mode: 'inbox_draft' }, env);
 }
 
 async function tiktokHandlePublishStatus(request, env) {
