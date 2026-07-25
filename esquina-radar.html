@@ -1956,7 +1956,7 @@ function renderMatches(){
 
   const refLine = parseFloat(document.getElementById('refLine').value) || 9.5;
 
-  grid.innerHTML = liveMatches.map(m => {
+  const visibleMatches = liveMatches.filter(m => !m.noStatsFeed); if(visibleMatches.length === 0){ grid.innerHTML = '<div class="empty">Hay ' + liveMatches.length + ' partido(s) en vivo, pero ninguno tiene datos de corners disponibles en ESPN ahora mismo. <b>Tip:</b> vuelve a intentar en unos minutos.</div>'; return; } grid.innerHTML = visibleMatches.map(m => {
     const homeName = m.home && m.home.team ? (m.home.team.shortDisplayName || m.home.team.displayName) : '—';
     const awayName = m.away && m.away.team ? (m.away.team.shortDisplayName || m.away.team.displayName) : '—';
     const homeLogo = m.home && m.home.team && m.home.team.logo;
@@ -2072,7 +2072,7 @@ function renderMatches(){
   // sin esperar a que el usuario toque el botón de API-Football. Si SofaScore
   // tampoco encuentra el partido, el botón manual de API-Football queda como
   // último recurso (ya visible desde el render).
-  liveMatches.filter(m => m.noStatsFeed).forEach(m => {
+  liveMatches.filter(m => false && m.noStatsFeed).forEach(m => {
     const h = m.home && m.home.team ? (m.home.team.shortDisplayName || m.home.team.displayName) : '';
     const a = m.away && m.away.team ? (m.away.team.shortDisplayName || m.away.team.displayName) : '';
     fetchSofascoreCornersForCard(m.id, h, a);
