@@ -408,7 +408,7 @@ Page_DownPage_DownPage_DownPage_DownPage_DownPage_DownPage_DownPage_DownPage_Dow
   }
   .tl-marker:hover{ transform: translate(-50%, -50%) scale(1.18); z-index: 2; }
   .tl-marker.away{ border-color: var(--green-deep); }
-  .tl-now{ position:absolute; top:0; bottom:0; width:2px; background:#b6543f; opacity:0.55; border-radius:1px; }
+  .tl-now{ position:absolute; top:0; bottom:0; width:2px; background:#b6543f; opacity:0.55; border-radius:1px; } .tl-half{ position:absolute; top:-14px; bottom:0; width:2px; border-left:2px dashed var(--muted-2); opacity:0.85; } .tl-half-label{ position:absolute; top:-14px; left:50%; transform: translateX(-50%); font-size:8px; font-weight:700; letter-spacing:0.06em; color: var(--muted-2); text-transform:uppercase; white-space:nowrap; background: var(--panel); padding:0 3px; } .tl-corner-row{ position:relative; height: 14px; margin-top: 2px; } .tl-flag{ position:absolute; top:50%; transform: translate(-50%, -50%); font-size: 10px; line-height:1; cursor: default; } .tl-corners-summary{ display:flex; justify-content:center; gap:14px; margin-top:6px; font-size: 9px; color: var(--muted); font-family:'Poppins',sans-serif; font-weight:600; } .tl-corners-summary b{ color: var(--text); }
   .tl-axis{ display:flex; justify-content:space-between; font-size: 9px; color: var(--muted-2); margin-top: 4px; }
 
 
@@ -1180,7 +1180,7 @@ const ODDS_SPORT_MAP = {
 
 let activeLeagues = new Set(DEFAULT_ACTIVE);
 let refreshTimer = null;
-let liveMatches = []; // cached enriched match objects
+let liveMatches = []; let cornerEventHistory = {}; function trackCornerEvents(matchId, homeCorners, awayCorners, elapsed){ if(homeCorners == null || awayCorners == null) return; let hist = cornerEventHistory[matchId]; if(!hist){ cornerEventHistory[matchId] = { home: [], away: [], lastHome: homeCorners, lastAway: awayCorners }; return; } const min = elapsed != null ? elapsed : 0; if(homeCorners > hist.lastHome){ for(let i = hist.lastHome; i < homeCorners; i++){ hist.home.push(min); } hist.lastHome = homeCorners; } if(awayCorners > hist.lastAway){ for(let i = hist.lastAway; i < awayCorners; i++){ hist.away.push(min); } hist.lastAway = awayCorners; } } // cached enriched match objects
 
 // The Odds API "totals" (goals) odds, keyed by sport_key -> { events, fetchedAt, error }
 // Fallback The Odds API key, used when the manual input fields are empty/hidden,
@@ -1790,7 +1790,7 @@ async function loadAll(){
 
     const homeCorners = cornersRes.ok ? (cornersRes.corners[home && home.team && home.team.id] ?? null) : null;
     const awayCorners = cornersRes.ok ? (cornersRes.corners[away && away.team && away.team.id] ?? null) : null;
-    const elapsed = parseElapsedMinutes(status);
+    const elapsed = parseElapsedMinutes(status); trackCornerEvents(ev.id, homeCorners, awayCorners, elapsed);
 
     let totalCorners = null, pace = null, projection = null;
     if(homeCorners != null && awayCorners != null){
@@ -1887,7 +1887,7 @@ function buildArc(percent, color){
   `;
 }
 
-function buildMatchTimeline(m){
+function buildCornerFlagsHtml(m){ const pct = (min) => Math.max(0, Math.min(100, (min / 90) * 100)); const hist = cornerEventHistory[m.id]; const homeMins = hist ? hist.home : []; const awayMins = hist ? hist.away : []; const flag = "&#128681;"; const homeFlags = homeMins.map(min => "<div class=\"tl-flag\" style=\"left:" + pct(min) + "%\" title=\"Corner ~ minuto " + min + "\">" + flag + "</div>").join(""); const awayFlags = awayMins.map(min => "<div class=\"tl-flag\" style=\"left:" + pct(min) + "%\" title=\"Corner ~ minuto " + min + "\">" + flag + "</div>").join(""); const h1 = homeMins.filter(x => x <= 45).length + awayMins.filter(x => x <= 45).length; const h2 = homeMins.filter(x => x > 45).length + awayMins.filter(x => x > 45).length; const summary = (homeMins.length + awayMins.length > 0) ? ("<div class=\"tl-corners-summary\"><span>" + flag + " 1T: <b>" + h1 + "</b></span><span>" + flag + " 2T: <b>" + h2 + "</b></span></div>") : ""; return "<div class=\"tl-half\" style=\"left:" + pct(45) + "%\"></div><div class=\"tl-half-label\" style=\"left:" + pct(45) + "%\">HT</div><div class=\"tl-corner-row\">" + homeFlags + "</div><div class=\"tl-corner-row\">" + awayFlags + "</div>" + summary; } function buildMatchTimeline(m){
   if(m.elapsed == null && (!m.goals || m.goals.length === 0)) return '';
 
   const pct = (min) => Math.max(0, Math.min(100, (min / 90) * 100));
@@ -1913,7 +1913,7 @@ function buildMatchTimeline(m){
 
   return `
     <div class="match-timeline">
-      ${nowMarker}
+      ${nowMarker}${buildCornerFlagsHtml(m)}
       <div class="tl-row">${homeMarkers}</div>
       <div class="tl-track"></div>
       <div class="tl-row">${awayMarkers}</div>
