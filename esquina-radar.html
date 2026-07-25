@@ -4750,7 +4750,7 @@ function generateSignalVideo(t, onProgress){
     recorder.start();
 
     function frame(){
-      const elapsed = (performance.now() - startTime) / 1000;
+      const elapsed = frameCount++ / fps;
       ctx.clearRect(0, 0, W, H);
 
       const bgAlpha = easeOutCubic(clamp01(elapsed / BG_FADE));
@@ -5064,7 +5064,7 @@ async function generateDailyMenuVideo(onProgress){
     recorder.start();
 
     function frame(){
-      const elapsed = (performance.now() - startTime) / 1000;
+      const elapsed = frameCount++ / fps;
       drawBackground();
 
       if(elapsed < INTRO_DUR){
@@ -5285,7 +5285,7 @@ async function generateResultsVideo(onProgress){
     const startTime = performance.now();
     recorder.start();
     function frame(){
-      const elapsed = (performance.now()-startTime)/1000;
+      const elapsed = frameCount++ / fps;
       drawBg();
       if(elapsed < INTRO_DUR){
         drawHeader(easeOutCubic(clamp01(elapsed/0.5)));
