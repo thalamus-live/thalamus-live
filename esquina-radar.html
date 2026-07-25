@@ -5338,11 +5338,11 @@ function initAutoPublish(){
   });
 
   document.getElementById('publishMenuNowBtn')?.addEventListener('click', async (e) => {
-    await autoPublishMenu(e.currentTarget);
+    await autoPublishMenu(e.currentTarget, true);
   });
 
   document.getElementById('publishResultsNowBtn')?.addEventListener('click', async (e) => {
-    await autoPublishResults(e.currentTarget);
+    await autoPublishResults(e.currentTarget, true);
   });
 
   if(cfg.enabled) startScheduleChecker(cfg);
