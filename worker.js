@@ -141,7 +141,7 @@ export default {
     //          /api/af-odds?action=bets           (lista de mercados disponibles)
     //          /api/af-odds?action=live-fixtures  (partidos en vivo con cuotas)
     if (url.pathname === '/api/af-odds') {
-      const AF_KEY = '5a0d5818ad87681f784e2512d3944259';
+      const AF_KEY = 'e8f243d11251c1368ff1938602f4a89a';
       const AF_BASE = 'https://v3.football.api-sports.io';
       const cors = {
         'Content-Type': 'application/json',
