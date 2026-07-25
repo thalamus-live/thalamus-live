@@ -4746,7 +4746,7 @@ function generateSignalVideo(t, onProgress){
     const RIBBON_START = 2.7, RIBBON_DUR = 0.7;
     const TOTAL = 4.6;
 
-    const startTime = performance.now();
+    let frameCount = 0;
     recorder.start();
 
     function frame(){
@@ -5060,7 +5060,7 @@ async function generateDailyMenuVideo(onProgress){
       ctx.restore();
     }
 
-    const startTime = performance.now();
+    let frameCount = 0;
     recorder.start();
 
     function frame(){
@@ -5282,7 +5282,7 @@ async function generateResultsVideo(onProgress){
       ctx.restore();
     }
 
-    const startTime = performance.now();
+    let frameCount = 0;
     recorder.start();
     function frame(){
       const elapsed = frameCount++ / fps;
