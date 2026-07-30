@@ -2624,7 +2624,7 @@ function estimateEV(prob){
 // matters is this odds floor: it rejects "obvious" near-certain lines (e.g. Under
 // 2.5 goals @ 90% → ~1.05 cuota) that have negligible real payout or often don't
 // even exist as a live market.
-const MIN_ODDS = 1.15;
+const MIN_ODDS = 1.15; const MIN_REAL_EDGE = 0.03;
   // Given a probability curve across lines, picks the line with the BEST estimated EV
 // among those that clear both the confidence threshold AND the minimum odds floor.
 // This avoids signals like "Under 2.5 goals @ 90%" which pay ~1.05 and have
@@ -2681,7 +2681,7 @@ function computeMatchSignals(m, threshold){
     realOddsEventId = evId;
     break; // use first available — will improve with team matching later
   }
-  // Try to match by team names in the odds API event cache
+  realLines = null; realOddsEventId = null; // Bugfix jul2026: reset antes de buscar por equipo, el loop anterior podia dejar cuotas de OTRO partido como fallback -- Try to match by team names in the odds API event cache
   for(const [evId, lines] of Object.entries(oddsCornerLinesCache)){
     const lm = findLiveMatchByOddsEventId(evId);
     if(lm && lm.id === m.id){
@@ -2724,7 +2724,7 @@ function computeMatchSignals(m, threshold){
       source: 'espn', market: 'corners',
       elapsed: m.elapsed, pace: m.pace,
       oddsVerified, oddsApiData: oddsData,
-      _oddsEventId: realOddsEventId || null,
+      _oddsEventId: realOddsEventId || null, rejectedNoValue: !!(oddsData && ((s.prob * oddsData.price) - 1) < MIN_REAL_EDGE),
     }, homeName, awayName);
   });
 }
@@ -2849,7 +2849,7 @@ function isSignalAlreadyDecided(s){
 
 function renderSignalsList(listId, allSignals, threshold, unitLabel, statLabel){
   const list = document.getElementById(listId);
-  allSignals = allSignals.filter(s => !isSignalAlreadyDecided(s));
+  allSignals = allSignals.filter(s => !isSignalAlreadyDecided(s) && !s.rejectedNoValue);
   allSignals.sort((a,b) => b.prob - a.prob);
 
   if(allSignals.length === 0){
