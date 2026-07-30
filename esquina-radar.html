@@ -2332,7 +2332,7 @@ async function loadFollowMatchPinnacleOdds(m){
 // Auto-fetch corners odds for a live match (called when signal is generated)
 // Uses The Odds API key from the input field, falling back to a default project key
 // so the feature works even though the manual input panel is hidden in the UI.
-async function autoFetchCornersOdds(oddsEventId, sportKey){
+let h2hFetchInProgress = new Set(); async function fetchH2HCornerAnchor(teamIdA, teamIdB, cacheKey){ if(h2hFetchInProgress.has(cacheKey)) return; h2hFetchInProgress.add(cacheKey); try { const { base, headers } = afHeaders(); const r = await fetch(`${base}/fixtures/headtohead?h2h=${teamIdA}-${teamIdB}&last=5`, { headers }); const d = await r.json(); const fixtures = (d.response || []).filter(f => f.fixture && f.fixture.status && f.fixture.status.short === 'FT').slice(0, 5); let total = 0, count = 0; for(const fx of fixtures){ const fxKey = 'h2hFxCorners_' + fx.fixture.id; let corners = null; const cachedFx = localStorage.getItem(fxKey); if(cachedFx != null){ corners = cachedFx === 'null' ? null : Number(cachedFx); } else { const sr = await fetch(`${base}/fixtures/statistics?fixture=${fx.fixture.id}`, { headers }); const sd = await sr.json(); let sum = 0, found = false; (sd.response || []).forEach(ts => { const cs = (ts.statistics || []).find(s => (s.type || '').toLowerCase().includes('corner')); if(cs && cs.value != null){ sum += Number(cs.value); found = true; } }); corners = found ? sum : null; localStorage.setItem(fxKey, corners == null ? 'null' : String(corners)); } if(corners != null){ total += corners; count++; } } localStorage.setItem('h2hCorners_' + cacheKey, JSON.stringify({ avgCorners: count > 0 ? total / count : null, count })); } catch(e){} finally { h2hFetchInProgress.delete(cacheKey); } } async function autoFetchCornersOdds(oddsEventId, sportKey){
   if(!oddsEventId || oddsAutoFetched.has(oddsEventId)) return;
   const key = DEFAULT_ODDS_API_KEY;
   if(!key) return;
@@ -2656,11 +2656,11 @@ function computeSignalsForLines(lambda, threshold, lines){
 }
 
 function computeMatchSignals(m, threshold){
-  if(m.totalCorners == null || m.elapsed == null) return [];
+  if(m.totalCorners == null || m.elapsed == null) return []; let __h2hAnchorOverride = null; const __h2hHomeN = m.home && m.home.team ? (m.home.team.shortDisplayName || m.home.team.displayName) : null; const __h2hAwayN = m.away && m.away.team ? (m.away.team.shortDisplayName || m.away.team.displayName) : null; if(__h2hHomeN && __h2hAwayN){ const __h2hFid = findAfFixtureIdByTeams(__h2hHomeN, __h2hAwayN); if(__h2hFid != null && afFixturesCache[__h2hFid] && afFixturesCache[__h2hFid].teams){ const __tA = afFixturesCache[__h2hFid].teams.home.id; const __tB = afFixturesCache[__h2hFid].teams.away.id; if(__tA != null && __tB != null){ const __h2hKey = [__tA, __tB].sort((x,y)=>x-y).join('_'); const __h2hRaw = localStorage.getItem('h2hCorners_' + __h2hKey); if(__h2hRaw){ try{ const __h2hParsed = JSON.parse(__h2hRaw); if(__h2hParsed && __h2hParsed.avgCorners != null && __h2hParsed.count > 0){ const __h2hW = Math.min(0.75, __h2hParsed.count * 0.2); __h2hAnchorOverride = { avg: __h2hParsed.avgCorners, weight: __h2hW }; } }catch(e){} } else { fetchH2HCornerAnchor(__tA, __tB, __h2hKey); } } } }
   const homeScore = m.home ? parseInt(m.home.score, 10) : NaN;
   const awayScore = m.away ? parseInt(m.away.score, 10) : NaN;
   const scoreAdj = scoreAdjustmentFactor(homeScore, awayScore, m.elapsed, 'corners');
-  const anchor = getLeagueAnchor(m.league).corners * scoreAdj;
+  const anchor = (__h2hAnchorOverride ? (__h2hAnchorOverride.avg * __h2hAnchorOverride.weight + getLeagueAnchor(m.league).corners * (1 - __h2hAnchorOverride.weight)) : getLeagueAnchor(m.league).corners) * scoreAdj;
   const lambda = shrinkProjection(m.totalCorners, m.elapsed, anchor);
   if(lambda <= 0) return [];
 
@@ -3753,8 +3753,7 @@ async function saveTrackedSignals(arr){
 function saveSignal(sig){
   const tracked = getTrackedSignals();
   const dup = tracked.find(t =>
-    t.matchId === sig.matchId && t.direction === sig.direction &&
-    t.line === sig.line && t.status === 'pending' &&
+    t.matchId === sig.matchId && t.status === 'pending' &&
     (t.market || 'corners') === (sig.market || 'corners')
   );
   if(dup) return false;
