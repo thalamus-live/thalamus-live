@@ -2629,12 +2629,12 @@ const MIN_ODDS = 1.15; const MIN_REAL_EDGE = 0.03;
 // among those that clear both the confidence threshold AND the minimum odds floor.
 // This avoids signals like "Under 2.5 goals @ 90%" which pay ~1.05 and have
 // near-zero real value or no real market at all.
-function computeSignalsForLines(lambda, threshold, lines){
+function computeSignalsForLines(lambda, threshold, lines, observedTotal){ const T = (observedTotal == null || !isFinite(observedTotal)) ? null : Math.max(0, observedTotal); const muRemaining = T == null ? null : Math.max(0.05, lambda - T);
   lines = lines || SIGNAL_LINES;
   let bestOver = null, bestUnder = null;
 
   lines.forEach(line => {
-    const probOver = 1 - negBinomCDF(Math.floor(line), lambda);
+    const k = Math.floor(line); let probOver; if(T == null){ probOver = 1 - negBinomCDF(k, lambda); } else { const needed = k + 1 - T; if(needed <= 0) probOver = 1; else probOver = 1 - negBinomCDF(needed - 1, muRemaining); }
     const probUnder = 1 - probOver;
 
     if(probOver >= threshold){
@@ -2708,7 +2708,7 @@ function computeMatchSignals(m, threshold){
     autoFetchCornersOdds(m._oddsEventId, matchSportKey);
   }
 
-  return computeSignalsForLines(lambda, threshold, linesForSignal).map(s => {
+  return computeSignalsForLines(lambda, threshold, linesForSignal, m.totalCorners).map(s => {
     // Attach real odds from cache
     let oddsData = null;
     if(realOddsEventId && oddsCornerLinesCache[realOddsEventId] && oddsCornerLinesCache[realOddsEventId][s.line]){
@@ -2750,7 +2750,7 @@ function computeMatchGoalSignals(m, threshold){
   const oddsEvent = (oddsInfo && oddsApiKey) ? findOddsApiEventForTeams(oddsInfo.key, homeName, awayName) : null;
   const oddsAttempted = !!oddsApiKey;
 
-  return computeSignalsForLines(lambda, threshold, GOAL_LINES).map(s => {
+  return computeSignalsForLines(lambda, threshold, GOAL_LINES, m.totalGoals).map(s => {
     const sig = attachLiveOdds({
       matchId: m.id, matchTitle, league: m.league, clock,
       direction: s.direction, line: s.line, prob: s.prob,
@@ -6584,7 +6584,7 @@ function renderAfSignal(fixtureId, cornerVals){
     if(elapsed < minElapsed){
       html += `<div style="font-size:11px;color:var(--muted-2)">Corners — faltan minutos para el mínimo configurado (${minElapsed}'). Total CK: ${total} · Proy. ${projection.toFixed(1)}</div>`;
     } else {
-      const signals = computeSignalsForLines(projection, threshold, SIGNAL_LINES)
+      const signals = computeSignalsForLines(projection, threshold, SIGNAL_LINES, total)
         .filter(s => !isSignalAlreadyDecided({ total, line: s.line }));
       if(signals.length === 0){
         html += `<div style="font-size:11px;color:var(--muted-2)">Corners — sin señales con ≥${(threshold*100).toFixed(0)}%. Total CK: ${total} · Ritmo: ${pace.toFixed(2)}/min · Proy. 90': ${projection.toFixed(1)}</div>`;
@@ -6615,7 +6615,7 @@ function renderAfSignal(fixtureId, cornerVals){
     if(elapsed < minElapsed){
       html += `<div style="font-size:11px;color:var(--muted-2)">Goles — faltan minutos para el mínimo configurado (${minElapsed}'). Total goles: ${totalG} · Proy. ${projectionG.toFixed(1)}</div>`;
     } else if(projectionG > 0){
-      const signalsG = computeSignalsForLines(projectionG, threshold, GOAL_LINES)
+      const signalsG = computeSignalsForLines(projectionG, threshold, GOAL_LINES, totalG)
         .filter(s => !isSignalAlreadyDecided({ total: totalG, line: s.line }));
       if(signalsG.length === 0){
         html += `<div style="font-size:11px;color:var(--muted-2)">Goles — sin señales con ≥${(threshold*100).toFixed(0)}%. Total goles: ${totalG} · Ritmo: ${paceG.toFixed(2)}/min · Proy. 90': ${projectionG.toFixed(1)}</div>`;
