@@ -2624,7 +2624,7 @@ function estimateEV(prob){
 // matters is this odds floor: it rejects "obvious" near-certain lines (e.g. Under
 // 2.5 goals @ 90% → ~1.05 cuota) that have negligible real payout or often don't
 // even exist as a live market.
-const MIN_ODDS = 1.15; const MIN_REAL_EDGE = 0.03;
+const MIN_ODDS = 1.15; const MIN_REAL_EDGE = 0.03; const MAX_PROB = 0.75;
   // Given a probability curve across lines, picks the line with the BEST estimated EV
 // among those that clear both the confidence threshold AND the minimum odds floor.
 // This avoids signals like "Under 2.5 goals @ 90%" which pay ~1.05 and have
@@ -2640,12 +2640,12 @@ function computeSignalsForLines(lambda, threshold, lines, observedTotal){ const 
     if(probOver >= threshold){
       const odds = estimateMarketOdds(probOver);
       const ev = estimateEV(probOver);
-      if(odds >= MIN_ODDS && (!bestOver || odds > bestOver.odds)) bestOver = { line, prob: probOver, ev, odds };
+      if(probOver <= MAX_PROB && (!bestOver || odds > bestOver.odds)) bestOver = { line, prob: probOver, ev, odds };
     }
     if(probUnder >= threshold){
       const odds = estimateMarketOdds(probUnder);
       const ev = estimateEV(probUnder);
-      if(odds >= MIN_ODDS && (!bestUnder || odds > bestUnder.odds)) bestUnder = { line, prob: probUnder, ev, odds };
+      if(probUnder <= MAX_PROB && (!bestUnder || odds > bestUnder.odds)) bestUnder = { line, prob: probUnder, ev, odds };
     }
   });
 
@@ -2724,7 +2724,7 @@ function computeMatchSignals(m, threshold){
       source: 'espn', market: 'corners',
       elapsed: m.elapsed, pace: m.pace,
       oddsVerified, oddsApiData: oddsData,
-      _oddsEventId: realOddsEventId || null, rejectedNoValue: !!(oddsData && ((s.prob * oddsData.price) - 1) < MIN_REAL_EDGE),
+      _oddsEventId: realOddsEventId || null, rejectedNoValue: (!oddsData || ((s.prob * oddsData.price) - 1) < MIN_REAL_EDGE),
     }, homeName, awayName);
   });
 }
@@ -2760,6 +2760,7 @@ function computeMatchGoalSignals(m, threshold){
     }, homeName, awayName);
     sig.bookmakerOdds = oddsEvent ? findBookmakerOddsForLine(oddsEvent, s.direction, s.line) : null;
     sig.bookmakerOddsAttempted = oddsAttempted;
+    sig.rejectedNoValue = (!sig.bookmakerOdds || !sig.bookmakerOdds.avg || ((s.prob * sig.bookmakerOdds.avg) - 1) < MIN_REAL_EDGE);
     return sig;
   });
 }
