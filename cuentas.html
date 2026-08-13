@@ -490,6 +490,61 @@
     const messageInput = document.getElementById('messageInput');
     const imagePreviewContainer = document.getElementById('image-preview-container');
 
+    // ========== CARGAR CUENTAS GUARDADAS ==========
+    async function cargarCuentas() {
+      try {
+        const response = await fetch('/api/cuentas');
+        const data = await response.json();
+
+        if (data.ok && data.accounts) {
+          const cuentasList = document.getElementById('cuentasList');
+          cuentasList.innerHTML = '';
+
+          data.accounts.forEach((cuenta) => {
+            const div = document.createElement('div');
+            div.className = 'cuenta';
+
+            let html = `
+              <div class="cuenta-header">
+                <div>
+                  <div class="cuenta-name">${cuenta.bank} · ${cuenta.name}</div>
+                  <div class="cuenta-bank">${cuenta.bank}</div>
+                </div>
+              </div>
+              <div class="cuenta-details">
+            `;
+
+            if (cuenta.account) {
+              html += `
+                <div class="cuenta-field">
+                  <label>Cuenta</label>
+                  <value>${cuenta.account}</value>
+                  <button class="btn" onclick="copiar('${cuenta.account}')">Copiar</button>
+                </div>
+              `;
+            }
+
+            if (cuenta.cci) {
+              html += `
+                <div class="cuenta-field">
+                  <label>CCI</label>
+                  <value>${cuenta.cci}</value>
+                  <button class="btn" onclick="copiar('${cuenta.cci}')">Copiar</button>
+                </div>
+              `;
+            }
+
+            html += `</div>`;
+
+            div.innerHTML = html;
+            cuentasList.appendChild(div);
+          });
+        }
+      } catch (error) {
+        console.error('Error cargando cuentas:', error);
+      }
+    }
+
     // ========== FUNCIONALIDAD DE PEGADO DE IMÁGENES ==========
     messageInput.addEventListener('paste', async (e) => {
       const items = (e.clipboardData || e.originalEvent.clipboardData).items;
@@ -719,14 +774,22 @@
       localStorage.setItem('darkMode', document.body.classList.contains('dark'));
     }
 
+    function copiar(texto) {
+      navigator.clipboard.writeText(texto);
+      alert('Copiado: ' + texto);
+    }
+
+    window.copiar = copiar;
+
     // Cargar preferencia de dark mode
     if (localStorage.getItem('darkMode') === 'true') {
       document.body.classList.add('dark');
     }
 
-    // Cargar mensajes al iniciar
+    // Cargar datos al iniciar
+    cargarCuentas();
     cargarMensajes();
-    setInterval(cargarMensajes, 3000); // Recargar cada 3 segundos
+    setInterval(cargarMensajes, 3000); // Recargar mensajes cada 3 segundos
   </script>
 </body>
 </html>
