@@ -1,684 +1,732 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>CUENTAS THALAMUS</title>
-<link rel="icon" type="image/png" sizes="32x32" href="https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/icons/icon-32.png">
-<link rel="icon" type="image/png" sizes="192x192" href="https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/icons/icon-192.png">
-<link rel="apple-touch-icon" sizes="180x180" href="https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/icons/icon-180.png">
-<link rel="manifest" href="https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/manifest.json">
-<meta name="theme-color" content="#2d7d5a">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Cuentas">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Noto+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --mint:#f0faf4; --green:#6ebd91; --green-dark:#2d7d5a; --gray:#bcbcbb;
-    --bg:var(--mint); --card:#ffffff; --border:#d7ebe0; --text:#163526; --muted:#6f8579;
-    --accent:var(--green); --accent-dark:var(--green-dark); --surface-soft:var(--mint);
-  }
-  [data-theme="dark"]{
-    --bg:#000000; --card:#0f1512; --border:#1e2a24; --text:#eaf5ef; --muted:#8fae9f;
-    --accent:#6ebd91; --accent-dark:#8fd1ab; --gray:#7c948a; --surface-soft:#121815;
-  }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--text);font-family:'Noto Sans',system-ui,sans-serif;transition:background .2s,color .2s;}
-  .top-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
-  .theme-toggle{flex-shrink:0;background:var(--card);border:1px solid var(--border);color:var(--text);
-        border-radius:999px;padding:8px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px;
-        box-shadow:0 1px 3px rgba(45,125,90,.08);}
-  .theme-toggle:hover{border-color:var(--accent);}
-  .wrap{max-width:560px;margin:0 auto;padding:32px 16px 80px;}
-  #list{display:flex;flex-direction:column;gap:12px;}
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CUENTAS THALAMUS</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-  @media (min-width: 900px){
-    .wrap{max-width:1100px;padding:40px 32px 96px;}
-    #list{display:grid;grid-template-columns:repeat(2, 1fr);gap:16px;align-items:start;}
-    .card{margin-bottom:0;}
-    .add-btn, .empty{grid-column:1 / -1;}
-  }
-  @media (min-width: 1400px){
-    .wrap{max-width:1400px;}
-    #list{grid-template-columns:repeat(3, 1fr);}
-  }
-  h1{font-size:26px;margin:0 0 4px;font-family:'Poppins',sans-serif;font-weight:700;letter-spacing:-.02em;color:var(--accent-dark);}
-  .sub{color:var(--muted);font-size:14px;margin:0 0 24px;line-height:1.4;}
-  .card{position:relative;background:var(--card);border:1px solid var(--border);border-radius:16px;
-        padding:16px 16px 16px 20px;margin-bottom:12px;display:flex;gap:16px;flex-wrap:wrap;
-        box-shadow:0 1px 3px rgba(45,125,90,.06);}
-  .accent-bar{position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:16px 0 0 16px;}
-  .info{flex:1;min-width:180px;}
-  .bank-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-weight:600;font-family:'Poppins',sans-serif;}
-  .bank-row .alias{color:var(--muted);font-weight:500;font-size:15px;font-family:'Noto Sans',sans-serif;}
-  .field-row{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:14px;}
-  .field-label{width:64px;flex-shrink:0;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--gray);}
-  .field-value{font-family:'JetBrains Mono',monospace;color:var(--accent-dark);}
-  .icon-btn{background:none;border:none;color:var(--muted);cursor:pointer;padding:4px;border-radius:6px;display:inline-flex;}
-  .icon-btn:hover{color:var(--accent-dark);background:rgba(110,189,145,.15);}
-  .actions{display:flex;gap:14px;margin-top:10px;font-size:12px;flex-wrap:wrap;}
-  .actions button{background:none;border:none;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:4px;font-size:12px;padding:0;}
-  .actions button:hover{color:var(--accent-dark);}
-  .actions button.danger:hover{color:#c0392b;}
-  .qr-wrap{flex-shrink:0;width:128px;height:128px;border-radius:12px;overflow:hidden;background:#fff;
-           display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid var(--border);margin:0 auto;}
-  .qr-wrap img{width:100%;height:100%;object-fit:contain;padding:8px;}
-  .qr-empty{width:128px;height:128px;border-radius:12px;border:1px dashed var(--border);
-            display:flex;align-items:center;justify-content:center;color:var(--gray);margin:0 auto;}
-  .add-btn{width:100%;padding:14px;border-radius:12px;border:1px dashed var(--accent);background:var(--card);
-           color:var(--accent-dark);cursor:pointer;font-size:14px;font-weight:600;margin-top:6px;}
-  .add-btn:hover{background:var(--surface-soft);border-color:var(--accent-dark);}
-  .form{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:12px;
-        box-shadow:0 1px 3px rgba(45,125,90,.06);}
-  .form label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:4px;}
-  .form input[type=text]{width:100%;background:var(--surface-soft);border:1px solid var(--border);border-radius:8px;
-            padding:9px 10px;color:var(--text);font-size:14px;margin-bottom:14px;outline:none;}
-  .form input[type=text]:focus{border-color:var(--accent);}
-  .form textarea{width:100%;background:var(--surface-soft);border:1px solid var(--border);border-radius:8px;
-        padding:9px 10px;color:var(--text);font-size:14px;margin-bottom:14px;outline:none;resize:vertical;
-        min-height:64px;font-family:inherit;}
-  .form textarea:focus{border-color:var(--accent);}
-  .obs-toggle{background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;
-        display:flex;align-items:center;gap:4px;margin-top:8px;padding:0;}
-  .obs-toggle:hover{color:var(--accent-dark);}
-  .obs-toggle .chev{display:inline-block;transition:transform .15s;font-size:10px;}
-  .obs-toggle.open .chev{transform:rotate(90deg);}
-  .obs-body{margin-top:8px;padding:4px 4px;background:var(--surface-soft);border:1px solid var(--border);
-        border-radius:8px;font-size:13px;color:var(--text);line-height:1.4;}
-  .obs-line{display:flex;align-items:center;justify-content:space-between;gap:8px;
-        padding:6px 10px;border-bottom:1px solid var(--border);}
-  .obs-line:last-child{border-bottom:none;}
-  .obs-line span{word-break:break-word;}
-  .obs-copy-all-row{padding:8px 10px 6px;}
-  .copy-all-btn{width:100%;background:none;border:1px dashed var(--border);color:var(--muted);
-        border-radius:8px;padding:8px;font-size:12px;cursor:pointer;font-family:inherit;}
-  .copy-all-btn:hover{border-color:var(--accent);color:var(--accent-dark);}
-  .obs-attach-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
-  .obs-attach-item{position:relative;width:72px;height:72px;border-radius:8px;overflow:hidden;
-        border:1px solid var(--border);background:var(--surface-soft);}
-  .obs-attach-item img{width:100%;height:100%;object-fit:cover;}
-  .obs-attach-item .file-chip{display:flex;flex-direction:column;align-items:center;justify-content:center;
-        height:100%;font-size:10px;color:var(--muted);text-align:center;padding:4px;word-break:break-all;}
-  .obs-attach-item .remove-attach{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;
-        border:none;border-radius:999px;width:18px;height:18px;font-size:11px;line-height:1;cursor:pointer;}
-  .obs-attach-add{width:72px;height:72px;border-radius:8px;border:1px dashed var(--border);
-        display:flex;align-items:center;justify-content:center;color:var(--muted);cursor:pointer;font-size:20px;}
-  .obs-attach-add:hover{border-color:var(--accent);color:var(--accent-dark);}
-  .obs-view-grid{display:flex;flex-wrap:wrap;gap:8px;padding:8px 10px 4px;}
-  .obs-view-item{width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--border);
-        cursor:pointer;background:var(--card);}
-  .obs-view-item img{width:100%;height:100%;object-fit:cover;}
-  .obs-view-item.file-chip-view{display:flex;align-items:center;justify-content:center;font-size:9px;
-        color:var(--muted);text-align:center;padding:3px;word-break:break-all;}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-  .drop{border:1px dashed var(--border);border-radius:10px;padding:24px;text-align:center;color:var(--muted);
-        cursor:pointer;font-size:13px;margin-bottom:14px;}
-  .drop:hover{border-color:var(--accent);color:var(--accent-dark);}
-  .form-actions{display:flex;justify-content:flex-end;gap:8px;}
-  .btn-secondary{background:none;border:none;color:var(--muted);padding:8px 12px;cursor:pointer;font-size:14px;}
-  .btn-primary{background:var(--accent);border:none;color:#0c2318;padding:8px 16px;border-radius:8px;
-               font-weight:600;font-size:14px;cursor:pointer;font-family:'Poppins',sans-serif;}
-  .btn-primary:hover{background:var(--accent-dark);color:#fff;}
-  .btn-primary:disabled{opacity:.4;cursor:not-allowed;}
-  .empty{text-align:center;padding:56px 20px;border:1px dashed var(--border);border-radius:16px;color:var(--muted);}
-  .footer-note{text-align:center;font-size:11px;color:var(--gray);margin-top:32px;}
-  .lightbox{position:fixed;inset:0;background:rgba(22,53,38,.92);display:flex;flex-direction:column;
-            align-items:center;justify-content:center;z-index:50;padding:24px;}
-  .lightbox img{max-width:100%;max-height:70vh;border-radius:12px;background:#fff;padding:12px;}
-  .lightbox .close{position:absolute;top:16px;right:16px;background:#fff;border:1px solid var(--border);
-                    border-radius:999px;padding:8px;color:var(--accent-dark);cursor:pointer;}
-  .lightbox .dl{margin-top:20px;background:var(--accent);color:#0c2318;border:none;padding:10px 18px;
-                border-radius:8px;font-weight:600;cursor:pointer;font-family:'Poppins',sans-serif;}
-  .lightbox .dl:hover{background:var(--accent-dark);color:#fff;}
-  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--accent-dark);border:1px solid var(--accent-dark);
-         padding:8px 14px;border-radius:8px;font-size:13px;color:#fff;}
-  .masked{letter-spacing:2px;}
+    :root {
+      --primary: #2d5016;
+      --secondary: #4caf50;
+      --light: #f5f5f5;
+      --border: #ddd;
+    }
 
-  .chat-section{margin-top:36px;border-top:1px solid var(--border);padding-top:24px;max-width:640px;}
-  .chat-section h2{font-size:16px;margin:0 0 4px;font-family:'Poppins',sans-serif;color:var(--accent-dark);}
-  .chat-section .sub{margin-bottom:16px;}
-  .chat-name-row{display:flex;gap:8px;margin-bottom:12px;}
-  .chat-name-row input{background:var(--surface-soft);border:1px solid var(--border);border-radius:8px;color:var(--text);
-        padding:8px 10px;font-size:13px;}
-  .chat-name-row input.name-input{width:140px;}
-  .chat-messages{display:flex;flex-direction:column;gap:10px;margin-bottom:12px;max-height:360px;overflow-y:auto;
-        padding-right:4px;}
-  .chat-msg{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;position:relative;}
-  .chat-msg.pinned{border-color:var(--accent-dark);background:var(--surface-soft);}
-  .chat-msg .meta{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;margin-bottom:4px;gap:8px;}
-  .chat-msg .author{color:var(--accent-dark);font-weight:600;}
-  .chat-msg .pin-flag{color:var(--accent-dark);margin-right:4px;}
-  .chat-msg .msg-actions{display:flex;gap:10px;margin-top:6px;}
-  .chat-msg .msg-actions button{background:none;border:none;color:var(--gray);font-size:11px;cursor:pointer;padding:0;}
-  .chat-msg .msg-actions button:hover{color:var(--text);}
-  .chat-msg .msg-actions button.danger:hover{color:#c0392b;}
-  .chat-img{max-width:180px;max-height:180px;border-radius:8px;margin-top:6px;cursor:pointer;background:#fff;padding:4px;display:block;}
-  .chat-empty{color:var(--gray);font-size:13px;text-align:center;padding:20px 0;}
-  .chat-input-row{display:flex;gap:8px;align-items:flex-end;}
-  .chat-input-row input.msg-input{flex:1;background:var(--surface-soft);border:1px solid var(--border);border-radius:8px;
-        color:var(--text);padding:9px 10px;font-size:14px;}
-  .chat-attach-btn{background:var(--surface-soft);border:1px solid var(--border);color:var(--muted);border-radius:8px;
-        padding:0 12px;height:38px;cursor:pointer;font-size:16px;}
-  .chat-attach-btn:hover{color:var(--accent-dark);border-color:var(--accent);}
-  .chat-send{background:var(--accent);border:none;color:#0c2318;padding:0 16px;height:38px;border-radius:8px;font-weight:600;cursor:pointer;font-family:'Poppins',sans-serif;}
-  .chat-send:hover{background:var(--accent-dark);color:#fff;}
-  .chat-send:disabled{opacity:.4;cursor:not-allowed;}
-  .chat-pending-img{display:flex;align-items:center;gap:8px;background:var(--surface-soft);border:1px solid var(--border);
-        border-radius:8px;padding:6px 8px;margin-bottom:8px;font-size:12px;color:var(--muted);}
-  .chat-pending-img img{height:36px;border-radius:4px;background:#fff;}
-  .chat-pending-img button{background:none;border:none;color:#c0392b;cursor:pointer;font-size:12px;margin-left:auto;}
-</style>
+    body {
+      font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+      background: #fafafa;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+      border-bottom: 2px solid var(--primary);
+      padding-bottom: 15px;
+    }
+
+    h1 {
+      color: var(--primary);
+      font-size: 28px;
+    }
+
+    .theme-toggle {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 8px;
+    }
+
+    .subtitle {
+      color: #999;
+      font-size: 13px;
+      margin-bottom: 5px;
+    }
+
+    .cuentas-list {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+
+    .cuenta {
+      background: #f9f9f9;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 15px;
+      transition: all 0.3s;
+    }
+
+    .cuenta:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .cuenta-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .cuenta-name {
+      font-weight: bold;
+      font-size: 16px;
+      color: var(--primary);
+    }
+
+    .cuenta-bank {
+      color: #666;
+      font-size: 13px;
+    }
+
+    .cuenta-details {
+      display: grid;
+      gap: 10px;
+      margin: 10px 0;
+    }
+
+    .cuenta-field {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px;
+      background: white;
+      border-radius: 4px;
+      border: 1px solid #eee;
+    }
+
+    .cuenta-field label {
+      font-size: 12px;
+      color: #999;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .cuenta-field value {
+      font-weight: 600;
+      color: #333;
+      font-family: monospace;
+    }
+
+    .cuenta-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    .btn {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: white;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.3s;
+    }
+
+    .btn:hover {
+      background: var(--secondary);
+      color: white;
+      border-color: var(--secondary);
+    }
+
+    .btn-danger:hover {
+      background: #ff6b6b;
+      border-color: #ff6b6b;
+    }
+
+    /* SECCIÓN DE CHAT/ACTUALIZACIONES */
+    .actualizaciones {
+      background: var(--light);
+      border-top: 2px solid var(--primary);
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 40px;
+    }
+
+    .actualizaciones h2 {
+      color: var(--primary);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .actualizaciones > p {
+      color: #999;
+      font-size: 13px;
+      margin-bottom: 20px;
+    }
+
+    .chat-messages {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 15px;
+      max-height: 300px;
+      overflow-y: auto;
+      min-height: 120px;
+    }
+
+    .mensaje {
+      margin-bottom: 15px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .mensaje:last-child {
+      border-bottom: none;
+    }
+
+    .mensaje-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .mensaje-author {
+      font-weight: bold;
+      color: var(--primary);
+      font-size: 13px;
+    }
+
+    .mensaje-time {
+      color: #999;
+      font-size: 12px;
+    }
+
+    .mensaje-text {
+      color: #333;
+      font-size: 14px;
+      line-height: 1.4;
+      margin-bottom: 8px;
+    }
+
+    .mensaje-image {
+      max-width: 200px;
+      max-height: 200px;
+      border-radius: 4px;
+      margin-top: 8px;
+    }
+
+    .mensaje-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .mensaje-actions button {
+      font-size: 11px;
+      padding: 4px 8px;
+      background: none;
+      border: 1px solid #ddd;
+      border-radius: 3px;
+      cursor: pointer;
+      color: #666;
+    }
+
+    /* CAMPO DE ENTRADA DE MENSAJE */
+    .mensaje-input-area {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .mensaje-form {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+
+    .form-group {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    input[type="text"],
+    textarea {
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 14px;
+      resize: vertical;
+    }
+
+    textarea {
+      min-height: 50px;
+      max-height: 150px;
+    }
+
+    input[type="text"]::placeholder,
+    textarea::placeholder {
+      color: #999;
+    }
+
+    .btn-send {
+      background: var(--secondary);
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.3s;
+    }
+
+    .btn-send:hover {
+      background: #45a049;
+    }
+
+    .btn-attach {
+      background: #f0f0f0;
+      border: 1px solid var(--border);
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.3s;
+    }
+
+    .btn-attach:hover {
+      background: #e0e0e0;
+    }
+
+    /* PREVIEW DE IMAGEN */
+    #image-preview-container {
+      display: none;
+      position: relative;
+      width: fit-content;
+      margin-bottom: 10px;
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      border: 2px solid var(--secondary);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    #image-preview-container img {
+      max-width: 200px;
+      max-height: 200px;
+      border-radius: 6px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .preview-remove-btn {
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      background: #ff6b6b;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      cursor: pointer;
+      font-size: 18px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+
+    .preview-remove-btn:hover {
+      background: #ff5252;
+    }
+
+    .preview-indicator {
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--secondary);
+      text-align: center;
+    }
+
+    .privacy-note {
+      color: #999;
+      font-size: 12px;
+      margin-top: 10px;
+      padding: 10px;
+      background: #fff9e6;
+      border-left: 3px solid #ff9800;
+      border-radius: 4px;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 15px;
+      }
+
+      h1 {
+        font-size: 20px;
+      }
+
+      .mensaje-form {
+        flex-direction: column;
+      }
+
+      .btn-attach {
+        display: none;
+      }
+    }
+
+    /* Dark mode */
+    body.dark {
+      background: #1a1a1a;
+    }
+
+    body.dark .container {
+      background: #2a2a2a;
+      color: #eee;
+    }
+
+    body.dark .cuenta {
+      background: #333;
+    }
+
+    body.dark .cuenta-field {
+      background: #2a2a2a;
+      border-color: #444;
+      color: #eee;
+    }
+
+    body.dark .chat-messages {
+      background: #333;
+      color: #eee;
+    }
+
+    body.dark .mensaje {
+      border-color: #444;
+    }
+
+    body.dark input,
+    body.dark textarea {
+      background: #333;
+      color: #eee;
+      border-color: #444;
+    }
+
+    body.dark .actualizaciones {
+      background: #333;
+      border-color: #444;
+    }
+  </style>
 </head>
 <body>
-<div class="wrap" id="app">
-  <div class="top-row">
-    <div>
-      <h1>CUENTAS THALAMUS</h1>
-      <p class="sub">Guardado en tu Worker de Thalamus — accesible desde cualquier dispositivo con este link, sin necesidad de cuenta.</p>
-    </div>
-    <button class="theme-toggle" id="themeToggle">🌙 Oscuro</button>
-  </div>
-  <div id="list"></div>
-  <button class="add-btn" id="addBtn">+ Agregar cuenta</button>
-  <p class="footer-note">Los datos son visibles para cualquiera que tenga este link. No lo compartas si contiene información sensible.</p>
-
-  <div class="chat-section">
-    <h2>💬 Actualizaciones</h2>
-    <p class="sub">Deja un aviso para los demás con acceso a este link (ej. "cambié el CCI del BCP").</p>
-    <div class="chat-name-row">
-      <input type="text" class="name-input" id="chatName" placeholder="Tu nombre"/>
-    </div>
-    <div class="chat-messages" id="chatMessages"></div>
-    <div id="chatPendingImgBox"></div>
-    <div class="chat-input-row">
-      <input type="file" accept="image/*" id="chatFileInput" style="display:none"/>
-      <button class="chat-attach-btn" id="chatAttachBtn" title="Adjuntar imagen">📷</button>
-      <input type="text" class="msg-input" id="chatInput" placeholder="Escribe un mensaje..." maxlength="500"/>
-      <button class="chat-send" id="chatSend">Enviar</button>
-    </div>
-  </div>
-</div>
-
-<script>
-const API = '/api/cuentas';
-let accounts = [];
-let editingId = null; // null = not editing, 'new' = new form, or account id
-let pendingImage = null;
-let pendingObsFiles = null; // null = "usar los existentes de la cuenta"; array = lista editada en el formulario actual
-
-const ACCENTS = ['#6ebd91','#2d7d5a','#8fd1ab','#4a9873','#a9c9bc','#3f8264'];
-function accentFor(name){
-  const s=(name||'').trim().toLowerCase(); if(!s) return ACCENTS[0];
-  let h=0; for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0;
-  return ACCENTS[h%ACCENTS.length];
-}
-function maskNumber(num){
-  if(!num) return '';
-  const d=num.replace(/\s/g,'');
-  if(d.length<=7) return d;
-  return d.slice(0,3)+' •••• '+d.slice(-4);
-}
-function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
-function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function renderObsLines(obs){
-  const lines = obs.split('\n').map(l=>l.trim()).filter(Boolean);
-  if(lines.length===0) return '';
-  return lines.map(line => `
-    <div class="obs-line">
-      <span>${escapeHtml(line)}</span>
-      <button class="icon-btn copy-btn" data-copy="${escapeHtml(line)}" title="Copiar">📋</button>
-    </div>
-  `).join('');
-}
-
-async function load(){
-  try{
-    const res = await fetch(API);
-    const data = await res.json();
-    accounts = data.accounts || [];
-  }catch(e){ accounts = []; }
-  render();
-}
-
-async function persist(){
-  await fetch(API, {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ accounts })
-  });
-}
-
-function toast(msg){
-  const t=document.createElement('div'); t.className='toast'; t.textContent=msg;
-  document.body.appendChild(t); setTimeout(()=>t.remove(),1400);
-}
-
-function render(){
-  const list = document.getElementById('list');
-  if(editingId === 'new'){
-    list.innerHTML = renderForm(null) + accounts.map(renderCard).join('');
-  } else {
-    if(accounts.length===0){
-      list.innerHTML = '<div class="empty">Todavía no agregaste ninguna cuenta.<br/><span style="font-size:12px">Agrega la primera con el botón de abajo.</span></div>';
-    } else {
-      list.innerHTML = accounts.map(a => editingId===a.id ? renderForm(a) : renderCard(a)).join('');
-    }
-  }
-  attachHandlers();
-}
-
-function renderCard(a){
-  const accent = accentFor(a.bank);
-  const revealed = a._revealed;
-  const acc = a.accountNumber ? (revealed ? a.accountNumber : maskNumber(a.accountNumber)) : '—';
-  const cci = a.cci ? (revealed ? a.cci : maskNumber(a.cci)) : '—';
-  return `
-  <div class="card" data-id="${a.id}">
-    <div class="accent-bar" style="background:${accent}"></div>
-    <div class="info">
-      <div class="bank-row">🏛️ ${escapeHtml(a.bank)} ${a.alias? `<span class="alias">· ${escapeHtml(a.alias)}</span>`:''}</div>
-      <div class="field-row"><span class="field-label">Cuenta</span><span class="field-value">${escapeHtml(acc)}</span>
-        ${a.accountNumber?`<button class="icon-btn copy-btn" data-copy="${escapeHtml(a.accountNumber)}" title="Copiar">📋</button>`:''}
+  <div class="container">
+    <!-- HEADER -->
+    <header>
+      <div>
+        <h1>🏛️ CUENTAS THALAMUS</h1>
+        <p class="subtitle">Guardado en tu Worker de Thalamus — accesible desde cualquier dispositivo con este link, sin necesidad de contraseña</p>
       </div>
-      <div class="field-row"><span class="field-label">CCI</span><span class="field-value">${escapeHtml(cci)}</span>
-        ${a.cci?`<button class="icon-btn copy-btn" data-copy="${escapeHtml(a.cci)}" title="Copiar">📋</button>`:''}
+      <button class="theme-toggle" onclick="toggleDarkMode()">🌙 Oscuro</button>
+    </header>
+
+    <!-- LISTA DE CUENTAS -->
+    <div class="cuentas-list" id="cuentasList"></div>
+
+    <!-- SECCIÓN DE ACTUALIZACIONES -->
+    <section class="actualizaciones">
+      <h2>💬 Actualizaciones</h2>
+      <p>Deja un aviso para los demás con acceso a este link (ej. "cambié el CCI del BCP"). Ahora también puedes pegar imágenes con <strong>Ctrl+V</strong> o arrastrarlas.</p>
+
+      <!-- ZONA DE MENSAJES -->
+      <div class="chat-messages" id="chatMessages"></div>
+
+      <!-- CONTENEDOR PARA PREVIEW DE IMAGEN PEGADA -->
+      <div id="image-preview-container">
+        <!-- El preview se genera dinámicamente aquí -->
       </div>
-      <div class="actions">
-        <button class="reveal-btn" data-id="${a.id}">${revealed?'🙈 Ocultar':'👁 Mostrar'}</button>
-        <button class="edit-btn" data-id="${a.id}">✏️ Editar</button>
-        <button class="danger del-btn" data-id="${a.id}">🗑 Eliminar</button>
-        <button class="move-btn" data-id="${a.id}" data-dir="up" title="Subir">⬆️</button>
-        <button class="move-btn" data-id="${a.id}" data-dir="down" title="Bajar">⬇️</button>
-      </div>
-      ${(a.obs && a.obs.trim()) || (a.obsFiles && a.obsFiles.length) ? `
-        <button class="obs-toggle ${a._obsOpen?'open':''}" data-id="${a.id}">
-          <span class="chev">▶</span> ${a._obsOpen?'Ocultar observaciones':'Ver observaciones'}
-        </button>
-        ${a._obsOpen ? `
-          <div class="obs-body">
-            ${a.obs && a.obs.trim() ? renderObsLines(a.obs) : ''}
-            ${a.obs && a.obs.trim() ? `
-              <div class="obs-copy-all-row">
-                <button class="copy-btn copy-all-btn" data-copy="${escapeHtml(a.obs)}">📋 Copiar todo</button>
-              </div>
-            ` : ''}
-            ${a.obsFiles && a.obsFiles.length ? renderObsFilesView(a) : ''}
+
+      <!-- FORMULARIO DE MENSAJE -->
+      <div class="mensaje-input-area">
+        <div class="form-group">
+          <input type="text" id="authorInput" placeholder="Tu nombre" maxlength="40" />
+        </div>
+
+        <div class="mensaje-form">
+          <button class="btn-attach" title="Adjuntar imagen">📎</button>
+          <div class="form-group">
+            <textarea id="messageInput" placeholder="Escribe un mensaje... (puedes pegar imágenes con Ctrl+V)" maxlength="500"></textarea>
           </div>
-        ` : ''}
-      ` : ''}
-    </div>
-    ${a.image
-      ? `<div class="qr-wrap open-lightbox" data-id="${a.id}"><img src="${a.image}" alt="QR"/></div>`
-      : `<div class="qr-empty">QR</div>`}
-  </div>`;
-}
+          <button class="btn-send" onclick="enviarMensaje()">Enviar</button>
+        </div>
+      </div>
 
-function renderForm(a){
-  const id = a? a.id : 'new';
-  const image = a? a.image : pendingImage;
-  return `
-  <div class="form" data-form-id="${id}">
-    <div class="grid2">
-      <div><label>Banco</label><input type="text" class="f-bank" placeholder="Interbank" value="${a?escapeHtml(a.bank):''}"/></div>
-      <div><label>Alias (opcional)</label><input type="text" class="f-alias" placeholder="Cuenta sueldo" value="${a?escapeHtml(a.alias||''):''}"/></div>
-    </div>
-    <label>Número de cuenta</label>
-    <input type="text" class="f-account" placeholder="191-xxxxxxxx-x-xx" value="${a?escapeHtml(a.accountNumber||''):''}"/>
-    <label>CCI</label>
-    <input type="text" class="f-cci" placeholder="003-191-xxxxxxxxxxxx-xx" value="${a?escapeHtml(a.cci||''):''}"/>
-    <label>Observaciones (opcional)</label>
-    <textarea class="f-obs" placeholder="Notas, horarios, condiciones especiales...">${a?escapeHtml(a.obs||''):''}</textarea>
-    <label>Adjuntos de observaciones (fotos o archivos)</label>
-    ${renderObsAttachEditor(a)}
-    <label>Imagen / QR</label>
-    ${image
-      ? `<div style="margin-bottom:14px;"><img src="${image}" style="height:130px;border-radius:8px;border:1px solid var(--border);background:#fff;padding:6px;" class="preview-img"/>
-         <button class="btn-secondary remove-img-btn">Quitar imagen</button></div>`
-      : `<div class="drop file-trigger">📷 Subir imagen del QR o captura</div>
-         <input type="file" accept="image/*" class="file-input" style="display:none"/>`}
-    <div class="form-actions">
-      <button class="btn-secondary cancel-form-btn">Cancelar</button>
-      <button class="btn-primary save-form-btn">Guardar</button>
-    </div>
-  </div>`;
-}
+      <p class="privacy-note">
+        ⚠️ <strong>Privacidad:</strong> Los datos son visibles para cualquiera que tenga este link. No lo compartas si contiene información sensible.
+      </p>
+    </section>
+  </div>
 
-function renderObsAttachEditor(a){
-  const files = pendingObsFiles !== null ? pendingObsFiles : (a?.obsFiles || []);
-  const items = files.map((f, idx) => `
-    <div class="obs-attach-item">
-      ${f.type && f.type.startsWith('image/')
-        ? `<img src="${f.data}"/>`
-        : `<div class="file-chip">📄<br/>${escapeHtml(f.name||'archivo')}</div>`}
-      <button class="remove-attach" data-idx="${idx}" title="Quitar">✕</button>
-    </div>
-  `).join('');
-  return `
-    <div class="obs-attach-grid">
-      ${items}
-      <label class="obs-attach-add">
-        +
-        <input type="file" accept="image/*,.pdf,.doc,.docx" multiple class="obs-file-input" style="display:none"/>
-      </label>
-    </div>
-  `;
-}
+  <script>
+    let pastedImage = null;
+    const messageInput = document.getElementById('messageInput');
+    const imagePreviewContainer = document.getElementById('image-preview-container');
 
-function renderObsFilesView(a){
-  const items = (a.obsFiles || []).map((f, idx) => {
-    const isImg = f.type && f.type.startsWith('image/');
-    return isImg
-      ? `<div class="obs-view-item obs-view-open" data-id="${a.id}" data-idx="${idx}"><img src="${f.data}"/></div>`
-      : `<a class="obs-view-item file-chip-view" href="${f.data}" download="${escapeHtml(f.name||'archivo')}">📄<br/>${escapeHtml(f.name||'archivo')}</a>`;
-  }).join('');
-  return `<div class="obs-view-grid">${items}</div>`;
-}
+    // ========== FUNCIONALIDAD DE PEGADO DE IMÁGENES ==========
+    messageInput.addEventListener('paste', async (e) => {
+      const items = (e.clipboardData || e.originalEvent.clipboardData).items;
 
-function attachHandlers(){
-  document.getElementById('list').querySelectorAll('.copy-btn').forEach(btn=>{
-    btn.onclick = ()=>{ navigator.clipboard.writeText(btn.dataset.copy); toast('Copiado'); };
-  });
-  document.getElementById('list').querySelectorAll('.reveal-btn').forEach(btn=>{
-    btn.onclick = ()=>{
-      const acc = accounts.find(a=>a.id===btn.dataset.id);
-      acc._revealed = !acc._revealed; render();
-    };
-  });
-  document.getElementById('list').querySelectorAll('.edit-btn').forEach(btn=>{
-    btn.onclick = ()=>{ editingId = btn.dataset.id; pendingImage=null; pendingObsFiles=null; render(); };
-  });
-  document.getElementById('list').querySelectorAll('.del-btn').forEach(btn=>{
-    btn.onclick = async ()=>{
-      const acc = accounts.find(a=>a.id===btn.dataset.id);
-      const label = acc ? `${acc.bank}${acc.alias?' · '+acc.alias:''}` : 'esta cuenta';
-      if(!confirm(`¿Eliminar ${label}? Esta acción no se puede deshacer.`)) return;
-      accounts = accounts.filter(a=>a.id!==btn.dataset.id);
-      render(); await persist();
-    };
-  });
-  document.getElementById('list').querySelectorAll('.open-lightbox').forEach(el=>{
-    el.onclick = ()=>{
-      const acc = accounts.find(a=>a.id===el.dataset.id);
-      openLightbox(acc.image, acc.bank);
-    };
-  });
-  document.getElementById('list').querySelectorAll('.obs-view-open').forEach(el=>{
-    el.onclick = ()=>{
-      const acc = accounts.find(a=>a.id===el.dataset.id);
-      const file = acc?.obsFiles?.[Number(el.dataset.idx)];
-      if(file) openLightbox(file.data, file.name || acc.bank);
-    };
-  });
-  document.getElementById('list').querySelectorAll('.cancel-form-btn').forEach(btn=>{
-    btn.onclick = ()=>{ editingId=null; pendingImage=null; pendingObsFiles=null; render(); };
-  });
-  document.getElementById('list').querySelectorAll('.remove-img-btn').forEach(btn=>{
-    btn.onclick = ()=>{ pendingImage=null; const form=btn.closest('.form'); const acc=accounts.find(a=>a.id===form.dataset.formId); if(acc) acc.image=null; render(); };
-  });
-  document.getElementById('list').querySelectorAll('.file-trigger').forEach(el=>{
-    el.onclick = ()=>{ el.nextElementSibling.click(); };
-  });
-  document.getElementById('list').querySelectorAll('.file-input').forEach(input=>{
-    input.onchange = async ()=>{
-      const file = input.files[0]; if(!file) return;
-      if(!file.type.startsWith('image/')){ toast('Eso no es una imagen'); return; }
-      if(file.size > 4.5*1024*1024){ toast('Imagen muy pesada (máx ~4.5MB)'); return; }
-      const reader = new FileReader();
-      reader.onload = () => { pendingImage = reader.result; render(); };
-      reader.readAsDataURL(file);
-    };
-  });
-  document.getElementById('list').querySelectorAll('.obs-file-input').forEach(input=>{
-    input.onchange = async ()=>{
-      const form = input.closest('.form');
-      const id = form.dataset.formId;
-      const acc = id!=='new' ? accounts.find(a=>a.id===id) : null;
-      const current = pendingObsFiles !== null ? pendingObsFiles : (acc?.obsFiles ? [...acc.obsFiles] : []);
-      for(const file of input.files){
-        if(file.size > 4.5*1024*1024){ toast(`"${file.name}" pesa demasiado (máx ~4.5MB)`); continue; }
-        const dataUrl = await new Promise((res, rej)=>{
+      for (let item of items) {
+        if (item.kind === 'file' && item.type.includes('image/')) {
+          e.preventDefault();
+
+          const file = item.getAsFile();
           const reader = new FileReader();
-          reader.onload = ()=>res(reader.result);
-          reader.onerror = rej;
+
+          reader.onload = (event) => {
+            pastedImage = {
+              dataUrl: event.target.result,
+              file: file,
+              filename: `imagen_${Date.now()}.${file.type.split('/')[1]}`
+            };
+
+            showImagePreview(event.target.result);
+            messageInput.focus();
+          };
+
           reader.readAsDataURL(file);
-        });
-        current.push({ name: file.name, type: file.type, data: dataUrl });
+        }
       }
-      pendingObsFiles = current;
-      input.value = '';
-      render();
-    };
-  });
-  document.getElementById('list').querySelectorAll('.remove-attach').forEach(btn=>{
-    btn.onclick = ()=>{
-      const form = btn.closest('.form');
-      const id = form.dataset.formId;
-      const acc = id!=='new' ? accounts.find(a=>a.id===id) : null;
-      const current = pendingObsFiles !== null ? pendingObsFiles : (acc?.obsFiles ? [...acc.obsFiles] : []);
-      current.splice(Number(btn.dataset.idx), 1);
-      pendingObsFiles = current;
-      render();
-    };
-  });
-  document.getElementById('list').querySelectorAll('.move-btn').forEach(btn=>{
-    btn.onclick = async ()=>{
-      const idx = accounts.findIndex(a=>a.id===btn.dataset.id);
-      const dir = btn.dataset.dir;
-      const target = dir==='up' ? idx-1 : idx+1;
-      if(target<0 || target>=accounts.length) return;
-      [accounts[idx], accounts[target]] = [accounts[target], accounts[idx]];
-      render();
-      await persist();
-    };
-  });
-  document.getElementById('list').querySelectorAll('.obs-toggle').forEach(btn=>{
-    btn.onclick = ()=>{
-      const acc = accounts.find(a=>a.id===btn.dataset.id);
-      acc._obsOpen = !acc._obsOpen; render();
-    };
-  });
-  document.getElementById('list').querySelectorAll('.save-form-btn').forEach(btn=>{
-    btn.onclick = async ()=>{
-      const form = btn.closest('.form');
-      const id = form.dataset.formId;
-      const bank = form.querySelector('.f-bank').value.trim();
-      if(!bank){ toast('Falta el nombre del banco'); return; }
-      const alias = form.querySelector('.f-alias').value.trim();
-      const accountNumber = form.querySelector('.f-account').value.trim();
-      const cci = form.querySelector('.f-cci').value.trim();
-      const obs = form.querySelector('.f-obs').value.trim();
-      let image = pendingImage;
-      if(image===null && id!=='new'){
-        const existing = accounts.find(a=>a.id===id);
-        image = existing ? existing.image : null;
-      }
-      let obsFiles = pendingObsFiles;
-      if(obsFiles===null && id!=='new'){
-        const existing = accounts.find(a=>a.id===id);
-        obsFiles = existing ? (existing.obsFiles || []) : [];
-      }
-      if(obsFiles===null) obsFiles = [];
-      if(id==='new'){
-        accounts.unshift({ id: uid(), bank, alias, accountNumber, cci, obs, obsFiles, image, updatedAt: Date.now() });
-      } else {
-        const acc = accounts.find(a=>a.id===id);
-        Object.assign(acc, { bank, alias, accountNumber, cci, obs, obsFiles, image, updatedAt: Date.now() });
-      }
-      editingId = null; pendingImage = null; pendingObsFiles = null;
-      render();
-      await persist();
-    };
-  });
-}
+    });
 
-function openLightbox(src, bank){
-  const box = document.createElement('div');
-  box.className='lightbox';
-  box.innerHTML = `
-    <button class="close">✕</button>
-    <img src="${src}"/>
-    <button class="dl">⬇ Descargar imagen</button>
-  `;
-  box.onclick = (e)=>{ if(e.target===box) box.remove(); };
-  box.querySelector('.close').onclick = ()=>box.remove();
-  box.querySelector('.dl').onclick = (e)=>{
-    e.stopPropagation();
-    const a=document.createElement('a'); a.href=src; a.download=(bank||'cuenta')+'-qr.png';
-    document.body.appendChild(a); a.click(); a.remove();
-  };
-  document.body.appendChild(box);
-}
-
-// ── Tema claro / oscuro ──────────────────────────────────────────────────
-const themeBtn = document.getElementById('themeToggle');
-function applyTheme(mode){
-  if(mode === 'dark'){
-    document.documentElement.setAttribute('data-theme', 'dark');
-    themeBtn.textContent = '☀️ Claro';
-  } else {
-    document.documentElement.removeAttribute('data-theme');
-    themeBtn.textContent = '🌙 Oscuro';
-  }
-}
-const savedTheme = localStorage.getItem('cuentas_theme');
-const systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-applyTheme(savedTheme || (systemPrefersDark ? 'dark' : 'light'));
-themeBtn.onclick = ()=>{
-  const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
-  const next = current === 'dark' ? 'light' : 'dark';
-  localStorage.setItem('cuentas_theme', next);
-  applyTheme(next);
-};
-
-document.getElementById('addBtn').onclick = ()=>{ editingId='new'; pendingImage=null; pendingObsFiles=null; render(); };
-
-// ── Chat / retroalimentación ─────────────────────────────────────────────
-const CHAT_API = '/api/chat';
-let chatMessages = [];
-let lastChatSignature = '';
-let chatPendingImage = null;
-
-const chatNameEl = document.getElementById('chatName');
-chatNameEl.value = localStorage.getItem('cuentas_chat_name') || '';
-chatNameEl.addEventListener('change', ()=> localStorage.setItem('cuentas_chat_name', chatNameEl.value.trim()));
-
-function renderChatPendingImage(){
-  const box = document.getElementById('chatPendingImgBox');
-  if(!chatPendingImage){ box.innerHTML=''; return; }
-  box.innerHTML = `<div class="chat-pending-img"><img src="${chatPendingImage}"/><span>Imagen lista para enviar</span><button id="chatRemoveImg">Quitar</button></div>`;
-  document.getElementById('chatRemoveImg').onclick = ()=>{ chatPendingImage=null; renderChatPendingImage(); };
-}
-
-document.getElementById('chatAttachBtn').onclick = ()=> document.getElementById('chatFileInput').click();
-document.getElementById('chatFileInput').addEventListener('change', (e)=>{
-  const file = e.target.files[0]; if(!file) return;
-  if(!file.type.startsWith('image/')){ toast('Eso no es una imagen'); return; }
-  if(file.size > 4.5*1024*1024){ toast('Imagen muy pesada (máx ~4.5MB)'); return; }
-  const reader = new FileReader();
-  reader.onload = () => { chatPendingImage = reader.result; renderChatPendingImage(); };
-  reader.readAsDataURL(file);
-  e.target.value='';
-});
-
-function renderChat(){
-  const box = document.getElementById('chatMessages');
-  if(chatMessages.length===0){
-    box.innerHTML = '<div class="chat-empty">Todavía no hay mensajes.</div>';
-    return;
-  }
-  const pinned = chatMessages.filter(m=>m.pinned);
-  const rest = chatMessages.filter(m=>!m.pinned);
-  const ordered = [...pinned, ...rest];
-  box.innerHTML = ordered.map(renderChatMsg).join('');
-
-  box.querySelectorAll('.chat-img').forEach(img=>{
-    img.onclick = ()=> openLightbox(img.dataset.full, 'imagen-chat');
-  });
-  box.querySelectorAll('.pin-btn').forEach(btn=>{
-    btn.onclick = ()=> chatAction({ action:'pin', id: btn.dataset.id, pinned: btn.dataset.pinned !== 'true' });
-  });
-  box.querySelectorAll('.del-msg-btn').forEach(btn=>{
-    btn.onclick = ()=>{ if(confirm('¿Eliminar este mensaje?')) chatAction({ action:'delete', id: btn.dataset.id }); };
-  });
-}
-
-function renderChatMsg(m){
-  return `
-    <div class="chat-msg ${m.pinned?'pinned':''}">
-      <div class="meta">
-        <span><span class="author">${m.pinned?'<span class="pin-flag">📌</span>':''}${escapeHtml(m.author||'Anónimo')}</span></span>
-        <span>${new Date(m.ts).toLocaleString('es-PE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>
-      </div>
-      ${m.text? `<div>${escapeHtml(m.text)}</div>` : ''}
-      ${m.image? `<img class="chat-img" src="${m.image}" data-full="${m.image}"/>` : ''}
-      <div class="msg-actions">
-        <button class="pin-btn" data-id="${m.id}" data-pinned="${!!m.pinned}">${m.pinned?'Desfijar':'📌 Fijar'}</button>
-        <button class="del-msg-btn danger" data-id="${m.id}">🗑 Eliminar</button>
-      </div>
-    </div>`;
-}
-
-async function loadChat(){
-  try{
-    const res = await fetch(CHAT_API);
-    const data = await res.json();
-    const msgs = data.messages || [];
-    const sig = JSON.stringify(msgs.map(m=>m.id+':'+m.pinned));
-    if(sig !== lastChatSignature){
-      chatMessages = msgs;
-      lastChatSignature = sig;
-      renderChat();
+    // ========== MOSTRAR PREVIEW DE IMAGEN ==========
+    function showImagePreview(dataUrl) {
+      imagePreviewContainer.innerHTML = `
+        <img src="${dataUrl}" alt="Preview" />
+        <button type="button" class="preview-remove-btn" onclick="removeImagePreview()" title="Eliminar imagen">✕</button>
+        <div class="preview-indicator">✓ Imagen lista para enviar</div>
+      `;
+      imagePreviewContainer.style.display = 'block';
     }
-  }catch(e){ /* silencioso, reintenta en el próximo poll */ }
-}
 
-async function chatAction(body){
-  try{
-    await fetch(CHAT_API, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(body)
+    function removeImagePreview() {
+      imagePreviewContainer.innerHTML = '';
+      imagePreviewContainer.style.display = 'none';
+      pastedImage = null;
+    }
+
+    window.removeImagePreview = removeImagePreview;
+
+    // ========== DRAG & DROP ==========
+    messageInput.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      messageInput.style.backgroundColor = '#f0fdf4';
+      messageInput.style.borderColor = 'var(--secondary)';
     });
-    lastChatSignature = '';
-    await loadChat();
-  }catch(e){ toast('No se pudo completar la acción'); }
-}
 
-async function sendChat(){
-  const input = document.getElementById('chatInput');
-  const text = input.value.trim();
-  if(!text && !chatPendingImage) return;
-  const author = chatNameEl.value.trim() || 'Anónimo';
-  localStorage.setItem('cuentas_chat_name', author);
-  const image = chatPendingImage;
-  input.value=''; chatPendingImage=null; renderChatPendingImage();
-  document.getElementById('chatSend').disabled = true;
-  try{
-    await fetch(CHAT_API, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ action:'send', author, text, image })
+    messageInput.addEventListener('dragleave', () => {
+      messageInput.style.backgroundColor = '';
+      messageInput.style.borderColor = 'var(--border)';
     });
-    lastChatSignature = '';
-    await loadChat();
-  }catch(e){ toast('No se pudo enviar, intenta de nuevo'); }
-  document.getElementById('chatSend').disabled = false;
-}
 
-document.getElementById('chatSend').onclick = sendChat;
-document.getElementById('chatInput').addEventListener('keydown', (e)=>{
-  if(e.key==='Enter') sendChat();
-});
+    messageInput.addEventListener('drop', (e) => {
+      e.preventDefault();
+      messageInput.style.backgroundColor = '';
+      messageInput.style.borderColor = 'var(--border)';
 
-loadChat();
-setInterval(loadChat, 4000);
+      const files = e.dataTransfer.files;
+      for (let file of files) {
+        if (file.type.includes('image/')) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            pastedImage = {
+              dataUrl: event.target.result,
+              file: file,
+              filename: `imagen_${Date.now()}.${file.type.split('/')[1]}`
+            };
+            showImagePreview(event.target.result);
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+    });
 
+    // ========== ENVIAR MENSAJE ==========
+    async function enviarMensaje() {
+      const author = document.getElementById('authorInput').value.trim() || 'Anónimo';
+      const text = document.getElementById('messageInput').value.trim();
 
+      if (!text && !pastedImage) {
+        alert('Escribe un mensaje o pega una imagen');
+        return;
+      }
 
-load();
-</script>
+      try {
+        const payload = {
+          action: 'send',
+          author: author,
+          text: text,
+          image: pastedImage ? pastedImage.dataUrl : null
+        };
+
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (data.ok) {
+          document.getElementById('messageInput').value = '';
+          document.getElementById('authorInput').value = '';
+          pastedImage = null;
+          imagePreviewContainer.innerHTML = '';
+          imagePreviewContainer.style.display = 'none';
+
+          cargarMensajes();
+          alert('✓ Mensaje enviado exitosamente');
+        } else {
+          alert('Error: ' + (data.error || 'No se pudo enviar'));
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al enviar: ' + error.message);
+      }
+    }
+
+    window.enviarMensaje = enviarMensaje;
+
+    // ========== CARGAR MENSAJES ==========
+    async function cargarMensajes() {
+      try {
+        const response = await fetch('/api/chat');
+        const data = await response.json();
+
+        if (data.ok && data.messages) {
+          const chatMessages = document.getElementById('chatMessages');
+          chatMessages.innerHTML = '';
+
+          data.messages.forEach((msg) => {
+            const div = document.createElement('div');
+            div.className = 'mensaje';
+            div.innerHTML = `
+              <div class="mensaje-header">
+                <span class="mensaje-author">${escapeHtml(msg.author)}</span>
+                <span class="mensaje-time">${formatTime(msg.ts)}</span>
+              </div>
+              ${msg.text ? `<div class="mensaje-text">${escapeHtml(msg.text)}</div>` : ''}
+              ${msg.image ? `<img src="${msg.image}" alt="Imagen" class="mensaje-image" />` : ''}
+              <div class="mensaje-actions">
+                ${msg.pinned ? '<span style="color:var(--secondary)">📌 Fijado</span>' : ''}
+                <button onclick="togglePin('${msg.id}', ${!msg.pinned})">📌 ${msg.pinned ? 'Desfijar' : 'Fijar'}</button>
+                <button onclick="deleteMensaje('${msg.id}')" class="btn-danger">🗑 Eliminar</button>
+              </div>
+            `;
+            chatMessages.appendChild(div);
+          });
+
+          chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+      } catch (error) {
+        console.error('Error cargando mensajes:', error);
+      }
+    }
+
+    // ========== ELIMINAR MENSAJE ==========
+    async function deleteMensaje(id) {
+      if (!confirm('¿Eliminar este mensaje?')) return;
+
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'delete', id })
+        });
+
+        const data = await response.json();
+        if (data.ok) {
+          cargarMensajes();
+        }
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    }
+
+    window.deleteMensaje = deleteMensaje;
+
+    // ========== FIJAR/DESFIJAR MENSAJE ==========
+    async function togglePin(id, pinned) {
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'pin', id, pinned })
+        });
+
+        const data = await response.json();
+        if (data.ok) {
+          cargarMensajes();
+        }
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    }
+
+    window.togglePin = togglePin;
+
+    // ========== UTILIDADES ==========
+    function escapeHtml(text) {
+      const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      };
+      return text.replace(/[&<>"']/g, (m) => map[m]);
+    }
+
+    function formatTime(ts) {
+      const date = new Date(ts);
+      const day = date.getDate();
+      const month = date.getMonth() + 1;
+      const hours = String(date.getHours()).padStart(2, '0');
+      const mins = String(date.getMinutes()).padStart(2, '0');
+      return `${day}/${month}, ${hours}:${mins} p. m.`;
+    }
+
+    function toggleDarkMode() {
+      document.body.classList.toggle('dark');
+      localStorage.setItem('darkMode', document.body.classList.contains('dark'));
+    }
+
+    // Cargar preferencia de dark mode
+    if (localStorage.getItem('darkMode') === 'true') {
+      document.body.classList.add('dark');
+    }
+
+    // Cargar mensajes al iniciar
+    cargarMensajes();
+    setInterval(cargarMensajes, 3000); // Recargar cada 3 segundos
+  </script>
 </body>
 </html>
