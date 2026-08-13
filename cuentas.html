@@ -1,4 +1,4 @@
-0fc7622fb4b841d66e7d2899bc93cbbed7c8c6d2<!doctype html>
+<!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
@@ -581,6 +581,22 @@ document.getElementById('chatFileInput').addEventListener('change', (e)=>{
   reader.onload = () => { chatPendingImage = reader.result; renderChatPendingImage(); };
   reader.readAsDataURL(file);
   e.target.value='';
+});
+
+document.getElementById('chatInput').addEventListener('paste', (e)=>{
+  const items = e.clipboardData?.items;
+  if(!items) return;
+  for(let item of items){
+    if(item.type.startsWith('image/')){
+      e.preventDefault();
+      const file = item.getAsFile();
+      if(file.size > 4.5*1024*1024){ toast('Imagen muy pesada (máx ~4.5MB)'); return; }
+      const reader = new FileReader();
+      reader.onload = () => { chatPendingImage = reader.result; renderChatPendingImage(); };
+      reader.readAsDataURL(file);
+      return;
+    }
+  }
 });
 
 function renderChat(){
