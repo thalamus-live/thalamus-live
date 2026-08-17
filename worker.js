@@ -319,7 +319,7 @@ export default {
     // ── Sirve sw.js (Service Worker para notificaciones push) ───────────────
     if (url.pathname === '/sw.js') {
       const swUrl = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/sw.js';
-      const swResp = await fetch(swUrl, { cf: { cacheEverything: false } });
+      const swResp = await fetch(swUrl, { cf: { cacheEverything: true, cacheTtl: 300 } });
       const swBody = await swResp.text();
       return new Response(swBody, {
         headers: {
@@ -395,10 +395,9 @@ export default {
     }
 
     if (url.pathname === '/esquina-radar') {
-      const erUrl = `https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/esquina-radar.html?bust=${Date.now()}`;
+      const erUrl = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/esquina-radar.html';
       const erResponse = await fetch(erUrl, {
-        cf: { cacheEverything: false, cacheTtl: 0 },
-        headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
+        cf: { cacheEverything: true, cacheTtl: 60 },
       });
       const erHtml = await erResponse.text();
       return new Response(erHtml, {
@@ -412,10 +411,9 @@ export default {
 
     // ── Mis cuentas (bank account wallet) ──────────────────────────────────
     if (url.pathname === '/mis-cuentas') {
-      const cuUrl = `https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/cuentas.html?bust=${Date.now()}`;
+      const cuUrl = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/cuentas.html';
       const cuResponse = await fetch(cuUrl, {
-        cf: { cacheEverything: false },
-        headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
+        cf: { cacheEverything: true, cacheTtl: 60 },
       });
       const cuHtml = await cuResponse.text();
       return new Response(cuHtml, {
@@ -438,8 +436,7 @@ export default {
     // ── Sirve index.html desde GitHub (comportamiento original) ────────────
     const htmlUrl  = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/index.html';
     const response = await fetch(htmlUrl, {
-      cf: { cacheEverything: false },
-      headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
+      cf: { cacheEverything: true, cacheTtl: 60 },
     });
     const html = await response.text();
     return new Response(html, {
