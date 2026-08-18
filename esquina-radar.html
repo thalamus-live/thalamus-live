@@ -2624,6 +2624,131 @@ function estimateEV(prob){
 // matters is this odds floor: it rejects "obvious" near-certain lines (e.g. Under
 // 2.5 goals @ 90% → ~1.05 cuota) that have negligible real payout or often don't
 // even exist as a live market.
+/* ===== OddsPapi: cuotas reales EN VIVO de casas peruanas (ago2026) =====
+   Reemplaza la validacion contra The Odds API (region eu, pre-partido).
+   Modo A: consulta BAJO DEMANDA -- solo cuando hay senal candidata.       */
+const ODDSPAPI_KEY  = '574a4cd1-0d27-4891-a241-47d9131797db';
+const ODDSPAPI_BOOK = 'apuestatotal';           // casa donde apuesta Atlas
+const ODDSPAPI_MAX_AGE_MS = 10 * 60 * 1000;     // precio mas viejo que esto = rancio
+const ODDSPAPI_TTL_MS     = 5 * 60 * 1000;      // cache por torneo
+
+// Liga (texto de ESPN) -> tournamentId de OddsPapi. Verificados 18/8/2026.
+const ODDSPAPI_TOURNAMENTS = [
+  [/brasileir[ao].*(serie a|série a)|^brasileirao$/i, 325],
+  [/brasileir[ao].*(serie b|série b)/i, 390],
+  [/argentin/i, 155],
+  [/per[uú].*liga 1|liga 1.*per[uú]/i, 406],
+  [/venezuel/i, 231],
+  [/colombia/i, 241],
+  [/ecuador|ligapro/i, 240],
+  [/chile/i, 244],
+  [/uruguay/i, 278],
+  [/paraguay/i, 693],
+  [/libertadores/i, 384],
+  [/sudamericana/i, 480],
+  [/champions league|uefa champions/i, 7],
+  [/europa league/i, 679],
+];
+
+// linea -> {over, under} outcomeId. Extraidos de /v4/markets.
+const OP_GOALS = {0.5:106, 1.5:108, 2.5:1010, 3.5:1012, 4.5:1014, 5.5:1016};
+const OP_CORNERS = {3.5:10779, 4.5:10783, 5.5:10787, 6.5:10791, 7.5:10795,
+                    8.5:10799, 9.5:10803, 10.5:10807, 11.5:10811, 12.5:10815, 13.5:10819};
+
+let opParticipants = null;       // id -> nombre
+let opPartLoading = false;
+const opOddsCache = {};          // tournamentId -> {ts, fixtures}
+const opInFlight = new Set();
+
+function opTournamentId(league){
+  const L = String(league || '');
+  for(const [re, id] of ODDSPAPI_TOURNAMENTS){ if(re.test(L)) return id; }
+  return null;
+}
+
+async function opLoadParticipants(){
+  if(opParticipants || opPartLoading) return;
+  opPartLoading = true;
+  try {
+    const cached = localStorage.getItem('opParticipants');
+    const cachedAt = +(localStorage.getItem('opParticipantsAt') || 0);
+    if(cached && (Date.now() - cachedAt) < 7*24*3600*1000){
+      opParticipants = JSON.parse(cached); return;
+    }
+    const r = await fetch(`https://api.oddspapi.io/v4/participants?sportId=10&apiKey=${ODDSPAPI_KEY}`);
+    if(!r.ok) return;
+    const d = await r.json();
+    opParticipants = d;
+    try {
+      localStorage.setItem('opParticipants', JSON.stringify(d));
+      localStorage.setItem('opParticipantsAt', String(Date.now()));
+    } catch(e){}
+  } catch(e){} finally { opPartLoading = false; }
+}
+
+// Dispara la carga de cuotas de un torneo. No bloquea: el render siguiente ya la usa.
+async function opFetchTournament(tid){
+  if(!tid || opInFlight.has(tid)) return;
+  const c = opOddsCache[tid];
+  if(c && (Date.now() - c.ts) < ODDSPAPI_TTL_MS) return;
+  opInFlight.add(tid);
+  try {
+    await opLoadParticipants();
+    const url = `https://api.oddspapi.io/v4/odds-by-tournaments?bookmaker=${ODDSPAPI_BOOK}`
+              + `&tournamentIds=${tid}&apiKey=${ODDSPAPI_KEY}`;
+    const r = await fetch(url);
+    if(!r.ok) return;
+    const d = await r.json();
+    opOddsCache[tid] = { ts: Date.now(), fixtures: Array.isArray(d) ? d : (d.data || []) };
+  } catch(e){} finally { opInFlight.delete(tid); }
+}
+
+// Busca el precio real. Sincrono: lee de cache. Devuelve null si aun no llego.
+function opFindPrice(league, homeName, awayName, market, line, direction){
+  const tid = opTournamentId(league);
+  if(!tid) return null;
+  const c = opOddsCache[tid];
+  if(!c || !opParticipants) { opFetchTournament(tid); return null; }
+
+  const table = (market === 'corners') ? OP_CORNERS : OP_GOALS;
+  const mid = table[line];
+  if(!mid) return null;
+
+  const h = normalizeTeamName(homeName), a = normalizeTeamName(awayName);
+  let best = null, bestScore = 0;
+  for(const f of c.fixtures){
+    const n1 = normalizeTeamName(opParticipants[f.participant1Id] || '');
+    const n2 = normalizeTeamName(opParticipants[f.participant2Id] || '');
+    if(!n1 || !n2) continue;
+    // puntaje: exacto vale mas que parcial; se queda con el MEJOR, no con el primero
+    const sc = (x,y) => x === y ? 2 : ((x && y && (x.includes(y) || y.includes(x))) ? 1 : 0);
+    const score = Math.min(sc(n1,h), sc(n2,a));
+    if(score > bestScore){ bestScore = score; best = f; }
+  }
+  if(!best || bestScore < 1) return null;
+
+  const bk = best.bookmakerOdds && best.bookmakerOdds[ODDSPAPI_BOOK];
+  if(!bk || !bk.bookmakerIsActive || !bk.markets) return null;
+  const mkt = bk.markets[String(mid)];
+  if(!mkt || !mkt.outcomes) return null;
+  const oid = String(direction === 'over' ? mid : mid + 1);
+  const out = mkt.outcomes[oid];
+  const p = out && out.players && out.players['0'];
+  if(!p || !p.active || !p.price) return null;
+
+  const age = p.changedAt ? (Date.now() - new Date(p.changedAt).getTime()) : Infinity;
+  return {
+    price: p.price,
+    changedAt: p.changedAt,
+    stale: age > ODDSPAPI_MAX_AGE_MS,
+    ageMin: Math.round(age / 60000),
+    bookmaker: ODDSPAPI_BOOK,
+    url: bk.fixturePath || null,
+    exactMatch: bestScore === 2,
+  };
+}
+/* ===== fin OddsPapi ===== */
+
 const MIN_ODDS = 1.15; const MIN_REAL_EDGE = 0.03; const MAX_PROB = 0.75;
   // Given a probability curve across lines, picks the line with the BEST estimated EV
 // among those that clear both the confidence threshold AND the minimum odds floor.
@@ -2724,7 +2849,8 @@ function computeMatchSignals(m, threshold){
       source: 'espn', market: 'corners',
       elapsed: m.elapsed, pace: m.pace,
       oddsVerified, oddsApiData: oddsData,
-      _oddsEventId: realOddsEventId || null, rejectedNoValue: (!oddsData || ((s.prob * oddsData.price) - 1) < MIN_REAL_EDGE),
+      _oddsEventId: realOddsEventId || null, opOdds: opFindPrice(m.league, homeName, awayName, 'corners', s.line, s.direction),
+      rejectedNoValue: (() => { const o = opFindPrice(m.league, homeName, awayName, 'corners', s.line, s.direction); return (!o || o.stale || ((s.prob * o.price) - 1) < MIN_REAL_EDGE); })(),
     }, homeName, awayName);
   });
 }
@@ -2760,7 +2886,11 @@ function computeMatchGoalSignals(m, threshold){
     }, homeName, awayName);
     sig.bookmakerOdds = oddsEvent ? findBookmakerOddsForLine(oddsEvent, s.direction, s.line) : null;
     sig.bookmakerOddsAttempted = oddsAttempted;
-    sig.rejectedNoValue = (!sig.bookmakerOdds || !sig.bookmakerOdds.avg || ((s.prob * sig.bookmakerOdds.avg) - 1) < MIN_REAL_EDGE);
+    // Fix ago2026: el valor se mide contra la cuota REAL EN VIVO de la casa donde se apuesta.
+    // Antes se validaba contra The Odds API (region eu, pre-partido): mostraba 1.49 cuando
+    // el mercado real estaba en 1.31, y colaba senales con EV en realidad negativo.
+    sig.opOdds = opFindPrice(m.league, homeName, awayName, 'goals', s.line, s.direction);
+    sig.rejectedNoValue = (!sig.opOdds || sig.opOdds.stale || ((s.prob * sig.opOdds.price) - 1) < MIN_REAL_EDGE);
     return sig;
   });
 }
