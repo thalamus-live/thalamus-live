@@ -2633,22 +2633,16 @@ const ODDSPAPI_MAX_AGE_MS = 10 * 60 * 1000;     // precio mas viejo que esto = r
 const ODDSPAPI_TTL_MS     = 5 * 60 * 1000;      // cache por torneo
 
 // Liga (texto de ESPN) -> tournamentId de OddsPapi. Verificados 18/8/2026.
-const ODDSPAPI_TOURNAMENTS = [
-  [/brasileir[ao].*(serie a|série a)|^brasileirao$/i, 325],
-  [/brasileir[ao].*(serie b|série b)/i, 390],
-  [/argentin/i, 155],
-  [/per[uú].*liga 1|liga 1.*per[uú]/i, 406],
-  [/venezuel/i, 231],
-  [/colombia/i, 241],
-  [/ecuador|ligapro/i, 240],
-  [/chile/i, 244],
-  [/uruguay/i, 278],
-  [/paraguay/i, 693],
-  [/libertadores/i, 384],
-  [/sudamericana/i, 480],
-  [/champions league|uefa champions/i, 7],
-  [/europa league/i, 679],
-];
+const ODDSPAPI_TOURNAMENTS = {
+  // Clave = codigo de liga tal como llega en m.league (ESPN), no la etiqueta visible.
+  // Fix ago2026: antes se comparaba contra nombres ("colombia", "brasileirao") y
+  // casi ninguna liga mapeaba, porque m.league trae "col.1", "bra.1", etc.
+  'bra.1': 325, 'arg.1': 155, 'arg.copa_lpf': 155,
+  'col.1': 241, 'chi.1': 244, 'per.1': 406, 'par.1': 693,
+  'uru.1': 278, 'ecu.1': 240, 'ven.1': 231,
+  'conmebol.libertadores': 384, 'conmebol.sudamericana': 480,
+  'uefa.champions': 7, 'uefa.europa': 679,
+};
 
 // linea -> {over, under} outcomeId. Extraidos de /v4/markets.
 const OP_GOALS = {0.5:106, 1.5:108, 2.5:1010, 3.5:1012, 4.5:1014, 5.5:1016};
@@ -2662,9 +2656,7 @@ const opInFlight = new Set();
 const opBackoff = {};              // tid -> timestamp hasta el que no se reintenta
 
 function opTournamentId(league){
-  const L = String(league || '');
-  for(const [re, id] of ODDSPAPI_TOURNAMENTS){ if(re.test(L)) return id; }
-  return null;
+  return ODDSPAPI_TOURNAMENTS[String(league || '').trim()] || null;
 }
 
 async function opLoadParticipants(){
