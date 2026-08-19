@@ -2701,12 +2701,34 @@ async function opFetchTournament(tid){
   } catch(e){ opBackoff[tid] = Date.now() + 60000; } finally { opInFlight.delete(tid); }
 }
 
+// Normaliza y tokeniza para emparejar equipos entre ESPN y OddsPapi.
+// "Atlético-MG" vs "Atletico Mineiro MG" no coinciden por subcadena: hay que
+// comparar por tokens, ignorando sufijos de club y de estado.
+const OP_STOP = new Set(['fc','sc','ec','cf','ac','cd','sd','csd','ca','cr','club',
+  'de','do','da','el','la','afc','if','bk','br','arg','rj','sp','rs','pr','se','red','bull']);
+function opRawTokens(s){
+  return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim()
+    .split(' ').filter(t => t.length > 1);
+}
+function opTokens(s){
+  const raw = opRawTokens(s);
+  const core = raw.filter(t => !OP_STOP.has(t));
+  return core.length ? core : raw;   // si todo era sufijo, conserva el original
+}
+function opSim(x, y){
+  const A = opTokens(x), B = opTokens(y);
+  if(!A.length || !B.length) return 0;
+  const eq = (a,b) => a === b || (a.length>=5 && b.length>=5 && (b.startsWith(a) || a.startsWith(b)));
+  // min: tolera nombre corto de ESPN ("Bragantino") vs largo de OddsPapi ("Red Bull Bragantino SP")
+  return A.filter(a => B.some(b => eq(a,b))).length / Math.min(A.length, B.length);
+}
+
 // Busca el precio real. Sincrono: lee de cache. Devuelve null si aun no llego.
 function opFindPrice(league, homeName, awayName, market, line, direction){
   const tid = opTournamentId(league);
   if(!tid) return null;
   const c = opOddsCache[tid];
-  // Siempre se invoca: opFetchTournament decide por TTL si toca refrescar.
   opFetchTournament(tid);
   if(!c || !opParticipants) return null;
 
@@ -2714,18 +2736,16 @@ function opFindPrice(league, homeName, awayName, market, line, direction){
   const mid = table[line];
   if(!mid) return null;
 
-  const h = normalizeTeamName(homeName), a = normalizeTeamName(awayName);
+  // Empareja el PAR COMPLETO y se queda con el mejor candidato del torneo.
+  // Comparar equipos por separado confundia "Atletico Mineiro" con "Atletico Madrid".
   let best = null, bestScore = 0;
   for(const f of c.fixtures){
-    const n1 = normalizeTeamName(opParticipants[f.participant1Id] || '');
-    const n2 = normalizeTeamName(opParticipants[f.participant2Id] || '');
+    const n1 = opParticipants[f.participant1Id], n2 = opParticipants[f.participant2Id];
     if(!n1 || !n2) continue;
-    // puntaje: exacto vale mas que parcial; se queda con el MEJOR, no con el primero
-    const sc = (x,y) => x === y ? 2 : ((x && y && (x.includes(y) || y.includes(x))) ? 1 : 0);
-    const score = Math.min(sc(n1,h), sc(n2,a));
+    const score = (opSim(homeName, n1) + opSim(awayName, n2)) / 2;
     if(score > bestScore){ bestScore = score; best = f; }
   }
-  if(!best || bestScore < 1) return null;
+  if(!best || bestScore < 0.6) return null;
 
   const bk = best.bookmakerOdds && best.bookmakerOdds[ODDSPAPI_BOOK];
   if(!bk || !bk.bookmakerIsActive || !bk.markets) return null;
@@ -2744,7 +2764,7 @@ function opFindPrice(league, homeName, awayName, market, line, direction){
     ageMin: Math.round(age / 60000),
     bookmaker: ODDSPAPI_BOOK,
     url: bk.fixturePath || null,
-    exactMatch: bestScore === 2,
+    matchScore: Math.round(bestScore * 100) / 100,
   };
 }
 /* ===== fin OddsPapi ===== */
