@@ -2692,7 +2692,11 @@ async function opFetchTournament(tid){
               + `&tournamentIds=${tid}&apiKey=${ODDSPAPI_KEY}`;
     const r = await fetch(url);
     if(!r.ok){
-      opBackoff[tid] = Date.now() + (r.status === 429 ? 60000 : 10 * 60000);
+      // 404 = la casa no cubre ese torneo. No es un fallo pasajero: se marca
+      // como no cubierto y no se vuelve a consultar en toda la sesion.
+      // 429 = limite de frecuencia -> espera corta. Otros -> espera media.
+      if(r.status === 404) opBackoff[tid] = Infinity;
+      else opBackoff[tid] = Date.now() + (r.status === 429 ? 30000 : 5 * 60000);
       return;
     }
     const d = await r.json();
@@ -2727,23 +2731,29 @@ function opSim(x, y){
 // Busca el precio real. Sincrono: lee de cache. Devuelve null si aun no llego.
 function opFindPrice(league, homeName, awayName, market, line, direction){
   const tid = opTournamentId(league);
-  if(!tid) return null;
-  const c = opOddsCache[tid];
-  opFetchTournament(tid);
-  if(!c || !opParticipants) return null;
+  if(tid) opFetchTournament(tid);
+  if(!opParticipants) return null;
 
   const table = (market === 'corners') ? OP_CORNERS : OP_GOALS;
   const mid = table[line];
   if(!mid) return null;
 
-  // Empareja el PAR COMPLETO y se queda con el mejor candidato del torneo.
+  // Empareja el PAR COMPLETO y se queda con el mejor candidato.
   // Comparar equipos por separado confundia "Atletico Mineiro" con "Atletico Madrid".
+  // Se busca en TODOS los torneos cacheados, no solo en el de la liga: ESPN y
+  // OddsPapi no siempre clasifican igual (un mismo partido puede figurar como
+  // Sudamericana en uno y Libertadores en el otro). El umbral de 0.6 sobre el
+  // par completo evita falsos positivos al ampliar la busqueda.
   let best = null, bestScore = 0;
-  for(const f of c.fixtures){
-    const n1 = opParticipants[f.participant1Id], n2 = opParticipants[f.participant2Id];
-    if(!n1 || !n2) continue;
-    const score = (opSim(homeName, n1) + opSim(awayName, n2)) / 2;
-    if(score > bestScore){ bestScore = score; best = f; }
+  for(const key of Object.keys(opOddsCache)){
+    const cache = opOddsCache[key];
+    if(!cache || !cache.fixtures) continue;
+    for(const f of cache.fixtures){
+      const n1 = opParticipants[f.participant1Id], n2 = opParticipants[f.participant2Id];
+      if(!n1 || !n2) continue;
+      const score = (opSim(homeName, n1) + opSim(awayName, n2)) / 2;
+      if(score > bestScore){ bestScore = score; best = f; }
+    }
   }
   if(!best || bestScore < 0.6) return null;
 
@@ -3904,9 +3914,13 @@ async function saveTrackedSignals(arr){
 
 function saveSignal(sig){
   const tracked = getTrackedSignals();
+  // Fix ago2026: antes solo comparaba matchId+market, asi que un partido con dos
+  // senales distintas (p.ej. MAS 10.5 y MENOS 13.5) solo registraba la primera.
+  // Ahora coincide con el criterio que ya usaba la vista ("ya guardado").
   const dup = tracked.find(t =>
     t.matchId === sig.matchId && t.status === 'pending' &&
-    (t.market || 'corners') === (sig.market || 'corners')
+    (t.market || 'corners') === (sig.market || 'corners') &&
+    t.direction === sig.direction && t.line === sig.line
   );
   if(dup) return false;
   tracked.unshift({
