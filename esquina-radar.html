@@ -2780,6 +2780,13 @@ function opFindPrice(league, homeName, awayName, market, line, direction){
 /* ===== fin OddsPapi ===== */
 
 const MIN_ODDS = 1.15; const MIN_REAL_EDGE = 0.03; const MAX_PROB = 0.75;
+// Interruptor: exigir cuota real de casa para emitir senal.
+//   true  -> solo senales apostables verificadas (requiere cuotas EN VIVO).
+//   false -> emite igual si no hay cuota, pero SIGUE filtrando por valor
+//            cuando la cuota si existe y esta fresca. Las senales sin cuota
+//            quedan marcadas con noRealOdds=true.
+// Puesto en false mientras el plan de OddsPapi no entregue cuotas en vivo por REST.
+const REQUIRE_REAL_ODDS = false;
   // Given a probability curve across lines, picks the line with the BEST estimated EV
 // among those that clear both the confidence threshold AND the minimum odds floor.
 // This avoids signals like "Under 2.5 goals @ 90%" which pay ~1.05 and have
@@ -2881,7 +2888,10 @@ function computeMatchSignals(m, threshold){
       elapsed: m.elapsed, pace: m.pace,
       oddsVerified, oddsApiData: oddsData,
       _oddsEventId: realOddsEventId || null, opOdds: _op,
-      rejectedNoValue: (!_op || _op.stale || ((s.prob * _op.price) - 1) < MIN_REAL_EDGE),
+      noRealOdds: (!_op || _op.stale),
+      rejectedNoValue: (REQUIRE_REAL_ODDS
+        ? (!_op || _op.stale || ((s.prob * _op.price) - 1) < MIN_REAL_EDGE)
+        : (_op && !_op.stale ? ((s.prob * _op.price) - 1) < MIN_REAL_EDGE : false)),
     }, homeName, awayName);
   });
 }
@@ -2921,7 +2931,10 @@ function computeMatchGoalSignals(m, threshold){
     // Antes se validaba contra The Odds API (region eu, pre-partido): mostraba 1.49 cuando
     // el mercado real estaba en 1.31, y colaba senales con EV en realidad negativo.
     sig.opOdds = opFindPrice(m.league, homeName, awayName, 'goals', s.line, s.direction);
-    sig.rejectedNoValue = (!sig.opOdds || sig.opOdds.stale || ((s.prob * sig.opOdds.price) - 1) < MIN_REAL_EDGE);
+    sig.noRealOdds = (!sig.opOdds || sig.opOdds.stale);
+    sig.rejectedNoValue = (REQUIRE_REAL_ODDS
+      ? (!sig.opOdds || sig.opOdds.stale || ((s.prob * sig.opOdds.price) - 1) < MIN_REAL_EDGE)
+      : (sig.opOdds && !sig.opOdds.stale ? ((s.prob * sig.opOdds.price) - 1) < MIN_REAL_EDGE : false));
     return sig;
   });
 }
