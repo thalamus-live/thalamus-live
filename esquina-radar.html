@@ -692,6 +692,11 @@
     <button class="btn" id="refreshNow">Actualizar ahora</button>
   </div>
 
+  <div class="section-title">Estado del sistema</div>
+  <div class="af-panel" id="healthPanel" style="font-size:12px; line-height:1.7; margin-bottom:14px;">
+    <div id="healthBody" style="color:var(--muted)">Cargando…</div>
+  </div>
+
   <div class="section-title">Diagnóstico</div>
   <details class="af-panel" id="debugPanel" style="font-size:11px; line-height:1.8; color:var(--muted)">
     <summary id="debugSummary" style="cursor:pointer; color:var(--text); font-weight:600;">Esperando primera carga…</summary>
@@ -3145,6 +3150,61 @@ function renderSignals(){
 
   // Fetch Pinnacle odds async after render and inject into DOM
   setTimeout(() => attachPinnacleOddsToSignals([...cornerSignals, ...goalSignals]), 100);
+
+  try { renderHealthPanel(threshold, minElapsed, cornerSignals, goalSignals); } catch(e){}
+}
+
+// Panel de autodiagnostico: permite ver de un vistazo si el scanner funciona,
+// sin abrir la consola ni depender de una revision externa.
+function renderHealthPanel(threshold, minElapsed, cornerSignals, goalSignals){
+  const el = document.getElementById('healthBody');
+  if(!el) return;
+  const ok = (t) => '<span style="color:var(--lime)">' + t + '</span>';
+  const bad = (t) => '<span style="color:#c0392b">' + t + '</span>';
+  const warn = (t) => '<span style="color:#b8860b">' + t + '</span>';
+
+  const tracked = (typeof getTrackedSignals === 'function') ? getTrackedSignals() : [];
+  let ultima = null;
+  for(const t of tracked){ const ts = t.savedAt || 0; if(ts > (ultima||0)) ultima = ts; }
+  const horasDesde = ultima ? Math.round((Date.now() - ultima) / 3600000) : null;
+
+  const sinCorners = liveMatches.filter(m => m.totalCorners == null);
+  const enVentana = liveMatches.filter(m => m.elapsed != null && m.elapsed >= 40 && m.elapsed <= 78);
+  const total = cornerSignals.length + goalSignals.length;
+
+  const filas = [];
+  filas.push('<b>Partidos en vivo:</b> ' + liveMatches.length +
+    ' &nbsp;·&nbsp; en ventana util (40-78\'): ' + enVentana.length);
+  filas.push('<b>Señales ahora:</b> ' + (total > 0 ? ok(total + '') : warn('0')) +
+    ' (corners ' + cornerSignals.length + ' · goles ' + goalSignals.length + ')' +
+    ' &nbsp;·&nbsp; umbral ' + Math.round(threshold*100) + '% · desde min ' + minElapsed);
+
+  filas.push('<b>Historial:</b> ' + tracked.length + ' señales' +
+    (ultima ? ' · última hace ' + (horasDesde < 1 ? 'menos de 1 h' : horasDesde + ' h') +
+      (horasDesde > 24 ? ' ' + bad('(sin registrar en más de un día)') : '') : ''));
+
+  // cuotas reales
+  const req = (typeof REQUIRE_REAL_ODDS !== 'undefined') ? REQUIRE_REAL_ODDS : null;
+  const conCuota = [...cornerSignals, ...goalSignals].filter(s => s.opOdds && !s.opOdds.stale).length;
+  filas.push('<b>Cuotas reales (' + (typeof ODDSPAPI_BOOK !== 'undefined' ? ODDSPAPI_BOOK : 'casa') + '):</b> ' +
+    conCuota + ' de ' + total + ' señales' +
+    ' &nbsp;·&nbsp; exigir cuota: ' + (req ? ok('sí') : warn('no')) +
+    ' &nbsp;·&nbsp; torneos en caché: ' + Object.keys(typeof opOddsCache !== 'undefined' ? opOddsCache : {}).length);
+
+  // ligas sin datos de corners en la fuente
+  if(sinCorners.length){
+    const ligas = [...new Set(sinCorners.map(m => m.league))].join(', ');
+    filas.push(bad('⚠ Sin datos de corners en la fuente') +
+      ' (' + sinCorners.length + ' partido(s): ' + ligas + ') — ESPN no envía estadísticas para esas ligas, no habrá señales de corners ahí.');
+  }
+
+  // torneos bloqueados
+  if(typeof opBackoff !== 'undefined'){
+    const bloq = Object.keys(opBackoff).filter(k => opBackoff[k] === Infinity || Date.now() < opBackoff[k]);
+    if(bloq.length) filas.push(warn('Torneos sin cobertura de la casa: ') + bloq.join(', '));
+  }
+
+  el.innerHTML = filas.map(f => '<div>' + f + '</div>').join('');
 }
 
 // After signals render, fetch Pinnacle odds per signal and inject into placeholder divs
