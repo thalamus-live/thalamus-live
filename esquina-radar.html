@@ -8335,6 +8335,9 @@ const CAL_LEAGUES = [
   { code: 'ita.1',          name: 'Serie A' },
   { code: 'ger.1',          name: 'Bundesliga' },
   { code: 'fra.1',          name: 'Ligue 1' },
+  { code: 'conmebol.libertadores', name: 'Libertadores' },
+  { code: 'conmebol.sudamericana', name: 'Sudamericana' },
+  { code: 'bra.copa_do_brazil',    name: 'Copa de Brasil' },
 ];
 
 async function loadCalendar(){
@@ -8403,9 +8406,19 @@ async function loadCalendar(){
         + '<div style="flex:1; font-weight:600">' + p.local + ' <span style="color:var(--muted-2); font-weight:400">vs</span> ' + p.visita + '</div>'
         + '</div>';
     }).join('');
+    // Ligas presentes ese dia, con cuantos partidos aporta cada una
+    const conteo = {};
+    for(const p of porDia[dia]) conteo[p.liga] = (conteo[p.liga] || 0) + 1;
+    const chips = Object.keys(conteo).sort().map(lg =>
+      '<span style="display:inline-block; background:var(--panel-2); border:1px solid var(--line);'
+      + ' border-radius:999px; padding:2px 10px; margin:2px 4px 2px 0; font-size:11px;'
+      + ' text-transform:uppercase; letter-spacing:.4px; color:var(--green-deep); font-weight:600;">'
+      + lg + ' <span style="color:var(--muted-2); font-weight:400">' + conteo[lg] + '</span></span>').join('');
+
     return '<div class="af-panel" style="margin-bottom:14px;">'
-      + '<div style="font-weight:700; text-transform:capitalize; margin-bottom:6px;">' + dia
+      + '<div style="font-weight:700; margin-bottom:4px;">' + dia.charAt(0).toUpperCase() + dia.slice(1)
       + ' <span style="font-weight:400; color:var(--muted-2); font-size:12px">· ' + porDia[dia].length + ' partido(s)</span></div>'
+      + '<div style="margin-bottom:8px;">' + chips + '</div>'
       + filas + '</div>';
   }).join('');
 
