@@ -667,6 +667,7 @@
   <div class="tabs">
     <div class="tab-btn active" data-tab="scanner">Scanner en vivo</div>
     <div class="tab-btn" data-tab="tracking">Seguimiento &amp; Stats</div>
+    <div class="tab-btn" data-tab="calendario">Calendario</div>
     <div class="tab-btn" data-tab="nba" style="display:none">NBA / WNBA</div>
     <div class="tab-btn" data-tab="fbodds" style="display:none">Cuotas Fútbol</div>
   </div>
@@ -838,6 +839,21 @@
     </div>
   </div>
   </div>
+  </div>
+
+  <div class="tab-content" id="tab-calendario">
+    <div class="section-title">Próximos partidos — Ligas top</div>
+    <div class="af-panel" style="margin-bottom:14px;">
+      <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
+        <label style="font-size:13px; color:var(--muted)">Días a mostrar
+          <input type="number" id="calDays" value="7" min="1" max="21"
+                 style="width:64px; margin-left:8px; padding:4px 8px; border:1px solid var(--line); border-radius:6px;">
+        </label>
+        <button id="calRefresh" class="btn-primary" style="padding:7px 16px; cursor:pointer;">Actualizar</button>
+        <span id="calStatus" style="font-size:12px; color:var(--muted)"></span>
+      </div>
+    </div>
+    <div id="calendarList"></div>
   </div>
 
   <div class="tab-content" id="tab-tracking">
@@ -8310,14 +8326,105 @@ function init(){
   // Auto-publish scheduler
   initAutoPublish();
 
+
+// ── Calendario de proximos partidos (ligas top) ──────────────────────────────
+const CAL_LEAGUES = [
+  { code: 'uefa.champions', name: 'Champions League' },
+  { code: 'eng.1',          name: 'Premier League' },
+  { code: 'esp.1',          name: 'LaLiga' },
+  { code: 'ita.1',          name: 'Serie A' },
+  { code: 'ger.1',          name: 'Bundesliga' },
+  { code: 'fra.1',          name: 'Ligue 1' },
+];
+
+async function loadCalendar(){
+  const status = document.getElementById('calStatus');
+  const cont = document.getElementById('calendarList');
+  if(!cont) return;
+  const days = Math.max(1, Math.min(21, parseInt(document.getElementById('calDays').value, 10) || 7));
+  status.textContent = 'Cargando…';
+  cont.innerHTML = '';
+
+  const fmt = d => d.toISOString().slice(0,10).replace(/-/g,'');
+  const hoy = new Date();
+  const rango = fmt(hoy) + '-' + fmt(new Date(hoy.getTime() + days*86400000));
+
+  const todos = [];
+  let fallos = 0;
+  for(const lg of CAL_LEAGUES){
+    try{
+      const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/' + lg.code + '/scoreboard?dates=' + rango);
+      if(!r.ok){ fallos++; continue; }
+      const d = await r.json();
+      for(const e of (d.events || [])){
+        const comp = (e.competitions && e.competitions[0]) || {};
+        const cs = comp.competitors || [];
+        const home = cs.find(c => c.homeAway === 'home');
+        const away = cs.find(c => c.homeAway === 'away');
+        const st = (e.status && e.status.type) ? e.status.type.state : '';
+        todos.push({
+          liga: lg.name,
+          fecha: new Date(e.date),
+          local: home && home.team ? (home.team.shortDisplayName || home.team.displayName) : '?',
+          visita: away && away.team ? (away.team.shortDisplayName || away.team.displayName) : '?',
+          estado: st,
+          detalle: (e.status && e.status.type) ? e.status.type.shortDetail : '',
+        });
+      }
+    }catch(err){ fallos++; }
+  }
+
+  if(!todos.length){
+    cont.innerHTML = '<div class="af-panel" style="color:var(--muted)">No se encontraron partidos en ese rango.</div>';
+    status.textContent = fallos ? (fallos + ' liga(s) sin respuesta') : '';
+    return;
+  }
+
+  todos.sort((a,b) => a.fecha - b.fecha);
+
+  // agrupar por dia
+  const porDia = {};
+  for(const p of todos){
+    const k = p.fecha.toLocaleDateString('es-PE', { weekday:'long', day:'numeric', month:'long' });
+    (porDia[k] = porDia[k] || []).push(p);
+  }
+
+  cont.innerHTML = Object.keys(porDia).map(dia => {
+    const filas = porDia[dia].map(p => {
+      const hora = p.fecha.toLocaleTimeString('es-PE', { hour:'2-digit', minute:'2-digit' });
+      const vivo = p.estado === 'in'
+        ? '<span style="color:var(--lime); font-weight:700">● EN VIVO</span>'
+        : (p.estado === 'post' ? '<span style="color:var(--muted-2)">finalizado</span>' : hora);
+      return '<div style="display:flex; gap:12px; padding:7px 0; border-bottom:1px solid var(--line-soft); align-items:center;">'
+        + '<div style="width:86px; font-size:12px; color:var(--muted)">' + vivo + '</div>'
+        + '<div style="width:130px; font-size:11px; color:var(--muted-2); text-transform:uppercase; letter-spacing:.4px">' + p.liga + '</div>'
+        + '<div style="flex:1; font-weight:600">' + p.local + ' <span style="color:var(--muted-2); font-weight:400">vs</span> ' + p.visita + '</div>'
+        + '</div>';
+    }).join('');
+    return '<div class="af-panel" style="margin-bottom:14px;">'
+      + '<div style="font-weight:700; text-transform:capitalize; margin-bottom:6px;">' + dia
+      + ' <span style="font-weight:400; color:var(--muted-2); font-size:12px">· ' + porDia[dia].length + ' partido(s)</span></div>'
+      + filas + '</div>';
+  }).join('');
+
+  status.textContent = todos.length + ' partidos · ' + Object.keys(porDia).length + ' día(s)'
+    + (fallos ? ' · ' + fallos + ' liga(s) sin respuesta' : '');
+}
+
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      if(btn.dataset.tab === 'calendario' && !document.getElementById('calendarList').innerHTML){
+        loadCalendar();
+      }
     });
   });
+
+  const _calBtn = document.getElementById('calRefresh');
+  if(_calBtn) _calBtn.addEventListener('click', loadCalendar);
 
   // Footer navigation links: switch tab and optionally scroll to a section
   document.querySelectorAll('.footer-link[data-goto-tab]').forEach(link => {
