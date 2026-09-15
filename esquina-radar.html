@@ -8430,6 +8430,7 @@ async function loadCalendar(){
           visita: away && away.team ? (away.team.shortDisplayName || away.team.displayName) : '?',
           estado: st,
           detalle: (e.status && e.status.type) ? e.status.type.shortDetail : '',
+          reloj: (e.status && e.status.type) ? (e.status.type.detail || e.status.type.shortDetail || '') : '',
         });
       }
     }catch(err){ fallos++; }
@@ -8453,9 +8454,22 @@ async function loadCalendar(){
   cont.innerHTML = Object.keys(porDia).map(dia => {
     const filas = porDia[dia].map(p => {
       const hora = p.fecha.toLocaleTimeString('es-PE', { hour:'2-digit', minute:'2-digit' });
-      const vivo = p.estado === 'in'
-        ? '<span style="color:var(--lime); font-weight:700">● EN VIVO</span>'
-        : (p.estado === 'post' ? '<span style="color:var(--muted-2)">finalizado</span>' : hora);
+      // ESPN a veces deja el estado congelado (partidos de hace horas siguen
+      // como "in" o incluso "pre"). Se cruza con la hora de inicio: pasados
+      // 150 min del pitazo inicial, ningun partido sigue en juego.
+      const minsDesdeInicio = (Date.now() - p.fecha.getTime()) / 60000;
+      let vivo;
+      if(p.estado === 'post' || minsDesdeInicio > 150){
+        // Pasados 150 min del pitazo inicial el partido termino, diga lo que diga
+        // ESPN: deja estados congelados en "in" e incluso en "pre" durante horas.
+        vivo = '<span style="color:var(--muted-2)">finalizado</span>';
+      } else if(p.estado === 'in' || (minsDesdeInicio > 0 && minsDesdeInicio <= 150)){
+        // En curso por reloj aunque ESPN aun no lo haya marcado como "in".
+        vivo = '<span style="color:var(--lime); font-weight:700">● '
+             + (p.estado === 'in' && p.reloj ? p.reloj : "~" + Math.round(minsDesdeInicio) + "'") + '</span>';
+      } else {
+        vivo = hora;
+      }
       return '<div style="display:flex; gap:12px; padding:7px 0; border-bottom:1px solid var(--line-soft); align-items:center;">'
         + '<div style="width:86px; font-size:12px; color:var(--muted)">' + vivo + '</div>'
         + '<div style="width:130px; font-size:11px; color:var(--muted-2); text-transform:uppercase; letter-spacing:.4px">' + p.liga + '</div>'
