@@ -1866,6 +1866,7 @@ async function loadAll(){
 
   // TRADUCCIÓN RADICAL: procesar todos los datos INMEDIATAMENTE
   liveMatches = procesarYTraducirMatches(enriched);
+  try { checkRedCards(liveMatches); } catch(e){}
 
   const goalsOddsKey = DEFAULT_ODDS_API_KEY;
   if(goalsOddsKey){
@@ -8290,6 +8291,61 @@ async function notifyNewSignals(newSignals){
 }
 
 // Called after renderSignals to detect new signals and notify
+
+// ── Alerta de tarjetas rojas ────────────────────────────────────────────────
+// ESPN ya entrega "Tarjetas rojas" dentro de homeStats/awayStats, asi que no
+// hace falta otra fuente. Se compara contra el refresco anterior y se avisa
+// solo cuando el numero SUBE. Latencia real = intervalo de refresco + el retardo
+// propio de ESPN en publicar el dato (tipicamente 1-2 min en total).
+const redCardState = {};   // matchId -> {home, away}
+
+function statRed(stats){
+  if(!stats) return null;
+  const v = stats['Tarjetas rojas'];
+  return (v == null || isNaN(v)) ? null : Number(v);
+}
+
+function checkRedCards(matches){
+  const nuevas = [];
+  for(const m of (matches || [])){
+    const h = statRed(m.homeStats), a = statRed(m.awayStats);
+    if(h == null || a == null) continue;          // liga sin estadisticas
+    const prev = redCardState[m.id];
+    redCardState[m.id] = { home: h, away: a };
+    if(!prev) continue;                            // primera lectura: solo referencia
+    const hName = m.home && m.home.team ? (m.home.team.shortDisplayName || m.home.team.displayName) : 'Local';
+    const aName = m.away && m.away.team ? (m.away.team.shortDisplayName || m.away.team.displayName) : 'Visita';
+    if(h > prev.home) nuevas.push({ m, equipo: hName, rival: aName, total: h + a, min: m.elapsed });
+    if(a > prev.away) nuevas.push({ m, equipo: aName, rival: hName, total: h + a, min: m.elapsed });
+  }
+  if(nuevas.length) notifyRedCards(nuevas);
+  return nuevas;
+}
+
+async function notifyRedCards(lista){
+  for(const r of lista){
+    const hName = r.m.home && r.m.home.team ? (r.m.home.team.shortDisplayName || r.m.home.team.displayName) : '?';
+    const aName = r.m.away && r.m.away.team ? (r.m.away.team.shortDisplayName || r.m.away.team.displayName) : '?';
+    const titulo = '🟥 Roja — ' + r.equipo;
+    const cuerpo = hName + ' vs ' + aName + '\n' + (r.min != null ? "min " + r.min + "' · " : '')
+                 + r.equipo + ' con un jugador menos';
+    if(typeof showToast === 'function') showToast(titulo + ' · ' + hName + ' vs ' + aName, 'warning');
+    try{
+      const granted = await requestNotifPermissionIfNeeded();
+      if(!granted) continue;
+      const reg = await navigator.serviceWorker.ready;
+      await reg.showNotification(titulo, {
+        body: cuerpo,
+        icon:  'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/icon-192.png',
+        badge: 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/badge-96.png',
+        tag:   'red-' + r.m.id + '-' + r.total,
+        vibrate: [300, 120, 300, 120, 300],
+        requireInteraction: true,
+      });
+    }catch(e){}
+  }
+}
+
 function checkForNewSignals(allSignals){
   const newOnes = allSignals.filter(s => {
     const id = `${s.matchId}-${s.line}-${s.direction}-${s.market||'corners'}`;
