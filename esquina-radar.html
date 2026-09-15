@@ -846,7 +846,7 @@
     <div class="af-panel" style="margin-bottom:14px;">
       <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
         <label style="font-size:13px; color:var(--muted)">Días a mostrar
-          <input type="number" id="calDays" value="7" min="1" max="21"
+          <input type="number" id="calDays" value="14" min="1" max="45"
                  style="width:64px; margin-left:8px; padding:4px 8px; border:1px solid var(--line); border-radius:6px;">
         </label>
         <button id="calRefresh" class="btn-primary" style="padding:7px 16px; cursor:pointer;">Actualizar</button>
@@ -8341,7 +8341,7 @@ async function loadCalendar(){
   const status = document.getElementById('calStatus');
   const cont = document.getElementById('calendarList');
   if(!cont) return;
-  const days = Math.max(1, Math.min(21, parseInt(document.getElementById('calDays').value, 10) || 7));
+  const days = Math.max(1, Math.min(45, parseInt(document.getElementById('calDays').value, 10) || 14));
   status.textContent = 'Cargando…';
   cont.innerHTML = '';
 
@@ -8351,11 +8351,13 @@ async function loadCalendar(){
 
   const todos = [];
   let fallos = 0;
+  const vacias = [];
   for(const lg of CAL_LEAGUES){
     try{
       const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/' + lg.code + '/scoreboard?dates=' + rango);
       if(!r.ok){ fallos++; continue; }
       const d = await r.json();
+      if(!(d.events || []).length) vacias.push(lg.name);
       for(const e of (d.events || [])){
         const comp = (e.competitions && e.competitions[0]) || {};
         const cs = comp.competitors || [];
@@ -8408,6 +8410,7 @@ async function loadCalendar(){
   }).join('');
 
   status.textContent = todos.length + ' partidos · ' + Object.keys(porDia).length + ' día(s)'
+    + (vacias.length ? ' · sin partidos en el rango: ' + vacias.join(', ') : '')
     + (fallos ? ' · ' + fallos + ' liga(s) sin respuesta' : '');
 }
 
