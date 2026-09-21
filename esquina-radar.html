@@ -8406,17 +8406,59 @@ async function loadCalendar(){
   const fmt = d => d.toISOString().slice(0,10).replace(/-/g,'');
   const hoy = new Date();
 
-  // ESPN rompe de forma intermitente el formato de rango (dates=AAAAMMDD-AAAAMMDD
-  // devuelve 400). Se consulta dia por dia, que es el formato estable, con
-  // reintento y respaldo sin parametro. La ultima respuesta buena se guarda en
-  // localStorage para no dejar la pantalla vacia si ESPN se cae del todo.
-  async function pedir(url, intentos){
-    for(let i = 0; i < intentos; i++){
+  // ESPN falla de dos formas distintas y antes las confundiamos: a veces no
+  // responde (error de red / status != 200) y a veces responde 200 con un cuerpo
+  // SIN la lista 'events' (bloqueo suave por exceso de consultas seguidas). Ese
+  // segundo caso se contaba como "liga sin partidos", por eso la pantalla decia
+  // "ESPN no esta respondiendo" junto a "0 liga(s) sin respuesta" — contradictorio.
+  // Ahora se valida el cuerpo, se cachea cada liga+dia para no repetir consultas
+  // en cada Actualizar, y se informa exactamente que paso.
+  const DAY_CACHE_TTL = 6 * 3600000;
+  let dayCache = {};
+  try{
+    const raw = localStorage.getItem('calDayCache');
+    if(raw){
+      const c = JSON.parse(raw);
+      if(Date.now() - c.ts < DAY_CACHE_TTL) dayCache = c.datos || {};
+    }
+  }catch(e){}
+
+  let okReq = 0, sinDatos = 0, httpFail = 0, deCache = 0;
+  const dormir = ms => new Promise(r => setTimeout(r, ms));
+
+  async function pedirDia(code, f, usarCache){
+    const key = code + ':' + f;
+    if(usarCache && dayCache[key]) { deCache++; return dayCache[key]; }
+    for(let i = 0; i < 3; i++){
       try{
-        const r = await fetch(url);
-        if(r.ok) return await r.json();
-      }catch(e){}
-      if(i < intentos - 1) await new Promise(res => setTimeout(res, 400 * (i + 1)));
+        const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/' + code + '/scoreboard?dates=' + f);
+        if(r.ok){
+          const d = await r.json();
+          if(d && Array.isArray(d.events)){
+            okReq++;
+            const lista = d.events.map(e => {
+              const comp = (e.competitions && e.competitions[0]) || {};
+              const cs = comp.competitors || [];
+              const home = cs.find(c => c.homeAway === 'home');
+              const away = cs.find(c => c.homeAway === 'away');
+              return {
+                id: e.id,
+                fecha: e.date,
+                local: home && home.team ? (home.team.shortDisplayName || home.team.displayName) : '?',
+                visita: away && away.team ? (away.team.shortDisplayName || away.team.displayName) : '?',
+                estado: (e.status && e.status.type) ? e.status.type.state : '',
+                reloj: (e.status && e.status.type) ? (e.status.type.detail || e.status.type.shortDetail || '') : '',
+              };
+            });
+            dayCache[key] = lista;
+            return lista;
+          }
+          sinDatos++;
+        } else {
+          httpFail++;
+        }
+      }catch(e){ httpFail++; }
+      if(i < 2) await dormir(600 * (i + 1));
     }
     return null;
   }
@@ -8425,35 +8467,42 @@ async function loadCalendar(){
   const vistos = new Set();
   const vacias = [];
   let fallos = 0;
+  const totalReq = CAL_LEAGUES.length * days;
+  let hechas = 0;
 
   for(const lg of CAL_LEAGUES){
     let hubo = false, fallo = false;
     for(let dia = 0; dia < days; dia++){
       const f = fmt(new Date(hoy.getTime() + dia * 86400000));
-      const d = await pedir('https://site.api.espn.com/apis/site/v2/sports/soccer/' + lg.code + '/scoreboard?dates=' + f, 2);
-      if(!d){ fallo = true; continue; }
-      for(const e of (d.events || [])){
-        if(vistos.has(e.id)) continue;
-        vistos.add(e.id);
-        const comp = (e.competitions && e.competitions[0]) || {};
-        const cs = comp.competitors || [];
-        const home = cs.find(c => c.homeAway === 'home');
-        const away = cs.find(c => c.homeAway === 'away');
-        todos.push({
-          liga: lg.name,
-          fecha: new Date(e.date),
-          local: home && home.team ? (home.team.shortDisplayName || home.team.displayName) : '?',
-          visita: away && away.team ? (away.team.shortDisplayName || away.team.displayName) : '?',
-          estado: (e.status && e.status.type) ? e.status.type.state : '',
-          reloj: (e.status && e.status.type) ? (e.status.type.detail || e.status.type.shortDetail || '') : '',
-        });
-        hubo = true;
+      // hoy y manana siempre frescos (cambian en vivo); el resto puede venir del cache
+      const lista = await pedirDia(lg.code, f, dia > 1);
+      hechas++;
+      if(!lista){ fallo = true; }
+      else {
+        for(const e of lista){
+          if(vistos.has(e.id)) continue;
+          vistos.add(e.id);
+          todos.push({
+            liga: lg.name,
+            fecha: new Date(e.fecha),
+            local: e.local,
+            visita: e.visita,
+            estado: e.estado,
+            reloj: e.reloj,
+          });
+          hubo = true;
+        }
       }
-      status.textContent = 'Cargando… ' + todos.length + ' partidos';
+      status.textContent = 'Cargando… ' + hechas + '/' + totalReq + ' · ' + todos.length + ' partidos';
+      await dormir(90);
     }
     if(fallo && !hubo) fallos++;
     else if(!hubo) vacias.push(lg.name);
   }
+
+  try{ localStorage.setItem('calDayCache', JSON.stringify({ ts: Date.now(), datos: dayCache })); }catch(e){}
+
+  const diag = 'ok:' + okReq + ' · sin-datos:' + sinDatos + ' · fallos:' + httpFail + ' · caché:' + deCache;
 
   // Respaldo: si no se obtuvo nada, usar lo ultimo que si funciono
   let desdeCache = false;
@@ -8473,9 +8522,20 @@ async function loadCalendar(){
   }
 
   if(!todos.length){
-    cont.innerHTML = '<div class="af-panel" style="color:#c0392b">ESPN no está respondiendo en este momento. '
-      + 'No es un fallo del scanner — reintentá en unos minutos con el botón Actualizar.</div>';
-    status.textContent = fallos + ' liga(s) sin respuesta';
+    let msg;
+    if(sinDatos > 0 && okReq === 0){
+      msg = 'ESPN está respondiendo, pero devuelve las consultas vacías (' + sinDatos + ' respuestas sin datos). '
+          + 'Suele ser un bloqueo temporal por exceso de consultas seguidas. Esperá 2–3 minutos y tocá Actualizar.';
+    } else if(httpFail > 0 && okReq === 0){
+      msg = 'ESPN no respondió a ninguna consulta (' + httpFail + ' intentos fallidos). '
+          + 'Puede ser tu conexión o una caída de ESPN — reintentá con Actualizar.';
+    } else {
+      msg = 'ESPN respondió correctamente (' + okReq + ' consultas) pero no hay partidos programados '
+          + 'en estas ligas para los próximos ' + days + ' días. Probá subir el número de días.';
+    }
+    cont.innerHTML = '<div class="af-panel" style="color:#c0392b">' + msg
+      + '<div style="margin-top:8px; font-size:11px; color:var(--muted-2)">' + diag + '</div></div>';
+    status.textContent = diag;
     return;
   }
 
@@ -8523,9 +8583,10 @@ async function loadCalendar(){
   }).join('');
 
   status.textContent = todos.length + ' partidos · ' + Object.keys(porDia).length + ' día(s)'
-    + (desdeCache ? ' · ⚠ datos guardados (ESPN no responde)' : '')
+    + (desdeCache ? ' · ⚠ mostrando datos guardados (ESPN no trajo nada nuevo)' : '')
     + (vacias.length ? ' · sin partidos: ' + vacias.join(', ') : '')
-    + (fallos ? ' · ' + fallos + ' liga(s) sin respuesta' : '');
+    + (fallos ? ' · ' + fallos + ' liga(s) sin respuesta' : '')
+    + ' · ' + diag;
 }
 
   document.querySelectorAll('.tab-btn').forEach(btn => {
