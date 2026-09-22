@@ -846,7 +846,7 @@
     <div class="af-panel" style="margin-bottom:14px;">
       <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
         <label style="font-size:13px; color:var(--muted)">Días a mostrar
-          <input type="number" id="calDays" value="14" min="1" max="45"
+          <input type="number" id="calDays" value="7" min="1" max="45"
                  style="width:64px; margin-left:8px; padding:4px 8px; border:1px solid var(--line); border-radius:6px;">
         </label>
         <button id="calRefresh" class="btn-primary" style="padding:7px 16px; cursor:pointer;">Actualizar</button>
@@ -1150,6 +1150,8 @@ const LEAGUES = [
   { code: 'arg.1',                  short: 'ARGENTINA' },
   { code: 'arg.copa_lpf',           short: 'COPA ARG' },
   { code: 'bra.1',                  short: 'BRASILEIRAO' },
+  { code: 'bra.2',                  short: 'BRASIL B' },
+  { code: 'bra.copa_do_brazil',     short: 'COPA BRASIL' },
   { code: 'col.1',                  short: 'COLOMBIA' },
   { code: 'chi.1',                  short: 'CHILE' },
   { code: 'per.1',                   short: 'PERU' },
@@ -1658,43 +1660,44 @@ function extractMatchStats(statsArr){
 }
 
 /* ============ FETCH: ESPN SCOREBOARD ============ */
-function espnDateRangeParam(daysAhead){
-  const fmt = (d) => `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
-  const start = new Date();
-  const end = new Date();
-  end.setDate(end.getDate() + daysAhead);
-  return `${fmt(start)}-${fmt(end)}`;
+function espnDateParam(offsetDays){
+  const d = new Date();
+  if(offsetDays) d.setDate(d.getDate() + offsetDays);
+  return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
 }
 
+// ESPN dejo de aceptar el formato de rango: dates=AAAAMMDD-AAAAMMDD devuelve
+// HTTP 400. El codigo anterior lanzaba excepcion ante ese 400, lo que salteaba
+// el respaldo y devolvia [] para TODAS las ligas en cada refresco — el scanner
+// quedaba completamente ciego (0 partidos en vivo, 0 señales) sin avisar.
+// Ahora se consulta por fecha simple, que es el formato estable, y un fallo
+// nunca corta el respaldo. El respaldo sin fecha devuelve la ventana por
+// defecto de ESPN, que puede venir con semanas de atraso, asi que se filtra a
+// +-36 h para no meter partidos viejos en la lista de proximos.
 async function fetchLeagueScoreboard(code){
-  const range = espnDateRangeParam(7);
-  const url = `https://site.api.espn.com/apis/site/v2/sports/soccer/${code}/scoreboard?dates=${range}`;
-  try{
-    const res = await fetch(url);
-    if(!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-    let events = data.events || [];
-
-    // Some ESPN league IDs (seen on newly-started qualifying rounds) return 0
-    // events when a `dates` range is passed, but DO return events when queried
-    // with no date param at all (ESPN's own default window). Fall back to that
-    // before giving up, so brand-new competitions aren't silently dropped.
-    if(events.length === 0){
-      const fallbackUrl = `https://site.api.espn.com/apis/site/v2/sports/soccer/${code}/scoreboard`;
-      const res2 = await fetch(fallbackUrl);
-      if(res2.ok){
-        const data2 = await res2.json();
-        events = data2.events || [];
-        if(events.length > 0) debugLog(`${code}: 0 con rango, ${events.length} sin rango (fallback usado)`);
+  const base = `https://site.api.espn.com/apis/site/v2/sports/soccer/${code}/scoreboard`;
+  const intentos = [ { url: `${base}?dates=${espnDateParam(0)}`, filtrar: false },
+                     { url: base,                                filtrar: true  } ];
+  for(let i = 0; i < intentos.length; i++){
+    const { url, filtrar } = intentos[i];
+    try{
+      const res = await fetch(url);
+      if(!res.ok){ debugLog(`${code}: HTTP ${res.status} (intento ${i+1})`); continue; }
+      const data = await res.json();
+      let events = data.events || [];
+      if(filtrar){
+        const limite = 36 * 3600000;
+        events = events.filter(ev => Math.abs(Date.now() - new Date(ev.date).getTime()) < limite);
       }
+      if(events.length === 0){ debugLog(`${code}: 0 eventos (intento ${i+1})`); continue; }
+      debugLog(`${code}: ${events.length} eventos${i > 0 ? ' (respaldo sin fecha)' : ''}`);
+      return events.map(ev => ({ ...ev, _league: code }));
+    }catch(err){
+      debugLog(`${code}: ERROR intento ${i+1} - ${err.message}`);
     }
-
-    debugLog(`${code}: ${events.length} eventos`);
-    return events.map(ev => ({ ...ev, _league: code }));
-  }catch(err){
-    debugLog(`${code}: ERROR - ${err.message}`);
-    return [];
   }
+  debugLog(`${code}: sin eventos`);
+  return [];
 }
 
 /* ============ FETCH: ESPN SUMMARY (corners) ============ */
@@ -8394,13 +8397,17 @@ const CAL_LEAGUES = [
   { code: 'conmebol.libertadores', name: 'Libertadores' },
   { code: 'conmebol.sudamericana', name: 'Sudamericana' },
   { code: 'bra.copa_do_brazil',    name: 'Copa de Brasil' },
+  { code: 'bra.1',                 name: 'Brasileirao' },
+  { code: 'bra.2',                 name: 'Brasileirao B' },
+  { code: 'arg.1',                 name: 'Argentina' },
+  { code: 'mex.1',                 name: 'Liga MX' },
 ];
 
 async function loadCalendar(){
   const status = document.getElementById('calStatus');
   const cont = document.getElementById('calendarList');
   if(!cont) return;
-  const days = Math.max(1, Math.min(45, parseInt(document.getElementById('calDays').value, 10) || 14));
+  const days = Math.max(1, Math.min(45, parseInt(document.getElementById('calDays').value, 10) || 7));
   status.textContent = 'Cargando…';
 
   const fmt = d => d.toISOString().slice(0,10).replace(/-/g,'');
