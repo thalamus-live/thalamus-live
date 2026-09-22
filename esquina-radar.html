@@ -8401,6 +8401,12 @@ const CAL_LEAGUES = [
   { code: 'bra.2',                 name: 'Brasileirao B' },
   { code: 'arg.1',                 name: 'Argentina' },
   { code: 'mex.1',                 name: 'Liga MX' },
+  // Futbol americano universitario. Vive en otro deporte dentro de ESPN
+  // (football en vez de soccer) y sin el parametro groups la API devuelve
+  // solo los partidos destacados (5-6), no la jornada completa. Los IDs de
+  // conferencia estan verificados uno por uno: 1=ACC, 4=Big 12, 5=Big Ten,
+  // 8=SEC, 17=Mountain West, 37=Sun Belt.
+  { code: 'college-football', sport: 'football', grupos: '1,4,5,8,17,37', name: 'NCAA Football' },
 ];
 
 async function loadCalendar(){
@@ -8433,12 +8439,15 @@ async function loadCalendar(){
   let okReq = 0, sinDatos = 0, httpFail = 0, deCache = 0;
   const dormir = ms => new Promise(r => setTimeout(r, ms));
 
-  async function pedirDia(code, f, usarCache){
-    const key = code + ':' + f;
+  async function pedirDia(lg, f, usarCache){
+    const key = lg.code + ':' + f;
     if(usarCache && dayCache[key]) { deCache++; return dayCache[key]; }
+    const url = 'https://site.api.espn.com/apis/site/v2/sports/' + (lg.sport || 'soccer')
+              + '/' + lg.code + '/scoreboard?dates=' + f
+              + (lg.grupos ? '&groups=' + lg.grupos : '');
     for(let i = 0; i < 3; i++){
       try{
-        const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/' + code + '/scoreboard?dates=' + f);
+        const r = await fetch(url);
         if(r.ok){
           const d = await r.json();
           if(d && Array.isArray(d.events)){
@@ -8482,7 +8491,7 @@ async function loadCalendar(){
     for(let dia = 0; dia < days; dia++){
       const f = fmt(new Date(hoy.getTime() + dia * 86400000));
       // hoy y manana siempre frescos (cambian en vivo); el resto puede venir del cache
-      const lista = await pedirDia(lg.code, f, dia > 1);
+      const lista = await pedirDia(lg, f, dia > 1);
       hechas++;
       if(!lista){ fallo = true; }
       else {
