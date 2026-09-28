@@ -1133,6 +1133,19 @@ const LEAGUES = [
   { code: 'uefa.europa_qual',       short: 'UEL QUALY' },
   { code: 'uefa.europa.conf',       short: 'CONF' },
   { code: 'uefa.europa.conf_qual',  short: 'CONF QUALY' },
+  { code: 'uefa.nations',           short: 'NATIONS' },
+  { code: 'concacaf.nations.league', short: 'CONCACAF NL' },
+  { code: 'eng.3',                  short: 'LEAGUE ONE' },
+  { code: 'eng.4',                  short: 'LEAGUE TWO' },
+  { code: 'ita.2',                  short: 'SERIE B ITA' },
+  { code: 'ger.2',                  short: 'BUNDES 2' },
+  { code: 'fra.2',                  short: 'LIGUE 2' },
+  { code: 'gre.1',                  short: 'GRECIA' },
+  { code: 'den.1',                  short: 'DINAMARCA' },
+  { code: 'swe.1',                  short: 'SUECIA' },
+  { code: 'nor.1',                  short: 'NORUEGA' },
+  { code: 'caf.nations_qual',       short: 'AFCON QUALY' },
+  { code: 'fifa.friendly',          short: 'AMISTOSO' },
   { code: 'eng.1',                  short: 'EPL' },
   { code: 'eng.2',                  short: 'CHAMPIONSHIP' },
   { code: 'esp.1',                  short: 'LALIGA' },
@@ -1147,7 +1160,6 @@ const LEAGUES = [
   { code: 'tur.1',                  short: 'TURQUIA' },
   { code: 'usa.1',                  short: 'MLS' },
   { code: 'mex.1',                  short: 'LIGA MX' },
-  { code: 'arg.1',                  short: 'ARGENTINA' },
   { code: 'arg.copa_lpf',           short: 'COPA ARG' },
   { code: 'bra.1',                  short: 'BRASILEIRAO' },
   { code: 'bra.2',                  short: 'BRASIL B' },
@@ -1167,13 +1179,16 @@ const LEAGUES = [
 const DEFAULT_ACTIVE = [
   'fifa.world','uefa.champions','uefa.champions_qual','uefa.europa','uefa.europa_qual','uefa.europa.conf_qual',
   'eng.1','eng.2','esp.1','ita.1','ger.1','fra.1','ned.1','bel.1',
-  'arg.1','bra.1','mex.1','col.1','chi.1',
+  'bra.1','mex.1','col.1','chi.1',
   'per.1','par.1','uru.1','bol.1','ecu.1','ven.1',
   'conmebol.libertadores','conmebol.sudamericana',
   // Faltaban acá aunque estaban en LEAGUES: el chip se dibujaba pero la liga
   // nunca se consultaba, porque loadAll() recorre activeLeagues, no LEAGUES.
   'uefa.europa.conf','esp.2','por.1','sco.1','tur.1','usa.1',
   'arg.copa_lpf','bra.2','bra.copa_do_brazil',
+  'uefa.nations','caf.nations_qual','fifa.friendly',
+  'concacaf.nations.league','eng.3','eng.4','ita.2','ger.2','fra.2',
+  'gre.1','den.1','swe.1','nor.1',
 ];
 
 // Mapping from our ESPN league codes to The Odds API sport keys
@@ -1678,6 +1693,16 @@ function espnDateParam(offsetDays){
 // nunca corta el respaldo. El respaldo sin fecha devuelve la ventana por
 // defecto de ESPN, que puede venir con semanas de atraso, asi que se filtra a
 // +-36 h para no meter partidos viejos en la lista de proximos.
+async function enTandas(items, tam, fn, pausaMs){
+  const out = [];
+  for(let i = 0; i < items.length; i += tam){
+    const tanda = await Promise.all(items.slice(i, i + tam).map(fn));
+    out.push(...tanda);
+    if(i + tam < items.length) await new Promise(r => setTimeout(r, pausaMs));
+  }
+  return out;
+}
+
 async function fetchLeagueScoreboard(code){
   const base = `https://site.api.espn.com/apis/site/v2/sports/soccer/${code}/scoreboard`;
   const intentos = [ { url: `${base}?dates=${espnDateParam(0)}`, filtrar: false },
@@ -1791,7 +1816,11 @@ async function loadAll(){
   if(pill && _isRefreshing) pill.style.opacity = '0.5';
   _isRefreshing = true;
 
-  const allEventsArrays = await Promise.all(codes.map(fetchLeagueScoreboard));
+  // Antes se disparaban TODAS las ligas en paralelo de una sola vez. Con 39 ya
+  // era una rafaga grande y ESPN corta el acceso ante rafagas (comprobado: 22
+  // requests simultaneos y bloqueo de varios minutos). Ahora van en tandas de 8
+  // con una pausa corta, asi la lista puede crecer sin saturar.
+  const allEventsArrays = await enTandas(codes, 8, fetchLeagueScoreboard, 250);
   const allEvents = allEventsArrays.flat();
 
   const live = allEvents.filter(ev => {
@@ -8393,6 +8422,8 @@ function init(){
 // ── Calendario de proximos partidos (ligas top) ──────────────────────────────
 const CAL_LEAGUES = [
   { code: 'uefa.champions', name: 'Champions League' },
+  { code: 'uefa.nations',   name: 'Nations League' },
+  { code: 'concacaf.nations.league', name: 'Concacaf NL' },
   { code: 'eng.1',          name: 'Premier League' },
   { code: 'esp.1',          name: 'LaLiga' },
   { code: 'ita.1',          name: 'Serie A' },
