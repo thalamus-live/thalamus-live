@@ -207,6 +207,7 @@ const API = '/api/cuentas';
 let accounts = [];
 let editingId = null; // null = not editing, 'new' = new form, or account id
 let pendingImage = null;
+let pendingImageName = null;
 let pendingObsFiles = null; // null = "usar los existentes de la cuenta"; array = lista editada en el formulario actual
 
 const ACCENTS = ['#6ebd91','#2d7d5a','#8fd1ab','#4a9873','#a9c9bc','#3f8264'];
@@ -234,21 +235,40 @@ function renderObsLines(obs){
   `).join('');
 }
 
+// Seguro contra borrado accidental: si la carga inicial falla (corte de red,
+// error del Worker), 'accounts' quedaba en [] y la primera accion del usuario
+// (agregar, borrar, reordenar) escribia esa lista vacia sobre KV, borrando
+// todas las cuentas. Ahora una carga fallida bloquea la escritura hasta que
+// los datos se lean bien.
+let cargaOk = false;
+
 async function load(){
   try{
     const res = await fetch(API);
+    if(!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
-    accounts = data.accounts || [];
-  }catch(e){ accounts = []; }
+    if(!Array.isArray(data.accounts)) throw new Error('respuesta sin cuentas');
+    accounts = data.accounts;
+    cargaOk = true;
+  }catch(e){
+    accounts = [];
+    cargaOk = false;
+    toast('No se pudieron cargar las cuentas — guardado bloqueado. Recargá la página.');
+  }
   render();
 }
 
 async function persist(){
-  await fetch(API, {
+  if(!cargaOk){
+    toast('Guardado bloqueado: las cuentas no se cargaron. Recargá la página.');
+    return;
+  }
+  const res = await fetch(API, {
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify({ accounts })
   });
+  if(!res.ok) toast('No se pudo guardar (HTTP ' + res.status + '). Revisá antes de cerrar.');
 }
 
 function toast(msg){
@@ -388,7 +408,7 @@ function attachHandlers(){
     };
   });
   document.getElementById('list').querySelectorAll('.edit-btn').forEach(btn=>{
-    btn.onclick = ()=>{ editingId = btn.dataset.id; pendingImage=null; pendingObsFiles=null; render(); };
+    btn.onclick = ()=>{ editingId = btn.dataset.id; pendingImage=null; pendingImageName=null; pendingObsFiles=null; render(); };
   });
   document.getElementById('list').querySelectorAll('.del-btn').forEach(btn=>{
     btn.onclick = async ()=>{
@@ -402,21 +422,21 @@ function attachHandlers(){
   document.getElementById('list').querySelectorAll('.open-lightbox').forEach(el=>{
     el.onclick = ()=>{
       const acc = accounts.find(a=>a.id===el.dataset.id);
-      openLightbox(acc.image, acc.bank);
+      openLightbox(acc.image, acc.imageName || ((acc.bank || 'cuenta') + '-qr.png'));
     };
   });
   document.getElementById('list').querySelectorAll('.obs-view-open').forEach(el=>{
     el.onclick = ()=>{
       const acc = accounts.find(a=>a.id===el.dataset.id);
       const file = acc?.obsFiles?.[Number(el.dataset.idx)];
-      if(file) openLightbox(file.data, file.name || acc.bank);
+      if(file) openLightbox(file.data, file.name || ((acc.bank || 'cuenta') + '-adjunto'));
     };
   });
   document.getElementById('list').querySelectorAll('.cancel-form-btn').forEach(btn=>{
-    btn.onclick = ()=>{ editingId=null; pendingImage=null; pendingObsFiles=null; render(); };
+    btn.onclick = ()=>{ editingId=null; pendingImage=null; pendingImageName=null; pendingObsFiles=null; render(); };
   });
   document.getElementById('list').querySelectorAll('.remove-img-btn').forEach(btn=>{
-    btn.onclick = ()=>{ pendingImage=null; const form=btn.closest('.form'); const acc=accounts.find(a=>a.id===form.dataset.formId); if(acc) acc.image=null; render(); };
+    btn.onclick = ()=>{ pendingImage=null; pendingImageName=null; const form=btn.closest('.form'); const acc=accounts.find(a=>a.id===form.dataset.formId); if(acc) acc.image=null; render(); };
   });
   document.getElementById('list').querySelectorAll('.file-trigger').forEach(el=>{
     el.onclick = ()=>{ el.nextElementSibling.click(); };
@@ -427,7 +447,7 @@ function attachHandlers(){
       if(!file.type.startsWith('image/')){ toast('Eso no es una imagen'); return; }
       if(file.size > 4.5*1024*1024){ toast('Imagen muy pesada (máx ~4.5MB)'); return; }
       const reader = new FileReader();
-      reader.onload = () => { pendingImage = reader.result; render(); };
+      reader.onload = () => { pendingImage = reader.result; pendingImageName = file.name; render(); };
       reader.readAsDataURL(file);
     };
   });
@@ -491,9 +511,11 @@ function attachHandlers(){
       const cci = form.querySelector('.f-cci').value.trim();
       const obs = form.querySelector('.f-obs').value.trim();
       let image = pendingImage;
+      let imageName = pendingImageName;
       if(image===null && id!=='new'){
         const existing = accounts.find(a=>a.id===id);
         image = existing ? existing.image : null;
+        imageName = existing ? (existing.imageName || null) : null;
       }
       let obsFiles = pendingObsFiles;
       if(obsFiles===null && id!=='new'){
@@ -502,19 +524,24 @@ function attachHandlers(){
       }
       if(obsFiles===null) obsFiles = [];
       if(id==='new'){
-        accounts.unshift({ id: uid(), bank, alias, accountNumber, cci, obs, obsFiles, image, updatedAt: Date.now() });
+        accounts.unshift({ id: uid(), bank, alias, accountNumber, cci, obs, obsFiles, image, imageName, updatedAt: Date.now() });
       } else {
         const acc = accounts.find(a=>a.id===id);
-        Object.assign(acc, { bank, alias, accountNumber, cci, obs, obsFiles, image, updatedAt: Date.now() });
+        Object.assign(acc, { bank, alias, accountNumber, cci, obs, obsFiles, image, imageName, updatedAt: Date.now() });
       }
-      editingId = null; pendingImage = null; pendingObsFiles = null;
+      editingId = null; pendingImage = null; pendingImageName = null; pendingObsFiles = null;
       render();
       await persist();
     };
   });
 }
 
-function openLightbox(src, bank){
+// Antes este segundo parametro se llamaba 'bank' y la descarga armaba
+// (bank||'cuenta')+'-qr.png'. Pero desde las observaciones se le pasaba
+// file.name, asi que un adjunto llamado "1.jpg" se bajaba como
+// "1.jpg-qr.png" — nombre pegoteado y con la extension equivocada.
+// Ahora cada llamador manda el nombre de archivo final y se respeta tal cual.
+function openLightbox(src, nombreArchivo){
   const box = document.createElement('div');
   box.className='lightbox';
   box.innerHTML = `
@@ -526,7 +553,7 @@ function openLightbox(src, bank){
   box.querySelector('.close').onclick = ()=>box.remove();
   box.querySelector('.dl').onclick = (e)=>{
     e.stopPropagation();
-    const a=document.createElement('a'); a.href=src; a.download=(bank||'cuenta')+'-qr.png';
+    const a=document.createElement('a'); a.href=src; a.download = nombreArchivo || 'imagen.png';
     document.body.appendChild(a); a.click(); a.remove();
   };
   document.body.appendChild(box);
@@ -553,7 +580,7 @@ themeBtn.onclick = ()=>{
   applyTheme(next);
 };
 
-document.getElementById('addBtn').onclick = ()=>{ editingId='new'; pendingImage=null; pendingObsFiles=null; render(); };
+document.getElementById('addBtn').onclick = ()=>{ editingId='new'; pendingImage=null; pendingImageName=null; pendingObsFiles=null; render(); };
 
 // ── Chat / retroalimentación ─────────────────────────────────────────────
 const CHAT_API = '/api/chat';
@@ -611,7 +638,7 @@ function renderChat(){
   box.innerHTML = ordered.map(renderChatMsg).join('');
 
   box.querySelectorAll('.chat-img').forEach(img=>{
-    img.onclick = ()=> openLightbox(img.dataset.full, 'imagen-chat');
+    img.onclick = ()=> openLightbox(img.dataset.full, 'imagen-chat.png');
   });
   box.querySelectorAll('.pin-btn').forEach(btn=>{
     btn.onclick = ()=> chatAction({ action:'pin', id: btn.dataset.id, pinned: btn.dataset.pinned !== 'true' });
