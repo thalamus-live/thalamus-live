@@ -8432,18 +8432,15 @@ const CAL_LEAGUES = [
   { code: 'bra.copa_do_brazil',    name: 'Copa de Brasil' },
   { code: 'bra.1',                 name: 'Brasileirao' },
   { code: 'bra.2',                 name: 'Brasileirao B' },
-  { code: 'arg.1',                 name: 'Argentina' },
   { code: 'mex.1',                 name: 'Liga MX' },
   { code: 'usa.1',                 name: 'MLS' },
-  // Futbol americano. Vive en otro deporte dentro de ESPN (football, no soccer).
-  // OJO: antes se filtraba college-football por conferencias con el parametro
-  // groups, creyendo que sin el la API solo devolvia 5-6 partidos destacados.
-  // Eso era falso: los 5-6 venian de una herramienta que truncaba la respuesta.
-  // Medido desde el navegador, el sabado 03/10 la consulta simple devuelve 54
-  // partidos y la filtrada solo 39 — el filtro RECORTABA 15. Sin groups queda
-  // la jornada completa, incluidas Pac-12, American, MAC, CUSA e independientes.
-  { code: 'college-football', sport: 'football', name: 'NCAA Football' },
+  // Futbol americano. Vive en otro deporte dentro de ESPN (football, no soccer),
+  // por eso el campo 'sport'. Sin parametro groups ambas devuelven la jornada
+  // completa: medido en el navegador, 14 partidos la NFL el domingo 04/10 y 54
+  // la universitaria el sabado 03/10 (con el viejo filtro de conferencias eran
+  // solo 39 — recortaba Pac-12, American, MAC, CUSA e independientes).
   { code: 'nfl',              sport: 'football', name: 'NFL' },
+  { code: 'college-football', sport: 'football', name: 'NCAA Football' },
 ];
 
 async function loadCalendar(){
