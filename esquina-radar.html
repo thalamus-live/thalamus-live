@@ -1134,7 +1134,6 @@ const LEAGUES = [
   { code: 'uefa.europa.conf',       short: 'CONF' },
   { code: 'uefa.europa.conf_qual',  short: 'CONF QUALY' },
   { code: 'uefa.nations',           short: 'NATIONS' },
-  { code: 'concacaf.nations.league', short: 'CONCACAF NL' },
   { code: 'eng.3',                  short: 'LEAGUE ONE' },
   { code: 'eng.4',                  short: 'LEAGUE TWO' },
   { code: 'ita.2',                  short: 'SERIE B ITA' },
@@ -1187,7 +1186,7 @@ const DEFAULT_ACTIVE = [
   'uefa.europa.conf','esp.2','por.1','sco.1','tur.1','usa.1',
   'arg.copa_lpf','bra.2','bra.copa_do_brazil',
   'uefa.nations','caf.nations_qual','fifa.friendly',
-  'concacaf.nations.league','eng.3','eng.4','ita.2','ger.2','fra.2',
+  'eng.3','eng.4','ita.2','ger.2','fra.2',
   'gre.1','den.1','swe.1','nor.1',
 ];
 
@@ -8423,7 +8422,6 @@ function init(){
 const CAL_LEAGUES = [
   { code: 'uefa.champions', name: 'Champions League' },
   { code: 'uefa.nations',   name: 'Nations League' },
-  { code: 'concacaf.nations.league', name: 'Concacaf NL' },
   { code: 'eng.1',          name: 'Premier League' },
   { code: 'esp.1',          name: 'LaLiga' },
   { code: 'ita.1',          name: 'Serie A' },
@@ -8437,12 +8435,15 @@ const CAL_LEAGUES = [
   { code: 'arg.1',                 name: 'Argentina' },
   { code: 'mex.1',                 name: 'Liga MX' },
   { code: 'usa.1',                 name: 'MLS' },
-  // Futbol americano universitario. Vive en otro deporte dentro de ESPN
-  // (football en vez de soccer) y sin el parametro groups la API devuelve
-  // solo los partidos destacados (5-6), no la jornada completa. Los IDs de
-  // conferencia estan verificados uno por uno: 1=ACC, 4=Big 12, 5=Big Ten,
-  // 8=SEC, 17=Mountain West, 37=Sun Belt.
-  { code: 'college-football', sport: 'football', grupos: '1,4,5,8,17,37', name: 'NCAA Football' },
+  // Futbol americano. Vive en otro deporte dentro de ESPN (football, no soccer).
+  // OJO: antes se filtraba college-football por conferencias con el parametro
+  // groups, creyendo que sin el la API solo devolvia 5-6 partidos destacados.
+  // Eso era falso: los 5-6 venian de una herramienta que truncaba la respuesta.
+  // Medido desde el navegador, el sabado 03/10 la consulta simple devuelve 54
+  // partidos y la filtrada solo 39 — el filtro RECORTABA 15. Sin groups queda
+  // la jornada completa, incluidas Pac-12, American, MAC, CUSA e independientes.
+  { code: 'college-football', sport: 'football', name: 'NCAA Football' },
+  { code: 'nfl',              sport: 'football', name: 'NFL' },
 ];
 
 async function loadCalendar(){
