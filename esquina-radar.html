@@ -8421,7 +8421,10 @@ function init(){
 // ── Calendario de proximos partidos (ligas top) ──────────────────────────────
 const CAL_LEAGUES = [
   { code: 'uefa.champions', name: 'Champions League' },
-  { code: 'uefa.nations',   name: 'Nations League' },
+  // soloNivel: 'A' deja pasar unicamente los partidos de Liga A. La Nations
+  // League mezcla cuatro niveles y los de Liga C/D (Kazajistan, Islas Feroe,
+  // Armenia) no tienen mercado en las casas peruanas: eran 8 de cada 10 filas.
+  { code: 'uefa.nations',   name: 'Nations League', soloNivel: 'A' },
   { code: 'eng.1',          name: 'Premier League' },
   { code: 'esp.1',          name: 'LaLiga' },
   { code: 'ita.1',          name: 'Serie A' },
@@ -8439,13 +8442,26 @@ const CAL_LEAGUES = [
   // la universitaria el sabado 03/10 (con el viejo filtro de conferencias eran
   // solo 39 — recortaba Pac-12, American, MAC, CUSA e independientes).
   { code: 'nfl',              sport: 'football', name: 'NFL' },
-  { code: 'college-football', sport: 'football', name: 'NCAA Football' },
+  // 54 partidos un sabado tapaban al resto del calendario. rankMax: 25 deja los
+  // que tienen al menos un equipo del Top 25 del ranking AP — 16 el 03/10, el
+  // mismo orden de magnitud que la NFL, y los unicos con mercado completo.
+  { code: 'college-football', sport: 'football', name: 'NCAA Football', rankMax: 25 },
 ];
 
 // ESPN trae el grupo en competitions[0].group ("Group A1") y la fase en
 // altGameNote ("CONMEBOL Libertadores, Semifinals"). Antes no se leia ninguno
 // y diez partidos de Nations League aparecian todos como "NATIONS LEAGUE",
 // mezclando Francia-Italia (Liga A) con Kazajistan-Moldavia (Liga C).
+// Conferencias de futbol americano universitario. Los ids y nombres salen del
+// catalogo de ESPN (groups > NCAA Division I > FBS), no de deduccion: son las
+// 11 de FBS. Cualquier id fuera de esta lista es de FCS, la division de abajo
+// (los "money games" donde un grande golea a un chico y no hay mercado).
+const CAL_CONF = {
+  '1':'ACC', '4':'BIG 12', '5':'BIG TEN', '8':'SEC', '9':'PAC-12',
+  '12':'CONF USA', '15':'MAC', '17':'MOUNTAIN WEST', '18':'INDEPENDIENTE',
+  '37':'SUN BELT', '151':'AMERICAN',
+};
+
 const CAL_FASES = {
   'league phase':'Fase de liga', 'group stage':'Fase de grupos',
   'round of 16':'Octavos', 'quarterfinals':'Cuartos', 'semifinals':'Semifinales',
@@ -8455,6 +8471,15 @@ const CAL_FASES = {
 const CAL_TRAMOS = { '1st leg':'Ida', '2nd leg':'Vuelta' };
 
 function detalleCompeticion(p){
+  // Futbol americano: ESPN no manda group ni altGameNote, pero si la conferencia
+  // de cada equipo (universitario) y el numero de semana (NFL y universitario).
+  if(p.confs && p.confs.length){
+    const nombres = p.confs.map(c => CAL_CONF[c] || 'FCS');
+    const unicos = nombres.filter((x, i) => nombres.indexOf(x) === i);
+    const linea = unicos.join(' · ') + (p.rank && p.rank <= 25 ? ' · #' + p.rank : '');
+    return { nivel: unicos.length === 1 ? unicos[0] : '', linea: linea };
+  }
+  if(p.semana) return { nivel:'', linea: 'SEMANA ' + p.semana };
   // "Group A1" -> nivel "LIGA A", linea "LIGA A · GRUPO 1"
   const m = /^Group\s+([A-D])\s*(\d+)$/i.exec(p.grupo || '');
   if(m){ const L = 'LIGA ' + m[1].toUpperCase();
@@ -8494,7 +8519,7 @@ async function loadCalendar(){
   const DAY_CACHE_TTL = 6 * 3600000;
   let dayCache = {};
   try{
-    const raw = localStorage.getItem('calDayCache2');
+    const raw = localStorage.getItem('calDayCache3');
     if(raw){
       const c = JSON.parse(raw);
       if(Date.now() - c.ts < DAY_CACHE_TTL) dayCache = c.datos || {};
@@ -8532,6 +8557,17 @@ async function loadCalendar(){
                 grupo: comp.group ? (comp.group.name || comp.group.abbreviation || '') : '',
                 nota: comp.altGameNote || '',
                 subnota: ((comp.notes || []).map(n => n.headline).filter(Boolean)[0]) || '',
+                confs: cs.map(c => (c.team && c.team.conferenceId) || '').filter(Boolean),
+                // 0 = ESPN no mando ranking para este partido; 99 = lo mando
+                // y los dos equipos estan fuera del Top 25. La diferencia importa:
+                // el filtro de rankMax solo actua cuando hay dato (rank > 0), asi
+                // un cambio en la fuente no vacia la liga entera.
+                rank: (function(){
+                  const rs = cs.map(c => c.curatedRank && c.curatedRank.current)
+                               .filter(v => typeof v === 'number');
+                  return rs.length ? Math.min.apply(null, rs) : 0;
+                })(),
+                semana: (d.week && d.week.number) || 0,
               };
             });
             dayCache[key] = lista;
@@ -8565,6 +8601,18 @@ async function loadCalendar(){
       else {
         for(const e of lista){
           if(vistos.has(e.id)) continue;
+          // El filtro se aplica aca y no al pedir: el cache guarda la jornada
+          // completa, asi que cambiar o quitar soloNivel no obliga a reconsultar.
+          // El 'e.grupo &&' NO es decorativo: si ESPN dejara de mandar el campo
+          // group, sin esa guarda el filtro no encontraria nivel en ningun
+          // partido y la liga entera desapareceria de la pantalla sin aviso.
+          // Asi, ante un cambio en la fuente se muestran todos en vez de ninguno.
+          if(lg.soloNivel && e.grupo && detalleCompeticion(e).nivel !== 'LIGA ' + lg.soloNivel) continue;
+          // rankMax: deja pasar solo los partidos con al menos un equipo dentro
+          // del Top N del ranking AP. ESPN marca 99 a los no rankeados. La
+          // guarda 'e.rank' evita el fallo silencioso: si el campo dejara de
+          // venir, se muestran todos en vez de vaciar la liga entera.
+          if(lg.rankMax && e.rank && e.rank > lg.rankMax) continue;
           vistos.add(e.id);
           todos.push({
             liga: lg.name,
@@ -8576,6 +8624,9 @@ async function loadCalendar(){
             grupo: e.grupo || '',
             nota: e.nota || '',
             subnota: e.subnota || '',
+            confs: e.confs || [],
+            rank: e.rank || 0,
+            semana: e.semana || 0,
           });
           hubo = true;
         }
@@ -8587,7 +8638,7 @@ async function loadCalendar(){
     else if(!hubo) vacias.push(lg.name);
   }
 
-  try{ localStorage.setItem('calDayCache2', JSON.stringify({ ts: Date.now(), datos: dayCache })); }catch(e){}
+  try{ localStorage.setItem('calDayCache3', JSON.stringify({ ts: Date.now(), datos: dayCache })); }catch(e){}
 
   const diag = 'ok:' + okReq + ' · sin-datos:' + sinDatos + ' · fallos:' + httpFail + ' · caché:' + deCache;
 
