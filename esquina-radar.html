@@ -8436,6 +8436,54 @@ function statRed(stats){
   return (v == null || isNaN(v)) ? null : Number(v);
 }
 
+// ── Auto-actualizacion: matar las pestañas con codigo viejo ────────────────
+// Una pestaña ya abierta sigue ejecutando en memoria el codigo que cargo el dia
+// que la abriste, aunque GitHub ya tenga otra version. Asi fue como siguieron
+// llegando avisos de señales horas despues de haberlos apagado: el archivo
+// nuevo estaba publicado, pero una ventana vieja seguia corriendo el viejo.
+//
+// Para que no vuelva a depender de que alguien se acuerde de recargar, cada
+// pestaña se vigila a si misma: toma la "huella" del archivo publicado y la
+// vuelve a consultar cada CHEQUEO_VERSION_MS. Si cambio, se recarga sola.
+//
+// La huella es el content-length de GitHub (el tamaño ya comprimido). Es el
+// unico identificador que el navegador deja leer entre dominios: el ETag no
+// esta expuesto por CORS. No puede quedar fijo en el codigo porque depende de
+// la compresion, asi que se toma en la primera vuelta y se compara contra si
+// misma. Si la consulta falla, no pasa nada: se reintenta a la vuelta siguiente.
+const RAW_URL = 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/esquina-radar.html';
+const CHEQUEO_VERSION_MS = 5 * 60000;
+let huellaInicial = null;
+
+async function huellaPublicada(){
+  try{
+    // El ?cb= evita el cache del navegador. El de GitHub (max-age=300) no se
+    // puede saltar, asi que la deteccion puede demorar hasta 5 min mas. Para el
+    // problema que resuelve — pestañas abiertas desde hace horas — sobra.
+    const r = await fetch(RAW_URL + '?cb=' + Date.now(), { method:'HEAD', cache:'no-store' });
+    return r.ok ? r.headers.get('content-length') : null;
+  }catch(e){ return null; }
+}
+
+async function vigilarVersion(){
+  const h = await huellaPublicada();
+  if(!h) return;
+  // La referencia se toma en la primera vuelta y NO al cargar la pagina: recien
+  // subido el archivo, el cache de GitHub puede seguir devolviendo el tamaño
+  // viejo unos minutos, y tomarlo de referencia provocaria una recarga de mas.
+  if(huellaInicial === null){ huellaInicial = h; return; }
+  if(h === huellaInicial) return;
+  // Cinturon anti-bucle: como mucho una recarga automatica cada 10 minutos. Si
+  // la huella no coincidiera nunca por algun motivo imprevisto, la pestaña no
+  // queda recargandose sin parar.
+  try{
+    const ultima = +(sessionStorage.getItem('ultimaRecargaVersion') || 0);
+    if(Date.now() - ultima < 10 * 60000) return;
+    sessionStorage.setItem('ultimaRecargaVersion', String(Date.now()));
+  }catch(e){}
+  location.reload();
+}
+
 // ── Aviso de partidos del CALENDARIO por comenzar ─────────────────────────
 // Solo avisa de los partidos que muestra la pestaña Calendario: las 18 ligas
 // curadas, ya pasadas por sus filtros (Nations League solo Liga A, NCAA solo
@@ -8619,6 +8667,9 @@ function init(){
   document.getElementById('dailyResultsBtn')?.addEventListener('click', (e) => {
     autoPublishResults(e.currentTarget, false);
   });
+
+  // Vigia de version: recarga la pestaña sola cuando se despliega un build nuevo
+  setInterval(vigilarVersion, CHEQUEO_VERSION_MS);
 
   // Auto-publish scheduler
   initAutoPublish();
