@@ -1884,6 +1884,10 @@ async function loadAll(){
     return {
       id: ev.id,
       league: ev._league,
+      grupo: comp && comp.group ? (comp.group.name || comp.group.abbreviation || '') : '',
+      nota: (comp && comp.altGameNote) || '',
+      subnota: (((comp && comp.notes) || []).map(n => n.headline).filter(Boolean)[0]) || '',
+      sub: SCAN_SUB[ev._league] || '',
       status,
       home, away,
       cornersOk: cornersRes.ok,
@@ -1925,6 +1929,24 @@ async function loadAll(){
 }
 
 /* ============ RENDER ============ */
+// Subtitulo fijo de division para el scanner. ESPN devuelve "Brazil Serie A"
+// sin coma, asi que no hay fase que extraer y la tarjeta quedaba sin detalle.
+const SCAN_SUB = { 'bra.1': 'SÉRIE A', 'bra.2': 'SÉRIE B' };
+
+// Etiqueta de detalle lista para pintar debajo del nombre de la liga.
+// Reutiliza detalleCompeticion, la misma funcion que usa el calendario, para
+// que el grupo de Nations League y la fase de las copas se vean igual en los
+// dos lados y no haya dos criterios distintos conviviendo.
+function detalleHtml(obj){
+  try{
+    const d = detalleCompeticion(obj);
+    return d && d.linea
+      ? '<span style="display:block; font-size:9px; line-height:1.3; color:var(--green-deep);'
+        + ' font-weight:700; letter-spacing:.3px">' + d.linea + '</span>'
+      : '';
+  }catch(e){ return ''; }
+}
+
 function leagueShort(code){
   const l = LEAGUES.find(x => x.code === code);
   return l ? l.short : code;
@@ -2076,7 +2098,7 @@ function renderMatches(){
       <div class="card ${cardClass}">
         ${arcHtml}
         <div class="card-top">
-          <div class="league-tag">${leagueShort(m.league)}</div>
+          <div class="league-tag">${leagueShort(m.league)}${detalleHtml(m)}</div>
           <div class="clock"><span class="dot live"></span> <span id="clock-live-${m.id}">${clockLabel}</span></div>
         </div>
         <div class="col-labels">
@@ -2197,7 +2219,12 @@ function renderUpcoming(upcoming){
     return `
       <div class="card upcoming">
         <div class="card-top">
-          <div class="league-tag">${leagueShort(ev._league)}</div>
+          <div class="league-tag">${leagueShort(ev._league)}${detalleHtml({
+            grupo: (ev.competitions && ev.competitions[0] && ev.competitions[0].group)
+                   ? (ev.competitions[0].group.name || '') : '',
+            nota: (ev.competitions && ev.competitions[0] && ev.competitions[0].altGameNote) || '',
+            subnota: '', sub: SCAN_SUB[ev._league] || ''
+          })}</div>
           <div class="clock" style="color:var(--blue)">⏱ ${dayLabel} ${time}</div>
         </div>
         <div class="teams">
@@ -8425,6 +8452,8 @@ const CAL_LEAGUES = [
   // League mezcla cuatro niveles y los de Liga C/D (Kazajistan, Islas Feroe,
   // Armenia) no tienen mercado en las casas peruanas: eran 8 de cada 10 filas.
   { code: 'uefa.nations',   name: 'Nations League', soloNivel: 'A' },
+  { code: 'uefa.europa',      name: 'Europa League' },
+  { code: 'uefa.europa.conf', name: 'Conference League' },
   { code: 'eng.1',          name: 'Premier League' },
   { code: 'esp.1',          name: 'LaLiga' },
   { code: 'ita.1',          name: 'Serie A' },
@@ -8433,9 +8462,13 @@ const CAL_LEAGUES = [
   { code: 'conmebol.libertadores', name: 'Libertadores' },
   { code: 'conmebol.sudamericana', name: 'Sudamericana' },
   { code: 'bra.copa_do_brazil',    name: 'Copa de Brasil' },
-  { code: 'bra.1',                 name: 'Brasileirao' },
+  // 'sub' es una etiqueta fija de division. ESPN devuelve altGameNote
+  // "Brazil Serie A" sin coma, asi que no hay fase que extraer: la division
+  // se pone a mano para que la fila diga de que torneo brasileño se trata.
+  { code: 'bra.1',                 name: 'Brasileirao', sub: 'SÉRIE A' },
   { code: 'mex.1',                 name: 'Liga MX' },
   { code: 'usa.1',                 name: 'MLS' },
+  { code: 'per.1',                 name: 'Perú — Liga 1' },
   // Futbol americano. Vive en otro deporte dentro de ESPN (football, no soccer),
   // por eso el campo 'sport'. Sin parametro groups ambas devuelven la jornada
   // completa: medido en el navegador, 14 partidos la NFL el domingo 04/10 y 54
@@ -8496,7 +8529,9 @@ function detalleCompeticion(p){
   const sn = (p.subnota || '').toLowerCase();
   for(const key in CAL_TRAMOS){ if(sn.indexOf(key) >= 0) tramo = CAL_TRAMOS[key]; }
   const partes = [fase, tramo].filter(Boolean);
-  return partes.length ? { nivel:'', linea: partes.join(' · ').toUpperCase() } : { nivel:'', linea:'' };
+  if(partes.length) return { nivel:'', linea: partes.join(' · ').toUpperCase() };
+  // sin fase ni grupo: cae al subtitulo fijo de la liga, si tiene
+  return p.sub ? { nivel:'', linea: p.sub.toUpperCase() } : { nivel:'', linea:'' };
 }
 
 async function loadCalendar(){
@@ -8627,6 +8662,7 @@ async function loadCalendar(){
             confs: e.confs || [],
             rank: e.rank || 0,
             semana: e.semana || 0,
+            sub: lg.sub || '',
           });
           hubo = true;
         }
