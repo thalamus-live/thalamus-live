@@ -1905,7 +1905,8 @@ async function loadAll(){
 
   // TRADUCCIÓN RADICAL: procesar todos los datos INMEDIATAMENTE
   liveMatches = procesarYTraducirMatches(enriched);
-  try { checkRedCards(liveMatches); } catch(e){}
+  // Avisos de tarjeta roja desactivados a pedido: el telefono solo debe sonar
+  // por los partidos del calendario que estan por comenzar.
   try { checkAgendaCalendario(); } catch(e){}
 
   const goalsOddsKey = DEFAULT_ODDS_API_KEY;
@@ -8357,7 +8358,7 @@ async function toggleNotifications(){
     // Send a test notification
     const reg = await navigator.serviceWorker.ready;
     reg.showNotification('🔔 Notificaciones activadas', {
-      body: 'Recibirás alertas cuando salga una señal nueva.',
+      body: 'Te avisaré 10 minutos antes de cada partido del Calendario.',
       tag: 'test-notif',
       vibrate: [100],
     });
@@ -8386,7 +8387,14 @@ async function requestNotifPermissionIfNeeded(){
   return result === 'granted';
 }
 
+// DESACTIVADO a pedido: el escaner en vivo ya no notifica. Las unicas
+// notificaciones que salen son las de partidos del calendario por comenzar
+// (checkAgendaCalendario / notifyPorComenzar). La funcion se conserva vacia
+// para no romper a quien la llame y para poder revivirla cambiando una linea.
+const NOTIFICAR_SENALES = false;
+
 async function notifyNewSignals(newSignals){
+  if(!NOTIFICAR_SENALES) return;
   if(!newSignals.length) return;
   const granted = await requestNotifPermissionIfNeeded();
   if(!granted) return;
@@ -8550,7 +8558,12 @@ function checkRedCards(matches){
   return nuevas;
 }
 
+// DESACTIVADO a pedido, igual que las señales. checkRedCards ya no se llama
+// desde el ciclo; esta guarda es el segundo cerrojo.
+const NOTIFICAR_ROJAS = false;
+
 async function notifyRedCards(lista){
+  if(!NOTIFICAR_ROJAS) return;
   for(const r of lista){
     const hName = r.m.home && r.m.home.team ? (r.m.home.team.shortDisplayName || r.m.home.team.displayName) : '?';
     const aName = r.m.away && r.m.away.team ? (r.m.away.team.shortDisplayName || r.m.away.team.displayName) : '?';
