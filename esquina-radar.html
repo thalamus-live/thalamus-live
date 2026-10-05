@@ -1906,7 +1906,7 @@ async function loadAll(){
   // TRADUCCIÓN RADICAL: procesar todos los datos INMEDIATAMENTE
   liveMatches = procesarYTraducirMatches(enriched);
   try { checkRedCards(liveMatches); } catch(e){}
-  try { checkInicioPartidos(liveMatches); } catch(e){}
+  try { checkAgendaCalendario(); } catch(e){}
 
   const goalsOddsKey = DEFAULT_ODDS_API_KEY;
   if(goalsOddsKey){
@@ -8428,46 +8428,105 @@ function statRed(stats){
   return (v == null || isNaN(v)) ? null : Number(v);
 }
 
-// ── Aviso de inicio de partido ───────────────────────────────────────────
-// Mismo patron que las rojas: se compara contra la lectura anterior. Un partido
-// que aparece en la lista de "en vivo" y no estaba antes, acaba de arrancar.
+// ── Aviso de partidos del CALENDARIO por comenzar ─────────────────────────
+// Solo avisa de los partidos que muestra la pestaña Calendario: las 18 ligas
+// curadas, ya pasadas por sus filtros (Nations League solo Liga A, NCAA solo
+// Top 25). NO avisa de las 47 ligas del escaner — eso llenaba el telefono de
+// partidos que no miramos.
+//
+// No vuelve a consultar ESPN por su cuenta: lee la agenda que loadCalendar()
+// deja guardada en localStorage, y la manda a reconstruir cuando queda vieja.
+// El vigia corre en el mismo ciclo del escaner (cada 60s) y dispara el aviso
+// cuando faltan AVISO_MIN minutos o menos para el saque.
 // Requiere la pagina abierta (o la PWA instalada); no es push de servidor.
-const vistosEnVivo = new Set();
-let primerBarridoEnVivo = true;
+const AGENDA_KEY   = 'calendarCache';
+const AVISADOS_KEY = 'avisadosInicioCal1';
+const AVISO_MIN    = 10;             // minutos de anticipacion
+const AGENDA_TTL   = 3 * 3600000;    // reconstruir la agenda cada 3 h
+let agendaRefrescando = false;
 
-function checkInicioPartidos(matches){
-  const arrancaron = [];
-  const ahora = new Set();
-  for(const m of (matches || [])){
-    ahora.add(m.id);
-    if(!vistosEnVivo.has(m.id)){
-      vistosEnVivo.add(m.id);
-      // El primer barrido tras abrir la pagina ve TODOS los partidos en curso
-      // como nuevos. Avisar ahi seria spamear con partidos que empezaron hace
-      // horas, asi que la primera vuelta solo toma referencia.
-      // Y aun despues, solo avisa si de verdad acaba de empezar (<= 15 min).
-      if(!primerBarridoEnVivo && (m.elapsed == null || m.elapsed <= 15)) arrancaron.push(m);
-    }
-  }
-  // limpiar los que ya terminaron, para que no crezca indefinidamente
-  for(const id of [...vistosEnVivo]) if(!ahora.has(id)) vistosEnVivo.delete(id);
-  primerBarridoEnVivo = false;
-  if(arrancaron.length) notifyInicio(arrancaron);
-  return arrancaron;
+// Registro persistente de lo ya avisado. Va en localStorage y no en memoria
+// porque si no, cada recarga de la pagina volveria a avisar los mismos
+// partidos. Se purga a las 12 h para que no crezca indefinidamente.
+function avisadosLeer(){
+  try{
+    const c = JSON.parse(localStorage.getItem(AVISADOS_KEY) || '{}');
+    const lim = Date.now() - 12 * 3600000;
+    let cambio = false;
+    for(const k in c){ if(c[k] < lim){ delete c[k]; cambio = true; } }
+    if(cambio) localStorage.setItem(AVISADOS_KEY, JSON.stringify(c));
+    return c;
+  }catch(e){ return {}; }
+}
+function avisadosMarcar(id){
+  try{ const c = avisadosLeer(); c[id] = Date.now();
+       localStorage.setItem(AVISADOS_KEY, JSON.stringify(c)); }catch(e){}
 }
 
-async function notifyInicio(lista){
-  for(const m of lista){
-    const h = m.home && m.home.team ? (m.home.team.shortDisplayName || m.home.team.displayName) : '?';
-    const a = m.away && m.away.team ? (m.away.team.shortDisplayName || m.away.team.displayName) : '?';
-    const det = (typeof detalleCompeticion === 'function') ? (detalleCompeticion(m).linea || '') : '';
+function leerAgenda(){
+  try{
+    const c = JSON.parse(localStorage.getItem(AGENDA_KEY) || 'null');
+    return (c && Array.isArray(c.datos)) ? c : null;
+  }catch(e){ return null; }
+}
+
+// Si la agenda esta vieja o no existe, se reconstruye sola llamando al mismo
+// cargador que usa la pestaña Calendario. Asi el aviso NO depende de que el
+// usuario entre a esa pestaña. loadCalendar vive dentro de init(): queda
+// expuesto en window desde alli. La guarda de tipo evita romper el ciclo del
+// escaner si por cualquier motivo todavia no se expuso.
+function refrescarAgendaSiHaceFalta(){
+  const c = leerAgenda();
+  if(c && (Date.now() - c.ts) < AGENDA_TTL) return;
+  if(agendaRefrescando) return;
+  if(typeof window.loadCalendar !== 'function') return;
+  agendaRefrescando = true;
+  Promise.resolve().then(() => window.loadCalendar())
+    .catch(() => {}).then(() => { agendaRefrescando = false; });
+}
+
+function checkAgendaCalendario(){
+  refrescarAgendaSiHaceFalta();
+  const c = leerAgenda();
+  if(!c) return [];
+  const avisados = avisadosLeer();
+  const ahora = Date.now();
+  const porComenzar = [];
+  for(const p of (c.datos || [])){
+    const t = new Date(p.fecha).getTime();
+    if(!t || isNaN(t)) continue;
+    const faltan = (t - ahora) / 60000;
+    // Ventana: desde AVISO_MIN antes hasta 2 min despues del saque. El margen
+    // de abajo cubre que el ciclo de 60s caiga justo encima de la hora.
+    if(faltan > AVISO_MIN || faltan < -2) continue;
+    // Respaldo por si un partido viniera sin id: la combinacion liga+equipos+
+    // hora es unica, y asi nunca se avisa dos veces el mismo encuentro.
+    const id = p.id || (p.liga + '|' + p.local + '|' + p.visita + '|' + t);
+    if(avisados[id]) continue;
+    avisadosMarcar(id);
+    porComenzar.push({ p, faltan });
+  }
+  if(porComenzar.length) notifyPorComenzar(porComenzar);
+  return porComenzar;
+}
+
+async function notifyPorComenzar(lista){
+  for(const x of lista){
+    const p = x.p;
+    const mins = Math.max(0, Math.round(x.faltan));
+    const det = (typeof detalleCompeticion === 'function')
+              ? (detalleCompeticion(p).linea || '') : '';
+    const hora = new Date(p.fecha).toLocaleTimeString('es-PE', { hour:'2-digit', minute:'2-digit' });
+    const titulo = mins > 0
+      ? '⏱ En ' + mins + ' min — ' + p.local + ' vs ' + p.visita
+      : '⚽ Arranca — ' + p.local + ' vs ' + p.visita;
     try{
       const reg = await navigator.serviceWorker.ready;
-      await reg.showNotification('⚽ Arrancó — ' + h + ' vs ' + a, {
-        body: (leagueShort(m.league) || '') + (det ? ' · ' + det : ''),
+      await reg.showNotification(titulo, {
+        body: (p.liga || '') + (det ? ' · ' + det : '') + ' · ' + hora,
         icon: 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/icon-192.png',
         badge: 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/badge-96.png',
-        tag: 'inicio-' + m.id,
+        tag: 'cal-inicio-' + (p.id || (p.local + p.visita)),
         vibrate: [120, 60, 120],
       });
     }catch(e){}
@@ -8588,6 +8647,12 @@ const CAL_LEAGUES = [
   { code: 'college-football', sport: 'football', name: 'NCAA Football', rankMax: 25 },
 ];
 
+// loadCalendar vive dentro de init(). El vigia de avisos corre en el ambito
+// global, asi que necesita esta referencia para reconstruir la agenda sin que
+// el usuario tenga que abrir la pestaña Calendario.
+window.loadCalendar = loadCalendar;
+window.CAL_LEAGUES  = CAL_LEAGUES;
+
 async function loadCalendar(){
   const status = document.getElementById('calStatus');
   const cont = document.getElementById('calendarList');
@@ -8704,6 +8769,9 @@ async function loadCalendar(){
           if(lg.rankMax && e.rank && e.rank > lg.rankMax) continue;
           vistos.add(e.id);
           todos.push({
+            // el id de ESPN viaja hasta la agenda: es lo que usa el vigia de
+            // avisos para no notificar dos veces el mismo partido
+            id: e.id,
             liga: lg.name,
             fecha: new Date(e.fecha),
             local: e.local,
