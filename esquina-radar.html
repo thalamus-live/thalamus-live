@@ -1906,6 +1906,7 @@ async function loadAll(){
   // TRADUCCIÓN RADICAL: procesar todos los datos INMEDIATAMENTE
   liveMatches = procesarYTraducirMatches(enriched);
   try { checkRedCards(liveMatches); } catch(e){}
+  try { checkInicioPartidos(liveMatches); } catch(e){}
 
   const goalsOddsKey = DEFAULT_ODDS_API_KEY;
   if(goalsOddsKey){
@@ -8425,6 +8426,52 @@ function statRed(stats){
   if(!stats) return null;
   const v = stats['Tarjetas rojas'];
   return (v == null || isNaN(v)) ? null : Number(v);
+}
+
+// ── Aviso de inicio de partido ───────────────────────────────────────────
+// Mismo patron que las rojas: se compara contra la lectura anterior. Un partido
+// que aparece en la lista de "en vivo" y no estaba antes, acaba de arrancar.
+// Requiere la pagina abierta (o la PWA instalada); no es push de servidor.
+const vistosEnVivo = new Set();
+let primerBarridoEnVivo = true;
+
+function checkInicioPartidos(matches){
+  const arrancaron = [];
+  const ahora = new Set();
+  for(const m of (matches || [])){
+    ahora.add(m.id);
+    if(!vistosEnVivo.has(m.id)){
+      vistosEnVivo.add(m.id);
+      // El primer barrido tras abrir la pagina ve TODOS los partidos en curso
+      // como nuevos. Avisar ahi seria spamear con partidos que empezaron hace
+      // horas, asi que la primera vuelta solo toma referencia.
+      // Y aun despues, solo avisa si de verdad acaba de empezar (<= 15 min).
+      if(!primerBarridoEnVivo && (m.elapsed == null || m.elapsed <= 15)) arrancaron.push(m);
+    }
+  }
+  // limpiar los que ya terminaron, para que no crezca indefinidamente
+  for(const id of [...vistosEnVivo]) if(!ahora.has(id)) vistosEnVivo.delete(id);
+  primerBarridoEnVivo = false;
+  if(arrancaron.length) notifyInicio(arrancaron);
+  return arrancaron;
+}
+
+async function notifyInicio(lista){
+  for(const m of lista){
+    const h = m.home && m.home.team ? (m.home.team.shortDisplayName || m.home.team.displayName) : '?';
+    const a = m.away && m.away.team ? (m.away.team.shortDisplayName || m.away.team.displayName) : '?';
+    const det = (typeof detalleCompeticion === 'function') ? (detalleCompeticion(m).linea || '') : '';
+    try{
+      const reg = await navigator.serviceWorker.ready;
+      await reg.showNotification('⚽ Arrancó — ' + h + ' vs ' + a, {
+        body: (leagueShort(m.league) || '') + (det ? ' · ' + det : ''),
+        icon: 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/icon-192.png',
+        badge: 'https://raw.githubusercontent.com/thalamus-live/thalamus-live/main/badge-96.png',
+        tag: 'inicio-' + m.id,
+        vibrate: [120, 60, 120],
+      });
+    }catch(e){}
+  }
 }
 
 function checkRedCards(matches){
