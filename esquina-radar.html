@@ -1929,6 +1929,66 @@ async function loadAll(){
 }
 
 /* ============ RENDER ============ */
+// ─────────────────────────────────────────────────────────────────────
+// Estas tablas y detalleCompeticion vivian dentro de init(), asi que solo
+// las veia el calendario: el scanner llamaba a detalleCompeticion y recibia
+// ReferenceError, que el try/catch de detalleHtml se tragaba en silencio y
+// devolvia etiqueta vacia. Estan aca arriba, en el ambito global, para que
+// las dos pestañas compartan el mismo criterio de verdad.
+// ─────────────────────────────────────────────────────────────────────
+// ESPN trae el grupo en competitions[0].group ("Group A1") y la fase en
+// altGameNote ("CONMEBOL Libertadores, Semifinals"). Antes no se leia ninguno
+// y diez partidos de Nations League aparecian todos como "NATIONS LEAGUE",
+// mezclando Francia-Italia (Liga A) con Kazajistan-Moldavia (Liga C).
+// Conferencias de futbol americano universitario. Los ids y nombres salen del
+// catalogo de ESPN (groups > NCAA Division I > FBS), no de deduccion: son las
+// 11 de FBS. Cualquier id fuera de esta lista es de FCS, la division de abajo
+// (los "money games" donde un grande golea a un chico y no hay mercado).
+const CAL_CONF = {
+  '1':'ACC', '4':'BIG 12', '5':'BIG TEN', '8':'SEC', '9':'PAC-12',
+  '12':'CONF USA', '15':'MAC', '17':'MOUNTAIN WEST', '18':'INDEPENDIENTE',
+  '37':'SUN BELT', '151':'AMERICAN',
+};
+
+const CAL_FASES = {
+  'league phase':'Fase de liga', 'group stage':'Fase de grupos',
+  'round of 16':'Octavos', 'quarterfinals':'Cuartos', 'semifinals':'Semifinales',
+  'final':'Final', 'third place':'Tercer puesto', 'preliminary round':'Ronda previa',
+  'knockout round play-offs':'Play-offs', 'play-offs':'Repechaje', 'regular season':'',
+};
+const CAL_TRAMOS = { '1st leg':'Ida', '2nd leg':'Vuelta' };
+
+function detalleCompeticion(p){
+  // Futbol americano: ESPN no manda group ni altGameNote, pero si la conferencia
+  // de cada equipo (universitario) y el numero de semana (NFL y universitario).
+  if(p.confs && p.confs.length){
+    const nombres = p.confs.map(c => CAL_CONF[c] || 'FCS');
+    const unicos = nombres.filter((x, i) => nombres.indexOf(x) === i);
+    const linea = unicos.join(' · ') + (p.rank && p.rank <= 25 ? ' · #' + p.rank : '');
+    return { nivel: unicos.length === 1 ? unicos[0] : '', linea: linea };
+  }
+  if(p.semana) return { nivel:'', linea: 'SEMANA ' + p.semana };
+  // "Group A1" -> nivel "LIGA A", linea "LIGA A · GRUPO 1"
+  const m = /^Group\s+([A-D])\s*(\d+)$/i.exec(p.grupo || '');
+  if(m){ const L = 'LIGA ' + m[1].toUpperCase();
+         return { nivel: L, linea: L + ' · GRUPO ' + m[2] }; }
+  const m2 = /^Group\s+([A-Z])$/i.exec(p.grupo || '');
+  if(m2){ const G = 'GRUPO ' + m2[1].toUpperCase(); return { nivel: G, linea: G }; }
+  if(p.grupo) return { nivel: p.grupo.toUpperCase(), linea: p.grupo.toUpperCase() };
+  // fase: se queda con lo que va despues de la coma en altGameNote
+  let fase = '';
+  if(p.nota && p.nota.indexOf(',') >= 0) fase = p.nota.slice(p.nota.indexOf(',') + 1).trim();
+  const k = fase.toLowerCase();
+  if(CAL_FASES[k] !== undefined) fase = CAL_FASES[k];
+  let tramo = '';
+  const sn = (p.subnota || '').toLowerCase();
+  for(const key in CAL_TRAMOS){ if(sn.indexOf(key) >= 0) tramo = CAL_TRAMOS[key]; }
+  const partes = [fase, tramo].filter(Boolean);
+  if(partes.length) return { nivel:'', linea: partes.join(' · ').toUpperCase() };
+  // sin fase ni grupo: cae al subtitulo fijo de la liga, si tiene
+  return p.sub ? { nivel:'', linea: p.sub.toUpperCase() } : { nivel:'', linea:'' };
+}
+
 // Subtitulo fijo de division para el scanner. ESPN devuelve "Brazil Serie A"
 // sin coma, asi que no hay fase que extraer y la tarjeta quedaba sin detalle.
 const SCAN_SUB = { 'bra.1': 'SÉRIE A', 'bra.2': 'SÉRIE B' };
@@ -8480,59 +8540,6 @@ const CAL_LEAGUES = [
   // mismo orden de magnitud que la NFL, y los unicos con mercado completo.
   { code: 'college-football', sport: 'football', name: 'NCAA Football', rankMax: 25 },
 ];
-
-// ESPN trae el grupo en competitions[0].group ("Group A1") y la fase en
-// altGameNote ("CONMEBOL Libertadores, Semifinals"). Antes no se leia ninguno
-// y diez partidos de Nations League aparecian todos como "NATIONS LEAGUE",
-// mezclando Francia-Italia (Liga A) con Kazajistan-Moldavia (Liga C).
-// Conferencias de futbol americano universitario. Los ids y nombres salen del
-// catalogo de ESPN (groups > NCAA Division I > FBS), no de deduccion: son las
-// 11 de FBS. Cualquier id fuera de esta lista es de FCS, la division de abajo
-// (los "money games" donde un grande golea a un chico y no hay mercado).
-const CAL_CONF = {
-  '1':'ACC', '4':'BIG 12', '5':'BIG TEN', '8':'SEC', '9':'PAC-12',
-  '12':'CONF USA', '15':'MAC', '17':'MOUNTAIN WEST', '18':'INDEPENDIENTE',
-  '37':'SUN BELT', '151':'AMERICAN',
-};
-
-const CAL_FASES = {
-  'league phase':'Fase de liga', 'group stage':'Fase de grupos',
-  'round of 16':'Octavos', 'quarterfinals':'Cuartos', 'semifinals':'Semifinales',
-  'final':'Final', 'third place':'Tercer puesto', 'preliminary round':'Ronda previa',
-  'knockout round play-offs':'Play-offs', 'play-offs':'Repechaje', 'regular season':'',
-};
-const CAL_TRAMOS = { '1st leg':'Ida', '2nd leg':'Vuelta' };
-
-function detalleCompeticion(p){
-  // Futbol americano: ESPN no manda group ni altGameNote, pero si la conferencia
-  // de cada equipo (universitario) y el numero de semana (NFL y universitario).
-  if(p.confs && p.confs.length){
-    const nombres = p.confs.map(c => CAL_CONF[c] || 'FCS');
-    const unicos = nombres.filter((x, i) => nombres.indexOf(x) === i);
-    const linea = unicos.join(' · ') + (p.rank && p.rank <= 25 ? ' · #' + p.rank : '');
-    return { nivel: unicos.length === 1 ? unicos[0] : '', linea: linea };
-  }
-  if(p.semana) return { nivel:'', linea: 'SEMANA ' + p.semana };
-  // "Group A1" -> nivel "LIGA A", linea "LIGA A · GRUPO 1"
-  const m = /^Group\s+([A-D])\s*(\d+)$/i.exec(p.grupo || '');
-  if(m){ const L = 'LIGA ' + m[1].toUpperCase();
-         return { nivel: L, linea: L + ' · GRUPO ' + m[2] }; }
-  const m2 = /^Group\s+([A-Z])$/i.exec(p.grupo || '');
-  if(m2){ const G = 'GRUPO ' + m2[1].toUpperCase(); return { nivel: G, linea: G }; }
-  if(p.grupo) return { nivel: p.grupo.toUpperCase(), linea: p.grupo.toUpperCase() };
-  // fase: se queda con lo que va despues de la coma en altGameNote
-  let fase = '';
-  if(p.nota && p.nota.indexOf(',') >= 0) fase = p.nota.slice(p.nota.indexOf(',') + 1).trim();
-  const k = fase.toLowerCase();
-  if(CAL_FASES[k] !== undefined) fase = CAL_FASES[k];
-  let tramo = '';
-  const sn = (p.subnota || '').toLowerCase();
-  for(const key in CAL_TRAMOS){ if(sn.indexOf(key) >= 0) tramo = CAL_TRAMOS[key]; }
-  const partes = [fase, tramo].filter(Boolean);
-  if(partes.length) return { nivel:'', linea: partes.join(' · ').toUpperCase() };
-  // sin fase ni grupo: cae al subtitulo fijo de la liga, si tiene
-  return p.sub ? { nivel:'', linea: p.sub.toUpperCase() } : { nivel:'', linea:'' };
-}
 
 async function loadCalendar(){
   const status = document.getElementById('calStatus');
